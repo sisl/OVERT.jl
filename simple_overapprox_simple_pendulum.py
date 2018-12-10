@@ -62,7 +62,7 @@ def build_sin_approx(fun, c1, c2, convex_reg, concave_reg):
             dec_len = dec[1] - dec[0]
             line1 = np.array([[dec[0], line2[0][1] - min_lip*dec_len ],line2[0]])
         #
-        return (line1, line2)
+        return (line(init_type='two points', p1=line1[0,:], p2=line1[1,:]), line(init_type='two points', p1=line2[0,:], p2=line2[1,:]))
     #
     def construct_jensen_bound(fun, interval):
         reg1 = [interval[0], (interval[1] - interval[0])/2.0 + interval[0]]
@@ -71,7 +71,7 @@ def build_sin_approx(fun, c1, c2, convex_reg, concave_reg):
         line1 = np.array([[reg1[0], fun(reg1[0]) ], [reg1[1], fun(reg1[1]) ]])
         line2 = np.array([line1[1], [reg2[1], fun(reg2[1])] ])
         #
-        return (line1, line2)
+        return (line(init_type='two points', p1=line1[0,:], p2=line1[1,:]), line(init_type='two points', p1=line2[0,:], p2=line2[1,:]))
     #
     # for (convex) part, construct max lip LB and jensen upper bound
     cvx_LB = construct_max_lip_bound(fun, convex_reg, flag = "LB", max_lip=max_lip)
@@ -96,7 +96,7 @@ plt.plot(xdat, sindat)
 for b in [LB,UB]:
     for item in b:
         for line in item:
-            plt.plot(line[:,0], line[:,1])
+            plt.plot(xdat, line.eq(xdat))
 
 plt.show()
 
