@@ -1,0 +1,1 @@
+export PATH=/Users/Chelsea/miniconda2/bin:/usr/local/sbin:/Applications/google-cloud-sdk/bin:/usr/local/bin/pdf2svg:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/opt/X11/bin:/usr/local/CrossPack-AVR/bin:/opt/openafs/bin:/opt/openafs/sbin

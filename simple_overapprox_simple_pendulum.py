@@ -11,14 +11,14 @@ def ReLu(x):
 def ReLuMax(x,y):
     return ReLu(x-y) + y
 
-def tfReLuMax(x,y):
-    return tf.nn.relu(x-y) + y
+def tfReLuMax(x,y, name=""):
+    return tf.add(tf.nn.relu(x-y), y, name=name+"tfrelu_0")
 
 def ReLuMin(x,y):
     return -ReLuMax(-x,-y)
 
-def tfReLuMin(x,y):
-    return -tfReLuMax(-x,-y)
+def tfReLuMin(x,y, name=""):
+    return tf.multiply(-1.0, tfReLuMax(-x,-y), name=name+"tfrelu_1")
 
 class line():
     def __init__(self,*args, init_type='two points', **kwargs):
