@@ -147,7 +147,10 @@ def testing():
     plt.plot(xdat, LB[0].eval_bound(xdat) + LB[1].eval_bound(xdat) + c2)
     plt.plot(xdat, UB[0].eval_bound(xdat) + UB[1].eval_bound(xdat) + c2)
 
-    #plt.show()
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title(str(c1)+'*Sin(x) + '+str(c2))
+    plt.show()
 
     # swap maxes and mins for ReLuMax and ReLuMin
     def swap_out_for_relus(op):
@@ -170,7 +173,7 @@ def testing():
     plt.plot(xdat, LB[0].eval_bound(xdat) + LB[1].eval_bound(xdat) + c2)
     plt.plot(xdat, UB[0].eval_bound(xdat) + UB[1].eval_bound(xdat) + c2)
 
-    #plt.show()
+    plt.show()
 
     print("LB: ", LB[0].eval_bound(1.0) + LB[1].eval_bound(1.0) + c2)
     print("UB: ", UB[0].eval_bound(1.0) + UB[1].eval_bound(1.0) + c2)
@@ -205,7 +208,7 @@ def testing():
     train_writer.close()
 
 # then do the euler integration piece
-
+# testing()
 
 
 

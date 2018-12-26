@@ -93,57 +93,41 @@ with sess.as_default():
 
 # input of controller is theta and theta-dot
 # output of controller is action....
-with tf.name_scope("get_actions"):
-	action_UB = policy.dist_info_sym(tf.stack([theta_init_UB, theta_d_init_UB], axis=1), [])["mean"]
-	print("action_UB: ", sess.run([action_UB]))
-	action_LB = policy.dist_info_sym(tf.stack([theta_init_LB, theta_d_init_LB], axis=1), [])["mean"]
-	print("action_LB: ", sess.run([action_LB]))
+theta_UB = theta_init_UB
+theta_d_UB = theta_d_init_UB
+theta_LB = theta_init_LB
+theta_d_LB = theta_d_init_LB
+for i in range(1):
+	with tf.name_scope("get_actions"):
+		action_UB = policy.dist_info_sym(tf.stack([theta_UB, theta_d_UB], axis=1), [])["mean"]
+		print("action_UB: ", sess.run([action_UB]))
+		#
+		action_LB = policy.dist_info_sym(tf.stack([theta_LB, theta_d_LB], axis=1), [])["mean"]
+		print("action_LB: ", sess.run([action_LB]))
 
-# input of dynamics is torque(action), output is theta theta-dot at the next timestep
-with tf.name_scope("run_dynamics"):
-	var_dict = {"action_UB": action_UB, 
-				"theta_t_UB": theta_init_UB, 
-				"theta_d_t_UB": theta_d_init_UB,
-				"action_LB": action_LB, 
-				"theta_t_LB": theta_init_LB, 
-				"theta_d_t_LB": theta_d_init_LB, 
-				}
-	[theta_tp1_UB, theta_tp1_LB, theta_d_tp1_UB, theta_d_tp1_LB] = create_dynamics_block(num=0, var_dict=var_dict)
-	print("theta_tp1_UB: ", sess.run([theta_tp1_UB]))
-	print("theta_tp1_LB", sess.run([theta_tp1_LB]))
-	print("theta_d_tp1_UB: ", sess.run([theta_d_tp1_UB]))
-	print("theta_d_tp1_LB", sess.run([theta_d_tp1_LB]))
-
-# NEXT STEP ########################################################
-with tf.name_scope("get_next_actions"):
-	action_UB_1 = policy.dist_info_sym(tf.stack([theta_tp1_UB, theta_d_tp1_UB], axis=1), [])["mean"]
-	print("action_UB_1: ", sess.run([action_UB_1]))
-	action_LB_1 = policy.dist_info_sym(tf.stack([theta_tp1_LB, theta_d_tp1_LB], axis=1), [])["mean"]
-	print("action_LB_1: ", sess.run([action_LB_1]))
-# input of dynamics is torque(action), output is theta theta-dot at the next timestep
-with tf.name_scope("run_dynamics_again"):
-	var_dict = {"action_UB": action_UB_1, 
-				"theta_t_UB": theta_tp1_UB, 
-				"theta_d_t_UB": theta_d_tp1_UB,
-				"action_LB": action_LB_1, 
-				"theta_t_LB": theta_tp1_LB, 
-				"theta_d_t_LB": theta_d_tp1_LB, 
-				}
-	[theta_tp2_UB, theta_tp2_LB, theta_d_tp2_UB, theta_d_tp2_LB] = create_dynamics_block(num=1, var_dict=var_dict)
-	print("theta_tp1_UB: ", sess.run([theta_tp2_UB]))
-	print("theta_tp1_LB", sess.run([theta_tp2_LB]))
-	print("theta_d_tp1_UB: ", sess.run([theta_d_tp2_UB]))
-	print("theta_d_tp1_LB", sess.run([theta_d_tp2_LB]))
+	# input of dynamics is torque(action), output is theta theta-dot at the next timestep
+	with tf.name_scope("run_dynamics"):
+		var_dict = {"action_UB": action_UB, 
+					"theta_t_UB": theta_UB, 
+					"theta_d_t_UB": theta_d_UB,
+					"action_LB": action_LB, 
+					"theta_t_LB": theta_LB, 
+					"theta_d_t_LB": theta_d_LB, 
+					}
+		[theta_UB, theta_LB, theta_d_UB, theta_d_LB] = create_dynamics_block(num=0, var_dict=var_dict)
+		print("theta_tp1_UB: ", sess.run([theta_UB]))
+		print("theta_tp1_LB", sess.run([theta_LB]))
+		print("theta_d_tp1_UB: ", sess.run([theta_d_UB]))
+		print("theta_d_tp1_LB", sess.run([theta_d_LB]))
 
 # okay, I want to "connect" the graphs and then export to tensorbooard the graph file
-LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/UGH_3"
+LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/UGH_multi_2"
 train_writer = tf.summary.FileWriter(LOGDIR) #, sess.graph)
 train_writer.add_graph(sess.graph)
 train_writer.close()
 
-# try loading just one combo (one dynamics and one controller) and looking at it in tensorboard
+# next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/UGH_multi_2
 
-# (it would be cool to run it, but i also don't have to if it turns out to be too hard)
 
 
 
