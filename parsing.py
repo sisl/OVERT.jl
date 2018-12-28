@@ -132,7 +132,10 @@ def handle_duplicates(op_inputs):
 		ind = unique_ois.index(op_inputs[r])
 		m[r,ind] = 1
 	print("conversion matrix: ", m)
-	# now convert back to numbers
+	# now convert back to real dimensions
+	# TODO
+	# width (of megamat): sum of widths of identity matrices used for each element in set
+	# height (of megamat): sum of heights of op_inputs 
 	return m
 
 def get_next_letter(l):
