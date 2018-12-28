@@ -112,39 +112,27 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 # 		temp_W.append(W)
 # 		temp_b.append(b)
 # # ELSE: continue as normal
+# 
+# A function to handle 'splits' that left unhandled would lead to duplicate signals
 def handle_duplicates(op_inputs):
-	import pdb; pdb.set_trace()
-	d = {}
-	letter = 'A'
-	for oi in op_inputs:
-		if oi in d.keys():
-			pass
-		else: 
-			d[oi] = letter
-			letter = get_next_letter(letter)
-	# ending point:
-	labeled_ois = [d[oi] for oi in op_inputs]
-	print("labeled_inputs: ", labeled_ois)
+	# ending point: op_inputs
 	# starting point
+	n_orig = len(op_inputs)
 	# create unique list of inputs
 	s = set(op_inputs)
 	n = len(s)
 	unique_ois = [s.pop() for i in range(n)]
-	unique_labeled_ois = [d[oi] for oi in unique_ois]
-	print("set of inputs: ", unique_labeled_ois)
+	print("unique_ois: ", unique_ois)
 	# create matrix taking us from starting point to ending point
-	m = np.chararray((len(op_inputs), n))
-	m[:]='0'
+	m = np.zeros((n_orig, n))
 	# write one row at a time
 	# the index where the 'I' goes is the index in the set ("starting point") of the character in the ending point
-	rows = len(op_inputs)
+	rows = n_orig
 	for r in range(rows):
-		ind = unique_labeled_ois.index(labeled_ois[r])
-		m[r,ind] = 'I'
+		ind = unique_ois.index(op_inputs[r])
+		m[r,ind] = 1
 	print("conversion matrix: ", m)
-
 	# now convert back to numbers
-	
 	return m
 
 def get_next_letter(l):
