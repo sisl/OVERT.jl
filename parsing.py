@@ -114,6 +114,7 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 # # ELSE: continue as normal
 # 
 # A function to handle 'splits' that left unhandled would lead to duplicate signals
+# CHECK: only variable inputs are passed to this function?
 def handle_duplicates(op_inputs):
 	# ending point: op_inputs
 	# starting point
@@ -122,7 +123,7 @@ def handle_duplicates(op_inputs):
 	s = set(op_inputs)
 	n = len(s)
 	unique_ois = [s.pop() for i in range(n)]
-	print("unique_ois: ", unique_ois)
+	#print("unique_ois: ", unique_ois)
 	# create matrix taking us from starting point to ending point
 	m = np.zeros((n_orig, n))
 	# write one row at a time
@@ -134,9 +135,34 @@ def handle_duplicates(op_inputs):
 	print("conversion matrix: ", m)
 	# now convert back to real dimensions
 	# TODO
-	# width (of megamat): sum of widths of identity matrices used for each element in set
+	# width (of megamat): sum of widths of identity matrices used for each element in set, which is also height of the corresponding input
+	width = sum([o.shape[0].value for o in unique_ois])
 	# height (of megamat): sum of heights of op_inputs 
-	return m
+	height = sum([o.shape[0].value for o in op_inputs])
+	mat = np.zeros((height, width))
+	# create corresponding list of identity matrices for unique inputs 
+	eyes = []
+	widths = []
+	for uo in unique_ois:
+		eyes.append(np.eye(uo.shape[0].value))
+		widths.append(eyes[-1].shape[1]) 
+	c_starts = [0]
+	c_starts.extend(np.cumsum(widths[0:-1]))
+	c_ends =c_starts[1:]
+	c_ends.append(width)
+	assert(len(c_starts) == len(c_ends))
+	cols = n
+	r_start = 0
+	for r in range(rows):
+		for c in range(cols):
+			if m[r,c] == 1:
+				end_r = r_start + eyes[c].shape[0]
+				c_start = c_starts[c]
+				c_end = c_ends[c]
+				mat[r_start:end_r, c_start:c_end] = eyes[c]
+		r_start = end_r
+	b = np.zeros((height, 1))
+	return mat, b
 
 def get_next_letter(l):
 	if l[-1] == 'Z':
