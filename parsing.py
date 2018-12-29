@@ -52,21 +52,33 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		temp_W.append(mega_mat)
 		temp_b.append(mega_bias)
 		# get input ops to recurse on
-		all_inputs = [op.inputs for op in ops]
-		iops = [item.op for sublist in all_inputs for item in sublist]
-		iops_inds = [is_variable(item) for sublist in all_inputs for item in sublist]
-		var_iops = []
-		# true-false indexing to get input ops that correspond to variables
-		for i in range(len(iops)):
-			if iops_inds[i]:
-				var_iops.append(iops[i])
-		## HANDLE DUPLICATES
+		var_inputs, var_iops = get_inputs(ops)
+		## HANDLE DUPLICATES (also an interesting line)
+		s = set(var_inputs)
+		if len(s) < len(var_inputs):
+			W,b, unique_vis = handle_duplicates(var_inputs)
+			temp_W.append(W)
+			temp_b.append(b)
+			var_iops = [uv.op for uv in unique_vis]
+		# ELSE: continue as normal
 		return parse_network(var_iops, temp_W, temp_b, final_W, final_b, activation_type, sess)
 
 	elif all([op.type=='Identity' for op in ops]): 
 		# all ops are of type "variable read"
 		# this means we've gotten back to the beginning
 		## HANDLE DUPLICATES
+		# I think it's possible we'll never "NEED" to handle duplicates here because they were handled BEFORE we got passed here...
+		signals = []
+		for op in ops:
+			for oo in op.outputs:
+				signals.append(oo)
+		s = set(signals)
+		if len(s) < len(signals):
+			W,b, unique_s = handle_duplicates(signals)
+			temp_W.append(W)
+			temp_b.append(b)
+		import pdb; pdb.set_trace()
+		# squish time
 		if len(temp_W) > 0:
 			W, b = condense_list(temp_W, temp_b)
 			final_W.append(W)
@@ -74,16 +86,34 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		return final_W, final_b ## woo!!!! :D
 	elif all([op.type==activation_type for op in ops]): 
 		# if all ops are of type activation
-		# multiply temporary tensor list togeter to produce final tensor. add the final tensor list
+		# multiply temporary tensor list together to produce final tensor. add to the final tensor list and then empty temp tensor lists
 		# record activation type? into activation list?
 		# potentially record into .nnet file?
-		# recurse on input
-		# BUT if temp list is empty, this means we are just STARTING a squish-tensor-phase
-		pass
+		# recurse on input 
+		# assume all activations are the same FOR NOW
+		import pdb; pdb.set_trace()
+		# squish time
+		if len(temp_W) > 0:
+			W, b = condense_list(temp_W, temp_b)
+			final_W.append(W)
+			final_b.append(b)
+			temp_W = []
+			temp_b = []
+
+		# get inputs to recurse on
+		var_inputs, var_iops = get_inputs(ops)
+		## HANDLE DUPLICATES (also an interesting line)
+		s = set(var_inputs)
+		if len(s) < len(var_inputs):
+			W,b, unique_vis = handle_duplicates(var_inputs)
+			temp_W.append(W)
+			temp_b.append(b)
+			var_iops = [uv.op for uv in unique_vis]
+		# ELSE: continue as normal
+		return parse_network(var_iops, temp_W, temp_b, final_W, final_b, activation_type, sess)
+
 	else: # there is a mixture of real ops, variable reads, and/or activations
 		# THENN add in "identity" ops for the variable reads and the activations until the real ops are "drawn down"
-		# TODO next: write the above elif
-		import pdb; pdb.set_trace()
 		mats = []
 		for op in ops:
 			if op.type not in ['Identity', activation_type]:
@@ -95,20 +125,44 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		temp_b.append(mega_bias)
 		# get inputs to recurse on (but not for activations and variable reads)
 		var_iops = []
+		var_inputs = []
 		for op in ops:
 			if op.type not in ['Identity', activation_type]:
 				for oi in op.inputs:
 					if is_variable(oi):
 						var_iops.append(oi.op)
+						var_inputs.append(oi)
 			else:
 				var_iops.append(op)
+				for oo in op.outputs:
+					var_inputs.append(oo)
 		## HANDLE DUPLICATES
+		s = set(var_inputs)
+		if len(s) < len(var_inputs):
+			W,b, unique_vis = handle_duplicates(var_inputs)
+			temp_W.append(W)
+			temp_b.append(b)
+			var_iops = [uv.op for uv in unique_vis]
 		return parse_network(var_iops, temp_W, temp_b, final_W, final_b, activation_type, sess)
+
+def get_inputs(ops):
+	all_inputs = [op.inputs for op in ops]
+	iops = [item.op for sublist in all_inputs for item in sublist]
+	iops_inds = [is_variable(item) for sublist in all_inputs for item in sublist]
+	var_inputs = []
+	var_iops = []
+	# true-false indexing to get input ops that correspond to variables
+	for i in range(len(iops)):
+		if iops_inds[i]:
+			var_inputs.append(all_inputs[i])
+			var_iops.append(iops[i])
+	return var_inputs, var_iops
+
 
 # usage:
 # s = set(op_inputs)
 # if len(s) < len(op_inputs):
-# 		W,b = handle_duplicates(op_inputs)
+# 		W,b, unique_ois = handle_duplicates(op_inputs)
 # 		temp_W.append(W)
 # 		temp_b.append(b)
 # # ELSE: continue as normal
@@ -134,7 +188,6 @@ def handle_duplicates(op_inputs):
 		m[r,ind] = 1
 	print("conversion matrix: ", m)
 	# now convert back to real dimensions
-	# TODO
 	# width (of megamat): sum of widths of identity matrices used for each element in set, which is also height of the corresponding input
 	width = sum([o.shape[0].value for o in unique_ois])
 	# height (of megamat): sum of heights of op_inputs 
@@ -146,6 +199,7 @@ def handle_duplicates(op_inputs):
 	for uo in unique_ois:
 		eyes.append(np.eye(uo.shape[0].value))
 		widths.append(eyes[-1].shape[1]) 
+	# create lists of indices where columns start and end
 	c_starts = [0]
 	c_starts.extend(np.cumsum(widths[0:-1]))
 	c_ends =c_starts[1:]
@@ -162,7 +216,7 @@ def handle_duplicates(op_inputs):
 				mat[r_start:end_r, c_start:c_end] = eyes[c]
 		r_start = end_r
 	b = np.zeros((height, 1))
-	return mat, b
+	return mat, b, unique_ois
 
 def get_next_letter(l):
 	if l[-1] == 'Z':
