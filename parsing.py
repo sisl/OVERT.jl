@@ -52,6 +52,7 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		temp_W.append(mega_mat)
 		temp_b.append(mega_bias)
 		# get input ops to recurse on
+		import pdb; pdb.set_trace()
 		var_inputs, var_iops = get_inputs(ops)
 		## HANDLE DUPLICATES (also an interesting line)
 		s = set(var_inputs)
@@ -147,15 +148,14 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 
 def get_inputs(ops):
 	all_inputs = [op.inputs for op in ops]
-	iops = [item.op for sublist in all_inputs for item in sublist]
-	iops_inds = [is_variable(item) for sublist in all_inputs for item in sublist]
 	var_inputs = []
 	var_iops = []
 	# true-false indexing to get input ops that correspond to variables
-	for i in range(len(iops)):
-		if iops_inds[i]:
-			var_inputs.append(all_inputs[i])
-			var_iops.append(iops[i])
+	for sublist in all_inputs:
+		for item in sublist:
+			if is_variable(item):
+				var_inputs.append(item)
+				var_iops.append(item.op)
 	return var_inputs, var_iops
 
 
