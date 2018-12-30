@@ -158,6 +158,8 @@ def get_inputs(ops):
 				var_iops.append(item.op)
 	return var_inputs, var_iops
 
+def condense_list(W_list, b_list):
+
 
 # usage:
 # s = set(op_inputs)
@@ -299,8 +301,6 @@ def op_to_mat(op, sess):
 
 # return true if is derived of a variable
 # return false if only derived of constants
-# TODO: If only derived of constants but not DIRECTLY a constant...this can be squashed into a single constant...
-# I think tthere may be a tensorflow function to do this, because I tthink it happens when you "freeze" the network
 def is_variable(tensor):
 	flag = tensor.op.type == "VariableV2"
 	if flag:
