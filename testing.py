@@ -17,6 +17,8 @@ for i in range(2):
 
 import parsing as p
 
+W.reverse()
+b.reverse()
 Wc, bc = p.condense_list(W,b)
 yc = Wc@x + bc
 

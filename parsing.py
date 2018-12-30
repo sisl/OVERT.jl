@@ -162,6 +162,9 @@ def get_inputs(ops):
 	return var_inputs, var_iops
 
 def condense_list(W_list, b_list):
+	# Because we parse from outputs of NN to inputs, we have to reverse the order of the lists
+	W_list.reverse()
+	b_list.reverse()
 	W = np.eye(W_list[0].shape[1])
 	n = len(W_list) # == len(b_list)
 	for i in range(n):

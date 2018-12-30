@@ -96,8 +96,28 @@ def network_to_test_case_3(sess):
 
     return [A,B], correct_mat, correct_bias
 
-def network_to_():
-    pass
+def network_to_test_case_1(sess):
+    R = tf.Variable([[1.0],[1.0]])
+    W = tf.constant(np.random.rand(2,2), dtype='float32')
+    x = W@R
+    A = tf.nn.relu(x)
+    B = tf.nn.relu(x)
+
+    sess.run(tf.global_variables_initializer())
+
+    with sess.as_default():
+        correct_mats = [
+            np.vstack([
+                    np.eye(2),
+                    np.eye(2)
+                ]),
+            W.eval(),
+        ]
+    correct_bias = [
+        np.zeros((4,1)),
+        np.zeros((2,1))
+    ]
+    return ([A,B], correct_mats, correct_bias)
 
 # AKA duplication preceding a mix of variables, activations, and matmuls
 def network_to_handle_duplicates_prior_to_mix():
@@ -109,7 +129,9 @@ sess = tf.Session()
 # testing zone
 #Output, M, B = network_to_test_case_4(sess)
 
-Outputs, M, B = network_to_test_case_3(sess)
+#Outputs, M, B = network_to_test_case_3(sess)
+
+Outputs, M, B = network_to_test_case_1(sess)
 print("M: ", M)
 print("B: ", B)
 
