@@ -159,7 +159,18 @@ def get_inputs(ops):
 	return var_inputs, var_iops
 
 def condense_list(W_list, b_list):
-
+	W = np.eye(W_list[0].shape[0])
+	n = len(W_list) # == len(b_list)
+	for i in range(n):
+		W = W_list[i]@W
+	#
+	b = 0
+	for j in range(n):
+		mul = b_list[j]
+		for k in range(j+1, n):
+			mul = W_list[k]@mul
+		b += mul
+	return W,b
 
 # usage:
 # s = set(op_inputs)
