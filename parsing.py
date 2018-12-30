@@ -79,6 +79,8 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 			temp_W.append(W)
 			temp_b.append(b)
 		import pdb; pdb.set_trace()
+		print("temp_W: ", temp_W)
+		print("temp_b: ", temp_b)
 		# squish time
 		if len(temp_W) > 0:
 			W, b = condense_list(temp_W, temp_b)
@@ -94,6 +96,8 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		# assume all activations are the same FOR NOW
 		import pdb; pdb.set_trace()
 		# squish time
+		print("temp_W: ", temp_W)
+		print("temp_b: ", temp_b)
 		if len(temp_W) > 0:
 			W, b = condense_list(temp_W, temp_b)
 			final_W.append(W)
@@ -150,7 +154,6 @@ def get_inputs(ops):
 	all_inputs = [op.inputs for op in ops]
 	var_inputs = []
 	var_iops = []
-	# true-false indexing to get input ops that correspond to variables
 	for sublist in all_inputs:
 		for item in sublist:
 			if is_variable(item):
@@ -159,7 +162,7 @@ def get_inputs(ops):
 	return var_inputs, var_iops
 
 def condense_list(W_list, b_list):
-	W = np.eye(W_list[0].shape[0])
+	W = np.eye(W_list[0].shape[1])
 	n = len(W_list) # == len(b_list)
 	for i in range(n):
 		W = W_list[i]@W
