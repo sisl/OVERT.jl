@@ -22,4 +22,4 @@ yc = Wc@x + bc
 
 print("yc: ", yc)
 print("y: ", y)
-#assert(all(yc == y))
+assert( all((yc-y) < 1e-6) )
