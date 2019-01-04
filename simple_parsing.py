@@ -1,3 +1,5 @@
+# code to test that network parsing works!
+
 import tensorflow as tf
 import numpy as np
 import colored_traceback.always

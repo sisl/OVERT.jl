@@ -52,7 +52,7 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		temp_W.append(mega_mat)
 		temp_b.append(mega_bias)
 		# get input ops to recurse on
-		import pdb; pdb.set_trace()
+		#import pdb; pdb.set_trace()
 		var_inputs, var_iops = get_inputs(ops)
 		## HANDLE DUPLICATES (also an interesting line)
 		s = set(var_inputs)
@@ -78,7 +78,7 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 			W,b, unique_s = handle_duplicates(signals)
 			temp_W.append(W)
 			temp_b.append(b)
-		import pdb; pdb.set_trace()
+		#import pdb; pdb.set_trace()
 		print("temp_W: ", temp_W)
 		print("temp_b: ", temp_b)
 		# squish time
@@ -94,7 +94,7 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		# potentially record into .nnet file?
 		# recurse on input 
 		# assume all activations are the same FOR NOW
-		import pdb; pdb.set_trace()
+		#import pdb; pdb.set_trace()
 		# squish time
 		print("temp_W: ", temp_W)
 		print("temp_b: ", temp_b)
@@ -326,6 +326,19 @@ def is_variable(tensor):
 		flag = flag or is_variable(i)
 	return flag
 
+# assume that inputs are stacked into a single array, as opposed to muliple arrays
+# assume the input lists of W and b have the first element as the quantities that first multiplies the input, and the last element as the last transformation to be applied
+# aka if taking the lists from parse_network(), they need to be reversed first before they are passed to this function
+def create_tf_network(W_list, b_list, inputs, activation):
+	if len(W_list) > 0:
+		out = W_list[0]@inputs + b_list[0]
+		out = activation(out)
+		for i in range(1,len(W_list)):
+			out = W_list[i]@out + b_list[i]
+			out = activation(out)
+	else:
+		out = activation(inputs)
+	return out
 
 
 
