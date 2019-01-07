@@ -18,6 +18,10 @@ import tensorflow as tf
 # I think I should aim for having a single relu activation each layer
 
 
+# NOTE:
+# EACH BRANCH OF THE NETWORK MUST HAVE THE SAME NUMBER OF ACTIVATIONS, WHATEVER THE ACTIVATION IS. RELUPROTECTION IS NOT IMPLEMENTED YET.
+
+
 def are_inputs_vars(ops):	
 	return [[is_variable(i) for i in op.inputs] for op in ops]
 

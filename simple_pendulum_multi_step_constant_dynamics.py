@@ -17,46 +17,46 @@ from rllab.envs.gym_env import GymEnv
 def create_dynamics_block(num, var_dict):
 	with tf.name_scope("Dynamics_"+str(num)):
 		torque_UB = var_dict["action_UB"]
-		theta_t_UB = var_dict["theta_t_UB"]
-		theta_d_t_UB = var_dict["theta_d_t_UB"]
+		state_UB = var_dict["state_UB"]
 		torque_LB = var_dict["action_LB"]
-		theta_t_LB = var_dict["theta_t_LB"]
-		theta_d_t_LB = var_dict["theta_d_t_LB"]
+		state_LB = var_dict["state_LB"]
 		
 		m = 0.25 # kg
 		l = 0.1 # m
 		oomls = tf.constant([[(1/ (m*(l**2)) )]], name="torque_scaling")
 
-		c2_UB = torque_UB@oomls
-		c2_LB = torque_LB@oomls
-
 		# constant accel bounds
 		# constant from dynamics plus scaled torque
-		theta_dd_UB = 50. + c2_UB
-		theta_dd_LB = -50. + c2_LB
+		const_UB = tf.constant([[50.]])
+		const_LB = tf.constant([[-50.]])
 
 		# Euler integration
 		deltat = tf.constant([[0.05]], name="delta_t")
-		# outputs: theta at t+1 and theta_dot at t+1
+		# outputs: state (theta and thetadot) at t+1
 		with tf.name_scope("time_"+str(num+1)):
-			theta_tp1_UB = theta_t_UB + theta_d_t_UB@deltat
-			theta_tp1_LB = theta_t_LB + theta_d_t_LB@deltat
-			theta_d_tp1_UB = theta_d_t_UB + theta_dd_UB@deltat
-			theta_d_tp1_LB = theta_d_t_LB + theta_dd_LB@deltat
+			theta_d_UB = tf.constant([[0.,1.],[0.,0.]])@state_UB
+			theta_dd_UB = tf.constant([[0.],[1.]])@(oomls@torque_UB + const_UB)
+			change_UB = theta_d_UB@deltat + theta_dd_UB@deltat
+			state_tp1_UB = state_UB + change_UB
+			# identical for lower bound
+			theta_d_LB = tf.constant([[0.,1.],[0.,0.]])@state_LB
+			theta_dd_LB = tf.constant([[0.],[1.]])@(oomls@torque_LB + const_LB)
+			change_LB = theta_d_LB@deltat + theta_dd_LB@deltat
+			state_tp1_LB = state_LB + change_LB
+			# identical for lower bound
 
 	#
 	import pdb; pdb.set_trace()
 	print("built dynamics graph")
-	return [theta_tp1_UB, theta_tp1_LB, theta_d_tp1_UB, theta_d_tp1_LB]
+	return [state_tp1_UB, state_tp1_LB]
 
 sess = tf.Session()
 print("initialized session")
 # Initialize theta and theta-dot
 with tf.variable_scope("initial_values"):
-	theta_init_UB = tf.Variable([[1.0]], name="theta_init_UB")
-	theta_init_LB = tf.Variable([[1.0]], name="theta_init_LB")
-	theta_d_init_UB = tf.Variable([[0.0]], name="theta_d_init_UB")
-	theta_d_init_LB = tf.Variable([[0.0]], name="theta_d_init_LB")
+	state_UB = tf.Variable([[1.0],[0.0]], name="state_UB")
+	# theta, theta dot, UB
+	state_LB = tf.Variable([[1.0], [0.0]], name="state_LB")
 sess.run(tf.global_variables_initializer())
 
 ###########################################################
@@ -76,35 +76,27 @@ with sess.as_default():
 
 # input of controller is theta and theta-dot
 # output of controller is action....
-theta_UB = theta_init_UB
-theta_d_UB = theta_d_init_UB
-theta_LB = theta_init_LB
-theta_d_LB = theta_d_init_LB
 for i in range(5):
 	with tf.name_scope("get_actions"):
-		action_UB = policy.dist_info_sym(tf.stack([theta_UB, theta_d_UB], axis=1), [])["mean"]
+		action_UB = policy.dist_info_sym(tf.transpose(state_UB), [])["mean"]
 		print("action_UB: ", sess.run([action_UB]))
 		#
-		action_LB = policy.dist_info_sym(tf.stack([theta_LB, theta_d_LB], axis=1), [])["mean"]
+		action_LB = policy.dist_info_sym(tf.transpose(state_LB), [])["mean"]
 		print("action_LB: ", sess.run([action_LB]))
 
 	# input of dynamics is torque(action), output is theta theta-dot at the next timestep
 	with tf.name_scope("run_dynamics"):
 		var_dict = {"action_UB": action_UB, 
-					"theta_t_UB": theta_UB, 
-					"theta_d_t_UB": theta_d_UB,
+					"state_UB": state_UB, 
 					"action_LB": action_LB, 
-					"theta_t_LB": theta_LB, 
-					"theta_d_t_LB": theta_d_LB, 
+					"state_LB": state_LB, 
 					}
-		[theta_UB, theta_LB, theta_d_UB, theta_d_LB] = create_dynamics_block(num=0, var_dict=var_dict)
-		print("theta_tp1_UB: ", sess.run([theta_UB]))
-		print("theta_tp1_LB", sess.run([theta_LB]))
-		print("theta_d_tp1_UB: ", sess.run([theta_d_UB]))
-		print("theta_d_tp1_LB", sess.run([theta_d_LB]))
-
+		[state_UB, state_LB] = create_dynamics_block(num=i, var_dict=var_dict)
+		print("[theta, theta_dot]_UB: ", sess.run([state_UB]))
+		print("[theta, theta_dot]_LB", sess.run([state_LB]))
+	
 # okay, I want to "connect" the graphs and then export to tensorbooard the graph file
-LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/constant_dynamics_relu_policy_debug"
+LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/constant_dynamics_relu_policy_debug2"
 train_writer = tf.summary.FileWriter(LOGDIR) #, sess.graph)
 train_writer.add_graph(sess.graph)
 train_writer.close()
