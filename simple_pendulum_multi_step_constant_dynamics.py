@@ -116,6 +116,10 @@ op_set = {(x.op,) for x in g.node}
 [print(o[0]) for o in op_set]
 
 
+# different layers of abstraction to get action at:
+# import sandbox.rocky.tf.core.layers as L
+# action = L.get_output([policy._l_mean], state) # med-high level
+# If this doesn't do it, I may have to train a new rllab policy that uses like a tf network as the base MLP instead of the rllab MLP type...shouldn't be TOO hard? I did this kind of thing once before already?
 
 
 
