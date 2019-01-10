@@ -12,6 +12,8 @@ from rllab.sampler.utils import rollout
 import tensorflow as tf
 from sandbox.rocky.tf.envs.base import TfEnv
 from rllab.envs.gym_env import GymEnv
+import sandbox.rocky.tf.core.layers as L
+from tensorflow.python.framework import graph_util
 
 # inputs: state and action yields next state
 def create_dynamics_block(num, var_dict):
@@ -46,7 +48,6 @@ def create_dynamics_block(num, var_dict):
 			# identical for lower bound
 
 	#
-	import pdb; pdb.set_trace()
 	print("built dynamics graph")
 	return [state_tp1_UB, state_tp1_LB]
 
@@ -63,7 +64,7 @@ sess.run(tf.global_variables_initializer())
 # load controller! :)
 ###########################################################
 policy_file = "/Users/Chelsea/" # mac
-policy_file = policy_file + "Dropbox/AAHAA/src/rllab/data/local/experiment/relu_small_network_ppo_capped_action/params.pkl"
+policy_file = policy_file + "Dropbox/AAHAA/src/rllab/data/local/experiment/relu_small_network_vpg_capped_action_trying_simpler_dense_layer/params.pkl"
 
 # load policy object:
 with sess.as_default():
@@ -71,6 +72,16 @@ with sess.as_default():
 	data = joblib.load(policy_file)
 	policy = data["policy"]
 	print("loaded controller")
+	g = sess.graph.as_graph_def()
+	[print(n.name) for n in g.node]
+	output_node_name = "policy/mean_network/output"
+	output_graph_def = graph_util.convert_variables_to_constants(
+	    sess, # sess used to retrieve weights
+	    g, # graph def used to retrieve nodes
+	    output_node_name.split(",") # output node names used to select useful nodes
+	    )
+import pdb; pdb.set_trace()
+
 
 # Controller -> Dynamics
 
@@ -78,10 +89,12 @@ with sess.as_default():
 # output of controller is action....
 for i in range(5):
 	with tf.name_scope("get_actions"):
-		action_UB = policy.dist_info_sym(tf.transpose(state_UB), [])["mean"]
+		#action_UB = policy.dist_info_sym(tf.transpose(state_UB), [])["mean"]
+		action_UB, = L.get_output([policy._l_mean], tf.transpose(state_UB))
 		print("action_UB: ", sess.run([action_UB]))
 		#
-		action_LB = policy.dist_info_sym(tf.transpose(state_LB), [])["mean"]
+		#action_LB = policy.dist_info_sym(tf.transpose(state_LB), [])["mean"]
+		action_LB, = L.get_output([policy._l_mean], tf.transpose(state_LB))
 		print("action_LB: ", sess.run([action_LB]))
 
 	# input of dynamics is torque(action), output is theta theta-dot at the next timestep
@@ -96,7 +109,7 @@ for i in range(5):
 		print("[theta, theta_dot]_LB", sess.run([state_LB]))
 	
 # okay, I want to "connect" the graphs and then export to tensorbooard the graph file
-LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/constant_dynamics_relu_policy_debug2"
+LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/constant_dynamics_relu_policy_debug3"
 train_writer = tf.summary.FileWriter(LOGDIR) #, sess.graph)
 train_writer.add_graph(sess.graph)
 train_writer.close()
