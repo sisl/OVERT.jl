@@ -55,10 +55,11 @@ sess = tf.Session()
 print("initialized session")
 # Initialize theta and theta-dot
 with tf.variable_scope("initial_values"):
-	state_UB = tf.Variable([[1.0],[0.0]], name="state_UB")
+	state_UB_0 = tf.placeholder(tf.float32, shape=(2,1), name="state_UB")
 	# theta, theta dot, UB
-	state_LB = tf.Variable([[1.0], [0.0]], name="state_LB")
-sess.run(tf.global_variables_initializer())
+	state_LB_0 = tf.placeholder(tf.float32, shape=(2,1), name="state_LB")
+
+# sess.run(tf.global_variables_initializer())
 
 ###########################################################
 # load controller! :)
@@ -73,29 +74,26 @@ with sess.as_default():
 	policy = data["policy"]
 	print("loaded controller")
 	g = sess.graph.as_graph_def()
-	[print(n.name) for n in g.node]
+	#[print(n.name) for n in g.node]
 	output_node_name = "policy/mean_network/output"
 	output_graph_def = graph_util.convert_variables_to_constants(
 	    sess, # sess used to retrieve weights
 	    g, # graph def used to retrieve nodes
 	    output_node_name.split(",") # output node names used to select useful nodes
 	    )
-import pdb; pdb.set_trace()
-
+	print("op set: ", {(x.op,) for x in output_graph_def.node})
 
 # Controller -> Dynamics
 
 # input of controller is theta and theta-dot
 # output of controller is action....
+state_UB = state_UB_0
+state_LB = state_LB_0
 for i in range(5):
 	with tf.name_scope("get_actions"):
-		#action_UB = policy.dist_info_sym(tf.transpose(state_UB), [])["mean"]
 		action_UB, = L.get_output([policy._l_mean], tf.transpose(state_UB))
-		print("action_UB: ", sess.run([action_UB]))
 		#
-		#action_LB = policy.dist_info_sym(tf.transpose(state_LB), [])["mean"]
 		action_LB, = L.get_output([policy._l_mean], tf.transpose(state_LB))
-		print("action_LB: ", sess.run([action_LB]))
 
 	# input of dynamics is torque(action), output is theta theta-dot at the next timestep
 	with tf.name_scope("run_dynamics"):
@@ -105,37 +103,46 @@ for i in range(5):
 					"state_LB": state_LB, 
 					}
 		[state_UB, state_LB] = create_dynamics_block(num=i, var_dict=var_dict)
-		print("[theta, theta_dot]_UB: ", sess.run([state_UB]))
-		print("[theta, theta_dot]_LB", sess.run([state_LB]))
+
+state_UB_final = state_UB
+state_LB_final = state_LB
+
+feed_dict_UB = {
+	state_UB_0: np.array([[1.0], [0.0]]),
+}
+feed_dict_LB = {
+	state_LB_0: np.array([[1.0], [0.0]]),
+}
+print("[theta, theta_dot]_UB: ", sess.run([state_UB_final], feed_dict=feed_dict_UB))
+print("[theta, theta_dot]_LB", sess.run([state_LB_final], feed_dict=feed_dict_LB))
 	
-# okay, I want to "connect" the graphs and then export to tensorbooard the graph file
-LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/constant_dynamics_relu_policy_debug3"
-train_writer = tf.summary.FileWriter(LOGDIR) #, sess.graph)
-train_writer.add_graph(sess.graph)
-train_writer.close()
-
-# next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/UGH_multi_2
-
-
 # see how many unique ops in the graph
 # get current graph
 # TODO: how to print all ops in a graph? below code only works for serialized graphs
 g = sess.graph.as_graph_def()
 # print n for all n in graph_def.node
-[print(n) for n in g.node]
+[print(n.name) for n in g.node]
 # make a set of the ops:
 op_set = {(x.op,) for x in g.node}
 # print this set of ops
 [print(o[0]) for o in op_set]
 
+# filter stuff out
+output_node_name = "run_dynamics_4/Dynamics_4/time_5/add_5"
+output_graph_def = graph_util.convert_variables_to_constants(
+    sess, # sess used to retrieve weights
+    g, # graph def used to retrieve nodes
+    output_node_name.split(",") # output node names used to select useful nodes
+    )
+print("op set: ", {(x.op,) for x in output_graph_def.node})
 
-# different layers of abstraction to get action at:
-# import sandbox.rocky.tf.core.layers as L
-# action = L.get_output([policy._l_mean], state) # med-high level
-# If this doesn't do it, I may have to train a new rllab policy that uses like a tf network as the base MLP instead of the rllab MLP type...shouldn't be TOO hard? I did this kind of thing once before already?
+g_filtered = tf.import_graph_def(output_graph_def)
 
+# okay, I want to "connect" the graphs and then export to tensorbooard the graph file
+LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/constant_dynamics_relu_policy_debug3"
+train_writer = tf.summary.FileWriter(LOGDIR) #, sess.graph)
+train_writer.add_graph(output_graph_def) # TODO: add the filtered graph only! # sess.graph
+train_writer.close()
 
-
-
-
+# next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/UGH_multi_2
 
