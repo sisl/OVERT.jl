@@ -99,24 +99,34 @@ def more_complex3(p):
 	F = x+y
 	return [F]
 
-p = tf.Variable([[1.],[-1.]])
-q_list = more_complex3(p) #skip(p) #two_layer(p)
-activation = tf.nn.relu #tf.identity
+p = tf.placeholder(shape=(2,1), dtype='float32')
+pval = np.array([[1.0],[2.0]])
 
-# eval by itself
-sess = tf.Session()
-sess.run(tf.global_variables_initializer())
-with sess.as_default():
-	print("q: ", tf.concat(q_list, axis=0).eval())
+for fn in [two_layer, split, mul_split, concat, skip, more_complex1, more_complex2, more_complex3]:
 
-# squish and then eval
-W,b = parsing.parse_network([q.op for q in q_list], [], [], [], [], 'Relu', sess)
-W.reverse()
-b.reverse()
-net = parsing.create_tf_network(W,b,inputs=p, activation=activation)
-with sess.as_default():
-	print("q (through parser): ", net.eval())
-	assert all( abs(tf.concat(q_list, axis=0).eval() - net.eval()) < 1e-6)
-	print("Test passes")
+	q_list = fn(p) #skip(p) #two_layer(p)
+	activation = tf.nn.relu #tf.identity
+
+	# eval by itself
+	sess = tf.Session()
+	sess.run(tf.global_variables_initializer())
+
+	q_out, = sess.run([tf.concat(q_list, axis=0)], feed_dict={p:pval})
+	print("q: ", q_out)
+
+	# squish and then eval
+	W,b = parsing.parse_network([q.op for q in q_list], [], [], [], [], 'Relu', sess)
+	W.reverse()
+	b.reverse()
+	net = parsing.create_tf_network(W,b,inputs=p, activation=activation)
+	#with sess.as_default():
+
+	net, = sess.run([net], feed_dict={p:pval})
+	print("q (through parser): ", net)
+
+	assert all( abs(q_out - net) < 1e-6)
+	print("Test passes ---------------------")
+
+print("~ ~ ~ All tests pass! ~ ~ ~")
 
 

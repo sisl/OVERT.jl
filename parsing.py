@@ -23,7 +23,7 @@ import tensorflow as tf
 
 
 def are_inputs_vars(ops):	
-	return [[is_variable(i) for i in op.inputs] for op in ops]
+	return [[is_signal(i) for i in op.inputs] for op in ops]
 
 # stack matrices for different inputs
 def matrix_stacker(mats):
@@ -47,7 +47,7 @@ def matrix_stacker(mats):
 # inputs: final op
 # outputs: list of weights and biases for a flattened representation of the network 
 def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
-	if all([op.type not in [activation_type, 'Identity'] for op in ops]):
+	if all([op.type not in [activation_type, 'Placeholder'] for op in ops]):
 		mats = [op_to_mat(op, sess) for op in ops]
 		# the line that is actually doing something interesting:
 		###########################################
@@ -68,8 +68,8 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		# ELSE: continue as normal
 		return parse_network(var_iops, temp_W, temp_b, final_W, final_b, activation_type, sess)
 
-	elif all([op.type=='Identity' for op in ops]): 
-		# all ops are of type "variable read"
+	elif all([op.type=='Placeholder' for op in ops]): 
+		# all ops are of type "placeholder"
 		# this means we've gotten back to the beginning
 		## HANDLE DUPLICATES
 		# I think it's possible we'll never "NEED" to handle duplicates here because they were handled BEFORE we got passed here...
@@ -83,8 +83,8 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 			temp_W.append(W)
 			temp_b.append(b)
 		#import pdb; pdb.set_trace()
-		print("temp_W: ", temp_W)
-		print("temp_b: ", temp_b)
+		#print("temp_W: ", temp_W)
+		#print("temp_b: ", temp_b)
 		# squish time
 		if len(temp_W) > 0:
 			W, b = condense_list(temp_W, temp_b)
@@ -100,8 +100,8 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		# assume all activations are the same FOR NOW
 		#import pdb; pdb.set_trace()
 		# squish time
-		print("temp_W: ", temp_W)
-		print("temp_b: ", temp_b)
+		#print("temp_W: ", temp_W)
+		#print("temp_b: ", temp_b)
 		if len(temp_W) > 0:
 			W, b = condense_list(temp_W, temp_b)
 			final_W.append(W)
@@ -121,24 +121,24 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		# ELSE: continue as normal
 		return parse_network(var_iops, temp_W, temp_b, final_W, final_b, activation_type, sess)
 
-	else: # there is a mixture of real ops, variable reads, and/or activations
-		# THENN add in "identity" ops for the variable reads and the activations until the real ops are "drawn down"
+	else: # there is a mixture of real ops, placeholders, and/or activations
+		# THENN add in "identity" ops for the placeholders and the activations until the real ops are "drawn down"
 		mats = []
 		for op in ops:
-			if op.type not in ['Identity', activation_type]:
+			if op.type not in ['Placeholder', activation_type]:
 				mats.append(op_to_mat(op,sess))
 			else: 
 				mats.append(get_identity_mat(op, activation_type))
 		mega_mat, mega_bias = matrix_stacker(mats)
 		temp_W.append(mega_mat)
 		temp_b.append(mega_bias)
-		# get inputs to recurse on (but not for activations and variable reads)
+		# get inputs to recurse on (but not for activations and placeholders)
 		var_iops = []
 		var_inputs = []
 		for op in ops:
-			if op.type not in ['Identity', activation_type]:
+			if op.type not in ['Placeholder', activation_type]:
 				for oi in op.inputs:
-					if is_variable(oi):
+					if is_signal(oi):
 						var_iops.append(oi.op)
 						var_inputs.append(oi)
 			else:
@@ -160,7 +160,7 @@ def get_inputs(ops):
 	var_iops = []
 	for sublist in all_inputs:
 		for item in sublist:
-			if is_variable(item):
+			if is_signal(item):
 				var_inputs.append(item)
 				var_iops.append(item.op)
 	return var_inputs, var_iops
@@ -209,7 +209,7 @@ def handle_duplicates(op_inputs):
 	for r in range(rows):
 		ind = unique_ois.index(op_inputs[r])
 		m[r,ind] = 1
-	print("conversion matrix: ", m)
+	#print("conversion matrix: ", m)
 	# now convert back to real dimensions
 	# width (of megamat): sum of widths of identity matrices used for each element in set, which is also height of the corresponding input
 	width = sum([o.shape[0].value for o in unique_ois])
@@ -268,16 +268,16 @@ def get_add_mat(op, sess):
 	n = get_long_len(op.inputs[0])
 	nprime = get_long_len(op.inputs[1])
 	assert n==nprime
-	if is_variable(op.inputs[0]) and is_variable(op.inputs[1]):
+	if is_signal(op.inputs[0]) and is_signal(op.inputs[1]):
 		W11 = np.identity(n)
 		W12 = np.identity(n)
 		W = np.hstack([W11, W12])
 		b = np.zeros([n,1])
-	elif is_variable(op.inputs[0]):
+	elif is_signal(op.inputs[0]):
 		W = np.identity(n)
 		with sess.as_default():
 			b = op.inputs[1].eval()
-	elif is_variable(op.inputs[1]):
+	elif is_signal(op.inputs[1]):
 		W = np.identity(n)
 		with sess.as_default():
 			b = op.inputs[0].eval()
@@ -291,17 +291,17 @@ def get_add_mat(op, sess):
 
 # assume R = W*x + b
 def get_matmul_mat(op,sess):
-	if is_variable(op.inputs[0]):
+	if is_signal(op.inputs[0]):
 		with sess.as_default():
 			W = op.inputs[1].eval()
 		n = W.shape[0]
 		b = np.zeros([n,1])
-	elif is_variable(op.inputs[1]):
+	elif is_signal(op.inputs[1]):
 		with sess.as_default():
 			W = op.inputs[0].eval()
 		n = W.shape[0]
 		b = np.zeros([n,1])
-	elif is_variable(op.inputs[0]) and is_variable(op.inputs[1]):
+	elif is_signal(op.inputs[0]) and is_signal(op.inputs[1]):
 		raise ValueError('Both inputs to matmul are variables')
 	else: # both are constants
 		raise ValueError('Both inputs to matmul are constants. Do you want to implement this?')
@@ -328,6 +328,16 @@ def is_variable(tensor):
 		return flag
 	for i in tensor.op.inputs:
 		flag = flag or is_variable(i)
+	return flag
+
+# return true if is derived of a placeholder
+# return false if only derived of constants
+def is_signal(tensor):
+	flag = tensor.op.type == "Placeholder"
+	if flag:
+		return flag
+	for i in tensor.op.inputs:
+		flag = flag or is_signal(i)
 	return flag
 
 # assume that inputs are stacked into a single array, as opposed to muliple arrays
