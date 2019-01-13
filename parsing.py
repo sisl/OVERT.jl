@@ -26,6 +26,9 @@ def are_inputs_vars(ops):
 	return [[is_signal(i) for i in op.inputs] for op in ops]
 
 # stack matrices for different inputs
+# TODO: I think for the transpose case (x'@W') I just have to index the mega_bias differently. something like: mat[1][0]
+# and then take transposes of both the weight matrix and the bias at the end....
+# When implementing this, I should test just this piece seperately!
 def matrix_stacker(mats):
 	height = sum([m[0].shape[0] for m in mats])
 	width = sum([m[0].shape[1] for m in mats])
@@ -33,6 +36,7 @@ def matrix_stacker(mats):
 	# replace values fo specific pieces
 	mega_mat = np.zeros((height, width))
 	mega_bias = np.zeros((height, 1))
+
 	i = 0
 	j = 0
 	for mat in mats:
@@ -47,12 +51,17 @@ def matrix_stacker(mats):
 # inputs: final op
 # outputs: list of weights and biases for a flattened representation of the network 
 def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
+	print("recursing")
+	print("ops: ", ops)
+	# if all ops are real ops
 	if all([op.type not in [activation_type, 'Placeholder'] for op in ops]):
 		mats = [op_to_mat(op, sess) for op in ops]
 		# the line that is actually doing something interesting:
 		###########################################
 		mega_mat, mega_bias = matrix_stacker(mats)
 		###########################################
+		if len(temp_W)>0:
+			assert(mega_mat.shape[0] == temp_W[-1].shape[1])
 		temp_W.append(mega_mat)
 		temp_b.append(mega_bias)
 		# get input ops to recurse on
@@ -62,6 +71,8 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		s = set(var_inputs)
 		if len(s) < len(var_inputs):
 			W,b, unique_vis = handle_duplicates(var_inputs)
+			if len(temp_W)>0:
+				assert(W.shape[0] == temp_W[-1].shape[1])
 			temp_W.append(W)
 			temp_b.append(b)
 			var_iops = [uv.op for uv in unique_vis]
@@ -80,6 +91,8 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		s = set(signals)
 		if len(s) < len(signals):
 			W,b, unique_s = handle_duplicates(signals)
+			if len(temp_W)>0:
+				assert(W.shape[0] == temp_W[-1].shape[1])
 			temp_W.append(W)
 			temp_b.append(b)
 		#import pdb; pdb.set_trace()
@@ -115,13 +128,15 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		s = set(var_inputs)
 		if len(s) < len(var_inputs):
 			W,b, unique_vis = handle_duplicates(var_inputs)
+			if len(temp_W)>0:
+				assert(W.shape[0] == temp_W[-1].shape[1])
 			temp_W.append(W)
 			temp_b.append(b)
 			var_iops = [uv.op for uv in unique_vis]
 		# ELSE: continue as normal
 		return parse_network(var_iops, temp_W, temp_b, final_W, final_b, activation_type, sess)
 
-	else: # there is a mixture of real ops, placeholders, and/or activations
+	else: # there is a mixture of real ops, placeholders, identity, and/or activations
 		# THENN add in "identity" ops for the placeholders and the activations until the real ops are "drawn down"
 		mats = []
 		for op in ops:
@@ -130,6 +145,8 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 			else: 
 				mats.append(get_identity_mat(op, activation_type))
 		mega_mat, mega_bias = matrix_stacker(mats)
+		if len(temp_W)>0:
+			assert(mega_mat.shape[0] == temp_W[-1].shape[1])
 		temp_W.append(mega_mat)
 		temp_b.append(mega_bias)
 		# get inputs to recurse on (but not for activations and placeholders)
@@ -149,6 +166,8 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 		s = set(var_inputs)
 		if len(s) < len(var_inputs):
 			W,b, unique_vis = handle_duplicates(var_inputs)
+			if len(temp_W)>0:
+				assert(W.shape[0] == temp_W[-1].shape[1])
 			temp_W.append(W)
 			temp_b.append(b)
 			var_iops = [uv.op for uv in unique_vis]
