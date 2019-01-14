@@ -30,7 +30,7 @@ def condense_list_test():
 # test: parsing!!! ########################################
 # create network
 def two_layer(p):
-	W = tf.constant(2*np.eye(2), dtype='float32')
+	W = tf.Variable(2*np.eye(2), dtype='float32')
 	x1 = tf.nn.relu(W@p)
 	W2 = tf.constant(np.eye(2), dtype='float32')
 	q = tf.nn.relu(W2@x1)
@@ -66,7 +66,7 @@ def skip(p):
 def more_complex1(p):
 	C = tf.constant([[1.0],[1.0]])
 	Q = p + C
-	W = tf.constant(np.eye(2), dtype='float32')
+	W = tf.Variable(np.eye(2), dtype='float32')
 	b = tf.constant(np.zeros((2,1)), dtype='float32')
 	W2 = tf.constant(np.eye(2), dtype='float32')
 	b2 = tf.constant(np.zeros((2,1)), dtype='float32')
@@ -78,7 +78,7 @@ def more_complex1(p):
 def more_complex2(p):
 	C = tf.constant([[1.0],[1.0]])
 	Q = p + C
-	W = tf.constant(np.random.rand(2,2), dtype='float32')
+	W = tf.Variable(np.random.rand(2,2), dtype='float32')
 	b = tf.constant(np.ones((2,1)), dtype='float32')
 	W2 = tf.constant(np.random.rand(2,2), dtype='float32')
 	b2 = tf.constant(np.ones((2,1)), dtype='float32')
@@ -90,7 +90,7 @@ def more_complex2(p):
 def more_complex3(p):
 	C = tf.constant([[1.0],[1.0]])
 	Q = tf.nn.relu(p + C)
-	W = tf.constant(np.random.rand(2,2), dtype='float32')
+	W = tf.Variable(np.random.rand(2,2), dtype='float32')
 	b = tf.constant(np.ones((2,1)), dtype='float32')
 	W2 = tf.constant(np.random.rand(2,2), dtype='float32')
 	b2 = tf.constant(np.ones((2,1)), dtype='float32')
@@ -100,12 +100,14 @@ def more_complex3(p):
 	return [F]
 
 p = tf.placeholder(shape=(2,1), dtype='float32')
-pval = np.array([[1.0],[2.0]])
+pval = np.array([[-2.0],[2.0]])
 
 for fn in [two_layer, split, mul_split, concat, skip, more_complex1, more_complex2, more_complex3]:
 
 	q_list = fn(p) #skip(p) #two_layer(p)
 	activation = tf.nn.relu #tf.identity
+	act_type = 'Relu'
+	oa = all([q.op.type=='Relu' for q in q_list])
 
 	# eval by itself
 	sess = tf.Session()
@@ -118,7 +120,7 @@ for fn in [two_layer, split, mul_split, concat, skip, more_complex1, more_comple
 	W,b = parsing.parse_network([q.op for q in q_list], [], [], [], [], 'Relu', sess)
 	W.reverse()
 	b.reverse()
-	net = parsing.create_tf_network(W,b,inputs=p, activation=activation)
+	net = parsing.create_tf_network(W,b,inputs=p, activation=activation, act_type=act_type, output_activated=oa)
 	#with sess.as_default():
 
 	net, = sess.run([net], feed_dict={p:pval})

@@ -51,8 +51,6 @@ def matrix_stacker(mats):
 # inputs: final op
 # outputs: list of weights and biases for a flattened representation of the network 
 def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
-	print("recursing")
-	print("ops: ", ops)
 	# if all ops are real ops
 	if all([op.type not in [activation_type, 'Placeholder'] for op in ops]):
 		mats = [op_to_mat(op, sess) for op in ops]
@@ -362,15 +360,18 @@ def is_signal(tensor):
 # assume that inputs are stacked into a single array, as opposed to muliple arrays
 # assume the input lists of W and b have the first element as the quantities that first multiplies the input, and the last element as the last transformation to be applied
 # aka if taking the lists from parse_network(), they need to be reversed first before they are passed to this function
-def create_tf_network(W_list, b_list, inputs, activation):
-	if len(W_list) > 0:
-		out = W_list[0]@inputs + b_list[0]
-		out = activation(out)
-		for i in range(1,len(W_list)):
-			out = W_list[i]@out + b_list[i]
+## TODO: FINISH AND TEST THIS FUNCTION
+def create_tf_network(W_list, b_list, inputs, activation, act_type, output_activated):
+	out = inputs
+	for i in range(len(W_list)):
+		out = W_list[i]@out + b_list[i]
+		if (i == len(W_list)-1):
+			if output_activated:
+				out = activation(out)
+		else:
 			out = activation(out)
-	else:
-		out = activation(inputs)
+	if (out.op.type != act_type) and output_activated:
+		out = activation(out)
 	return out
 
 
