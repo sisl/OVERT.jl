@@ -99,6 +99,10 @@ def more_complex3(p):
 	F = x+y
 	return [F]
 
+# write a test for multiple inputs
+def most_complex4():
+	pass
+
 p = tf.placeholder(shape=(2,1), dtype='float32')
 pval = np.array([[-2.0],[2.0]])
 
