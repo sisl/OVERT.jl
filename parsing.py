@@ -44,8 +44,8 @@ def matrix_stacker(mats):
 		m = mat[0].shape[1]
 		mega_mat[i:i+n,j:j+m] = mat[0]
 		mega_bias[i:i+n] = mat[1]
-		i=n
-		j=m
+		i+=n
+		j+=m
 	return mega_mat, mega_bias		
 
 # inputs: final op
