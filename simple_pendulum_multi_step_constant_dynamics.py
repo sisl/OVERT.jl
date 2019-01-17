@@ -15,6 +15,7 @@ from rllab.envs.gym_env import GymEnv
 import sandbox.rocky.tf.core.layers as L
 from tensorflow.python.framework import graph_util
 import parsing
+from NNet.scripts.writeNNet import writeNNet
 
 # inputs: state and action yields next state
 def create_dynamics_block(num, var_dict):
@@ -138,19 +139,24 @@ for i in range(1):
 state_UB_final = state_UB
 state_LB_final = state_LB
 
-feed_dict_UB = {
-	state_UB_0: np.array([[1.0], [0.0]]),
-}
-feed_dict_LB = {
-	state_LB_0: np.array([[1.0], [0.0]]),
+# [[UB],[LB]]
+with tf.name_scope("UB_LB_concat"):
+	state_final = tf.constant(np.vstack([np.eye(2), np.zeros((2,2))]), dtype='float32')@state_UB_final + \
+			tf.constant(np.vstack([np.zeros((2,2)), np.eye(2)]), dtype='float32')@state_LB_final
+
+UB_init = np.array([[1.0], [0.0]])
+LB_init = np.array([[1.0], [0.0]])
+feed_dict = {
+	state_UB_0: UB_init,
+	state_LB_0: LB_init,
 }
 sess.run(tf.global_variables_initializer())
-print("[theta, theta_dot]_UB: ", sess.run([state_UB_final], feed_dict=feed_dict_UB))
-print("[theta, theta_dot]_LB", sess.run([state_LB_final], feed_dict=feed_dict_LB))
-	
+state_final_original, = sess.run([state_final], feed_dict=feed_dict)
+print("[theta, theta_dot]_UB: ", state_final_original[0:2,:])
+print("[theta, theta_dot]_LB: ", state_final_original[2:,:])
+
 # see how many unique ops in the graph
 # get current graph
-# TODO: how to print all ops in a graph? below code only works for serialized graphs
 g = sess.graph.as_graph_def()
 # print n for all n in graph_def.node
 [print(n.name) for n in g.node]
@@ -161,7 +167,7 @@ op_set = {(x.op,) for x in g.node}
 
 # filter stuff out
 # also add_2 is the other output. concat them together with a multiply and an add?
-output_node_name = "run_dynamics/Dynamics_1/time_2/add_5"
+output_node_name = "UB_LB_concat/add"
 output_graph_def = graph_util.convert_variables_to_constants(
     sess, # sess used to retrieve weights
     g, # graph def used to retrieve nodes
@@ -177,8 +183,7 @@ with s2.as_default():
 	tf.import_graph_def(output_graph_def)
 	g = tf.get_default_graph()
 
-# okay, I want to "connect" the graphs and then export to tensorbooard the graph file
-LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/constant_dynamics_handcrafted_policy_2"
+LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/constant_dynamics_handcrafted_policy_working"
 train_writer = tf.summary.FileWriter(LOGDIR) #, sess.graph)
 train_writer.add_graph(g) # TODO: add the filtered graph only! # sess.graph
 train_writer.close()
@@ -187,21 +192,53 @@ print("wrote to tensorboard log")
 # next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/UGH_multi_2
 
 # parse!!!! to .nnet!!!!
-output_op = g.get_operation_by_name("import/run_dynamics/Dynamics_1/time_2/add_5")
+output_op = g.get_operation_by_name("import/UB_LB_concat/add")
 print("got operation")
 W,b = parsing.parse_network([output_op], [], [], [], [], 'Relu', s2)
 print("parsed!")
+
+# write something to file, to test ########################
+oo_test = g.get_operation_by_name("import/run_dynamics/Dynamics_1/time_2/add_5")
+Wtest,btest = parsing.parse_network([oo_test], [], [], [], [], 'Relu', s2)
+print("test parsed!")
+means = [0.,0.,0.]
+ranges = [1., 1., 1.,]
+inMins = [-1.,-50.]
+inMaxs = [1.,50.]
+# preprocessing
+Wtest.reverse()
+btest.reverse() # put first matrix to multiply input at start of list
+fileName = "/Users/Chelsea/Dropbox/AAHAA/src/nnet_files/file_test_2"
+writeNNet(Wtest,btest,inputMins=inMins,inputMaxes=inMaxs,means=means,ranges=ranges, order='Wx', fileName=fileName)
+##########################################################
+
+## TODO: from here on below: finish implementing change from two variables: UB and LB, to single concatenated variable
+import pdb; pdb.set_trace()
 W.reverse()
 b.reverse()
-net = parsing.create_tf_network(W,b,inputs=p, activation=activation)
-feed_dict_UB = {
-	p: np.array([[1.0], [0.0]]),
-}
+state_net = tf.placeholder(tf.float32, shape=(4,1), name="state0")
+# TODO check what happens in testing if you have more than 2 inputs
+net = parsing.create_tf_network(W,b,inputs=state_net, activation=tf.nn.relu, act_type='Relu', output_activated=False)
+
+LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/constant_dynamics_parsed_policy"
+train_writer = tf.summary.FileWriter(LOGDIR) #, sess.graph)
+train_writer.add_graph(tf.get_default_graph()) # TODO: add the filtered graph only! # sess.graph
+train_writer.close()
+print("wrote to tensorboard log")
+
+# feed_dict_UB = {
+# 	p: np.array([[1.0], [0.0]]),
+# }
 feed_dict_LB = {
-	p: np.array([[1.0], [0.0]]),
+	state_LB_net: LB_init,
 }
-print("[theta, theta_dot]_UB after parsing: ", s2.run([net], feed_dict=feed_dict_UB))
-print("[theta, theta_dot]_LB  after parsing", s2.run([net], feed_dict=feed_dict_LB))
+# print("[theta, theta_dot]_UB after parsing: ", s2.run([net], feed_dict=feed_dict_UB))
+state_LB_after_parsing, = s2.run([net], feed_dict=feed_dict_LB)
+print("[theta, theta_dot]_LB  after parsing", state_LB_after_parsing)
+
+assert(all(abs(state_LB_original - state_LB_after_parsing)<1e-4))
+
+print("Tests pass! Networks are equivalent.")
 
 
 
