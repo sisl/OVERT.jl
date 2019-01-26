@@ -150,13 +150,16 @@ sess = tf.Session()
 print("initialized session")
 init_theta = np.array([[1.0]])
 init_theta_dot = np.array([[-1.0]])
+init_theta_dot_hat_1 = np.array([[0.1]])
+init_theta_dot_hat_2 = np.array([[0.2]])
+init_theta_dot_hat_3 = np.array([[0.3]])
 display_ops(sess)
 feed_dict = {
         theta_0: init_theta,
         theta_dot_0: init_theta_dot,
-        'assign_init_vals/theta_dot_hat_1:0':np.array([[0.1]]),
-        'assign_init_vals/theta_dot_hat_2:0':np.array([[0.2]]),
-        'assign_init_vals/theta_dot_hat_3:0':np.array([[0.3]]),
+        'assign_init_vals/theta_dot_hat_1:0': init_theta_dot_hat_1,
+        'assign_init_vals/theta_dot_hat_2:0': init_theta_dot_hat_2,
+        'assign_init_vals/theta_dot_hat_3:0': init_theta_dot_hat_3,
     }
 sess.run(tf.global_variables_initializer())
 theta_v, theta_dot_v, theta_dot_hats_v, theta_dot_LBs_v, theta_dot_UBs_v = sess.run([theta, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs], feed_dict=feed_dict)
@@ -175,12 +178,6 @@ print("theta_dot_LBs")
 print([t.op.name for t in theta_dot_LBs])
 print("theta_dot_UBs")
 print([t.op.name for t in theta_dot_UBs])
-
-
-# write to tensorboard
-LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/new_approach_"+f_id
-write_to_tensorboard(LOGDIR, sess)
-# next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/UGH_multi_2
 
 # parse and eval and turn into .nnet and set up inequalities in NV.jl
 # first convert variables to constants
@@ -212,10 +209,37 @@ g = tf.get_default_graph()
 output_ops = [g.get_operation_by_name("import/"+node) for node in output_node_names]
 
 activation_type = 'Relu'
-W,b = parsing.parse_network_wrapper(output_ops, activation_type, sess)
+W,b, input_list = parsing.parse_network_wrapper(output_ops, activation_type, sess)
 # order of input ops: 
-# ['import/initial_values/theta_dot_0', 'import/assign_init_vals/theta_dot_hat_1', 'import/initial_values/theta_0', 'import/assign_init_vals/theta_dot_hat_2', 'import/assign_init_vals/theta_dot_hat_3']
+input_dict = {'import/initial_values/theta_dot_0':init_theta_dot, 
+                'import/assign_init_vals/theta_dot_hat_1':init_theta_dot_hat_1, 
+                'import/initial_values/theta_0':init_theta, 
+                'import/assign_init_vals/theta_dot_hat_2':init_theta_dot_hat_2, 
+                'import/assign_init_vals/theta_dot_hat_3':init_theta_dot_hat_3}
 
+# turn into its own tf network to check equivalency
+W.reverse()
+b.reverse()
+ff_input = tf.placeholder(tf.float32, shape=(5,1), name="state0")
+ffnet = parsing.create_tf_network(W,b,inputs=ff_input, activation=tf.nn.relu, act_type='Relu', output_activated=False)
+
+# write to tensorboard
+LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/new_approach_"+f_id
+write_to_tensorboard(LOGDIR, sess)
+# next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/UGH_multi_2
+
+
+feed_dict = {
+                ff_input: np.vstack([input_dict[i] for i in input_list])
+            }
+#output_tensors = [i for o in output_ops for i in o.outputs]
+output_tensors_v = sess.run(ffnet, feed_dict=feed_dict)
+print("condensed output: ", output_tensors_v)
+assert(abs(theta_v - output_tensors_v[0])<1e-4) # theta
+assert(abs(theta_dot_v - output_tensors_v[3])<1e-4) # theta dot
+assert(all(abs(np.array(theta_dot_hats_v).flatten() - output_tensors_v[1:4].flatten())<1e-4)) # theta dot hats
+assert(all(abs(np.array(theta_dot_LBs_v).flatten() - output_tensors_v[4:7].flatten())<1e-4)) # theta dot LB
+assert(all(abs(np.array(theta_dot_UBs_v).flatten() - output_tensors_v[7:10].flatten())<1e-4))# theta dot UBs
 
 
 
