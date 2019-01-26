@@ -121,7 +121,7 @@ for fn in [two_layer, split, mul_split, concat, skip, more_complex1, more_comple
 	print("q: ", q_out)
 
 	# squish and then eval
-	W,b = parsing.parse_network([q.op for q in q_list], [], [], [], [], 'Relu', sess)
+	W,b,inputs = parsing.parse_network([q.op for q in q_list], [], [], [], [], 'Relu', sess)
 	W.reverse()
 	b.reverse()
 	net = parsing.create_tf_network(W,b,inputs=p, activation=activation, act_type=act_type, output_activated=oa)
