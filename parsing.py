@@ -48,6 +48,9 @@ def matrix_stacker(mats):
 		j+=m
 	return mega_mat, mega_bias		
 
+def parse_network_wrapper(output_ops, activation_type, sess):
+	return parse_network(output_ops, [], [], [], [], activation_type, sess)
+
 # inputs: final op
 # outputs: list of weights and biases for a flattened representation of the network 
 def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
@@ -80,6 +83,10 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 	elif all([op.type=='Placeholder' for op in ops]): 
 		# all ops are of type "placeholder"
 		# this means we've gotten back to the beginning
+		# print order of ops
+		input_op_names = [op.name for op in ops]
+		print("order of input ops: ")
+		print(input_op_names)
 		## HANDLE DUPLICATES
 		# I think it's possible we'll never "NEED" to handle duplicates here because they were handled BEFORE we got passed here...
 		signals = []
@@ -101,7 +108,7 @@ def parse_network(ops, temp_W, temp_b, final_W, final_b, activation_type, sess):
 			W, b = condense_list(temp_W, temp_b)
 			final_W.append(W)
 			final_b.append(b)
-		return final_W, final_b ## woo!!!! :D
+		return final_W, final_b, input_op_names ## woo!!!! :D
 	elif all([op.type==activation_type for op in ops]): 
 		# if all ops are of type activation
 		# multiply temporary tensor list together to produce final tensor. add to the final tensor list and then empty temp tensor lists
@@ -364,12 +371,13 @@ def is_signal(tensor):
 def create_tf_network(W_list, b_list, inputs, activation, act_type, output_activated):
 	out = inputs
 	for i in range(len(W_list)):
-		out = W_list[i]@out + b_list[i]
-		if (i == len(W_list)-1):
-			if output_activated:
+		with tf.name_scope("Layer_"+str(i+1)):
+			out = W_list[i]@out + b_list[i]
+			if (i == len(W_list)-1):
+				if output_activated:
+					out = activation(out)
+			else:
 				out = activation(out)
-		else:
-			out = activation(out)
 	if (out.op.type != act_type) and output_activated:
 		out = activation(out)
 	return out
