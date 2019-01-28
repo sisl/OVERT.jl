@@ -8,6 +8,7 @@ using LinearAlgebra
 
 # read network and setup inputs and outputs
 my_nnet = read_nnet("/Users/Chelsea/Dropbox/AAHAA/src/nnet_files/correct_overrapprox_const_dyn_4948.nnet")
+# my_nnet = read_nnet("nnet_files/correct_overrapprox_const_dyn_4948.nnet")
 # inputs
 # thetadot_hat_1, theta_dot_hat_2, theta_dot_hat_3, theta, theta_dot
 input_low = [-100., -100., -100., -1*π/180, -50]
@@ -49,7 +50,7 @@ b = vcat(b_th_ub, b_th_lb, b_thd_ub, b_thd_lb,
 outputSet = HPolytope(A,b)
 
 function test(inputSet, outputSet, nnet)
-	solver = ExactReach() # got errors with BaB, Sherlock
+	solver = MaxSens() # got errors with BaB, Sherlock
 
 	problem = Problem(nnet, inputSet, outputSet)
 
