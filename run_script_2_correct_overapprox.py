@@ -1,9 +1,13 @@
 import colored_traceback.always
-from correct_overapprox import Dynamics, Controller, ReluProtector, build_multi_step_network, display_ops, write_to_tensorboard, write_metadata
+from correct_overapprox import Dynamics, Controller, ReluProtector, build_multi_step_network, display_ops, write_to_tensorboard, write_metadata, collect_output_ops
 import tensorflow as tf 
 import numpy as np
 import os
 import joblib
+
+#############################################################
+# Single Step
+#############################################################
 
 # parsing support libs
 from tensorflow.python.framework import graph_util
