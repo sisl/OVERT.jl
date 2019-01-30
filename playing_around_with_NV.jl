@@ -1,17 +1,34 @@
 using NeuralVerification
 
-solver = ReluVal() # got errors with BaB, Sherlock
+def reluval_test():
+	solver = ReluVal() # got errors with BaB, Sherlock
 
-my_nnet = read_nnet("/Users/Chelsea/Dropbox/AAHAA/src/nnet_files/file_test_1")
+	my_nnet = read_nnet("/Users/Chelsea/Dropbox/AAHAA/src/nnet_files/file_test_1")
 
-inputSet  = Hyperrectangle(low = [-0.001, -0.001], high = [0.001, 0.001])
-outputSet = Hyperrectangle(low = [-1.57, -10.], high = [1.57, 10.])
-problem = Problem(my_nnet, inputSet, outputSet)
+	inputSet  = Hyperrectangle(low = [-0.001, -0.001], high = [0.001, 0.001])
+	outputSet = Hyperrectangle(low = [-1.57, -10.], high = [1.57, 10.])
+	problem = Problem(my_nnet, inputSet, outputSet)
 
-@time result = solve(solver, problem)
+	@time result = solve(solver, problem)
 
-println(result.status)
+	println(result.status)
 
+def reluplex_test():
+	solver = Reluplex() # ReluVal() # got errors with BaB, Sherlock
+
+	my_nnet = read_nnet("/Users/Chelsea/Dropbox/AAHAA/src/nnet_files/const_dyn_one_network_4414.nnet")
+	# UB th,thd, LB th, thd,   theta-out
+	a = 0.1 # th
+	b = 10 #thdot
+	c = 10 # th
+	inputSet  = Hyperrectangle(low = [-a,-b,-a,-b,-c], 
+								high = [a,b,a,b,c])
+	outputSet = # halfspace
+	problem = Problem(my_nnet, inputSet, outputSet)
+
+	@time result = solve(solver, problem)
+
+	println(result.status)
 # Notes:
 # What is the exact meaning of '1D interval?'
 # vector like this: high =[1,2,3], low=[0,0,0] ? or this high=[1] low=[0] ?

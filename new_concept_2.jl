@@ -52,7 +52,7 @@ b = vcat(b_th_ub, b_th_lb, b_thd_ub, b_thd_lb,
 outputSet = HPolytope(A,b)
 
 function test(inputSet, outputSet, nnet)
-	solver = MaxSens() # got errors with BaB, Sherlock
+	solver = ExactReach() # got errors with BaB, Sherlock
 
 	problem = Problem(nnet, inputSet, outputSet)
 
