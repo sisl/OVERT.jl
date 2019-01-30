@@ -1,9 +1,13 @@
 import colored_traceback.always
-from correct_overapprox import Dynamics, Controller, ReluProtector, build_multi_step_network, display_ops, write_to_tensorboard, write_metadata
+from correct_overapprox import Dynamics, Controller, ReluProtector, build_multi_step_network, display_ops, write_to_tensorboard, write_metadata, collect_output_ops
 import tensorflow as tf 
 import numpy as np
 import os
 import joblib
+
+#######################################
+# 3 steps
+#######################################
 
 # parsing support libs
 from tensorflow.python.framework import graph_util
@@ -22,9 +26,10 @@ controller = Controller()
 ncontroller_act = 2
 nsteps = 3
 dynamics = Dynamics()
-theta, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs = build_multi_step_network(theta_0, theta_dot_0, controller, dynamics, nsteps, ncontroller_act)
+## 
+thetas, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs = build_multi_step_network(theta_0, theta_dot_0, controller, dynamics, nsteps, ncontroller_act)
 with tf.name_scope("outputs"):
-    theta_out = tf.constant([[0.0]])@theta_dot + theta
+    theta_out = tf.constant([[0.0]])@theta_dot + thetas[-1]
 
 # run stuff
 sess = tf.Session()
@@ -43,51 +48,32 @@ feed_dict = {
         'assign_init_vals/theta_dot_hat_3:0': init_theta_dot_hat_3,
     }
 sess.run(tf.global_variables_initializer())
-theta_v, theta_dot_v, theta_dot_hats_v, theta_dot_LBs_v, theta_dot_UBs_v = sess.run([theta, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs], feed_dict=feed_dict)
-print("theta: ", theta_v)
+thetas_v, theta_dot_v, theta_dot_hats_v, theta_dot_LBs_v, theta_dot_UBs_v = sess.run([thetas, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs], feed_dict=feed_dict)
+print("thetas: ", thetas_v)
 print("theta_dot: ", theta_dot_v)
 print("theta_dot_hats: ", theta_dot_hats_v)
 print("theta_dot_LBs: ", theta_dot_LBs_v)
 print("theta_dot_UBs: ", theta_dot_UBs_v)
 
-# print output op names
-print("theta, theta_dot")
-print([t.op.name for t in [theta, theta_dot]])
-print("theta_dot_hats")
-print([t.op.name for t in theta_dot_hats])
-print("theta_dot_LBs")
-print([t.op.name for t in theta_dot_LBs])
-print("theta_dot_UBs")
-print([t.op.name for t in theta_dot_UBs])
+output_op_names = collect_output_ops([thetas, theta_dot_hats, theta_dot_LBs, theta_dot_UBs])
+print("output_ops: ", output_op_names)
 
 # parse and eval and turn into .nnet and set up inequalities in NV.jl
 # first convert variables to constants
-output_node_names = ['run_dynamics_2/Dynamics_3/theta_3', # theta
-                    'relu_protection_2/tdh_3', 
-                    'relu_protection_2/tdh_4', 
-                    'relu_protection_2/tdh_5', # theta dots
-                    'relu_protection_2/tdlb_2', 
-                    'relu_protection_2/tdlb_3', 
-                    'run_dynamics_2/Dynamics_3/theta_dot_LB_3', # theta dot LBs
-                    'relu_protection_2/tdub_2', 
-                    'relu_protection_2/tdub_3', 
-                    'run_dynamics_2/Dynamics_3/theta_dot_UB_3', # theta dot UBs
-                    ]
 output_graph_def = graph_util.convert_variables_to_constants(
         sess, # sess used to retrieve weights
         sess.graph.as_graph_def(), # graph def used to retrieve nodes
-        output_node_names # output node names used to select useful nodes
+        output_op_names # output node names used to select useful nodes
         )
 # print op list to make sure its only stuff we can handle
 print("op set: ", {(x.op,) for x in output_graph_def.node})
-
 # turn graph def back into graph
 tf.import_graph_def(output_graph_def)
-display_ops(sess)
+#display_ops(sess)
 g = tf.get_default_graph()
 
 # get output ops
-output_ops = [g.get_operation_by_name("import/"+node) for node in output_node_names]
+output_ops = [g.get_operation_by_name("import/"+node) for node in output_op_names]
 
 activation_type = 'Relu'
 W,b, input_list = parsing.parse_network_wrapper(output_ops, activation_type, sess)
@@ -116,11 +102,10 @@ feed_dict = {
 
 output_tensors_v = sess.run(ffnet, feed_dict=feed_dict)
 print("condensed output: ", output_tensors_v)
-assert(abs(theta_v - output_tensors_v[0])<1e-4) # theta
-assert(abs(theta_dot_v - output_tensors_v[3])<1e-4) # theta dot
-assert(all(abs(np.array(theta_dot_hats_v).flatten() - output_tensors_v[1:4].flatten())<1e-4)) # theta dot hats
-assert(all(abs(np.array(theta_dot_LBs_v).flatten() - output_tensors_v[4:7].flatten())<1e-4)) # theta dot LB
-assert(all(abs(np.array(theta_dot_UBs_v).flatten() - output_tensors_v[7:10].flatten())<1e-4))# theta dot UBs
+assert(all(abs(np.array(thetas_v).flatten() - output_tensors_v[0:3].flatten())<1e-4)) # theta
+assert(all(abs(np.array(theta_dot_hats_v).flatten() - output_tensors_v[3:6].flatten())<1e-4)) # theta dot hats
+assert(all(abs(np.array(theta_dot_LBs_v).flatten() - output_tensors_v[6:9].flatten())<1e-4)) # theta dot LB
+assert(all(abs(np.array(theta_dot_UBs_v).flatten() - output_tensors_v[9:12].flatten())<1e-4))# theta dot UBs
 
 # write to .nnet file
 # and write accompanying file with meta data like order of inputs and outputs
@@ -128,7 +113,7 @@ means = [0.,0.,0.,0.,0.,0.]
 ranges = [1., 1., 1., 1., 1., 1.]
 inMins = [-1.,-50., -1., -50., -100.]
 inMaxs = [1.,50., 1., 50., 100.]
-directory = "/Users/Chelsea/Dropbox/AAHAA/src/nnet_files/"
+directory = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files/"
 fileName = os.path.join(directory, "correct_overrapprox_const_dyn_"+f_id+".nnet")
 writeNNet(W,b,inputMins=inMins,inputMaxes=inMaxs,means=means,ranges=ranges, order='Wx', fileName=fileName)
 
