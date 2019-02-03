@@ -131,13 +131,18 @@ def write_to_tensorboard(logdir, sess):
     train_writer.close()
     print("wrote to tensorboard log")
 
-def write_metadata(input_list, output_list, directory, fid):
+def write_metadata(input_list, output_list, ff_output_op_name,directory, fid):
     filename = os.path.join(directory, "meta_data_" + fid + ".txt")
     with open(filename,'w') as file:
+        file.write("feed forward output op name: \n")
+        file.write("%s\n" % ff_output_op_name)
         file.write("inputs: \n")
-        file.write("%s\n" % str(input_list))
+        for i in range(len(input_list)):
+            file.write("%s," % input_list[i])
+        file.write("\n")
         file.write("outputs: \n")
-        file.write("%s\n" % str(output_list))
+        [file.write("%s," % item) for item in output_list]
+
 
 def collect_output_ops(cat_list):
     master_list = []
