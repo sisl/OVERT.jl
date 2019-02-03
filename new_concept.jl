@@ -1,5 +1,6 @@
 using NeuralVerification
 using LinearAlgebra
+using LazySets
 include("utils.jl")
 
 # Hyperrectangle vs hpolytope?
@@ -23,9 +24,9 @@ b = vcat(input_high, -input_low)
 inputSet  = HPolytope(A, b)
 # outputs (12)
 # thetas, tdhs, tdlbs, tdubs (3x each)
-A_th_ub = hcat(eye(3),zeros(3,9)')
+A_th_ub = hcat(eye(3),zeros(3,9))
 b_th_ub = 45*π/180*ones(3)
-A_th_lb = hcat(-1*eye(3),zeros(3,9)')
+A_th_lb = hcat(-1*eye(3),zeros(3,9))
 b_th_lb = -45*π/180*ones(3)
 A_thd_ub = hcat(zeros(3,3), 
 				Matrix{Float64}(I,3,3), 
