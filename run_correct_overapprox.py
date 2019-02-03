@@ -37,7 +37,7 @@ print("initialized session")
 init_theta = np.array([[1.0]])
 init_theta_dot = np.array([[-1.0]])
 init_theta_dot_hat_1 = np.array([[0.1]])
-init_theta_dot_hat_2 = np.array([[0.2]])
+init_theta_dot_hat_2 = np.array([[-0.2]])
 init_theta_dot_hat_3 = np.array([[0.3]])
 display_ops(sess)
 feed_dict = {
@@ -93,7 +93,7 @@ ffnet = parsing.create_tf_network(W,b,inputs=ff_input, activation=tf.nn.relu, ac
 # write to tensorboard
 LOGDIR = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/new_approach_"+f_id
 write_to_tensorboard(LOGDIR, sess)
-# next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/UGH_multi_2
+# next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/new_approach_3605
 
 
 feed_dict = {
@@ -117,6 +117,17 @@ directory = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files/"
 fileName = os.path.join(directory, "correct_overrapprox_const_dyn_"+f_id+".nnet")
 writeNNet(W,b,inputMins=inMins,inputMaxes=inMaxs,means=means,ranges=ranges, order='Wx', fileName=fileName)
 
-output_tensors = [i for o in output_ops for i in o.outputs]
-write_metadata(input_list, output_tensors, directory, f_id)
+ff_oo_name = ffnet.op.name
+output_tensors = [i.name for o in output_ops for i in o.outputs]
+write_metadata(input_list, output_tensors, ff_oo_name, directory, f_id)
 
+# write ff tf network to file
+ff_output_graph_def = graph_util.convert_variables_to_constants(
+        sess, # sess used to retrieve weights
+        sess.graph.as_graph_def(), # graph def used to retrieve nodes
+        [ffnet.op.name] # output node names used to select useful nodes
+        )
+output_graph_name = "nnet_files/graph_def_"+f_id+".pb"
+with tf.gfile.GFile(output_graph_name, "w") as f:
+    f.write(ff_output_graph_def.SerializeToString())
+    print("%d ops in the final graph." % len(ff_output_graph_def.node))
