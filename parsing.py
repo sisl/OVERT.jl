@@ -296,11 +296,11 @@ def get_add_mat(op, sess):
 	elif is_signal(op.inputs[0]):
 		W = np.identity(n)
 		with sess.as_default():
-			b = op.inputs[1].eval()
+			b = op.inputs[1].eval().reshape(-1, 1)
 	elif is_signal(op.inputs[1]):
 		W = np.identity(n)
 		with sess.as_default():
-			b = op.inputs[0].eval()
+			b = op.inputs[0].eval().reshape(-1, 1)
 	else: # neither is a variable. don't expect to use this case...
 		print("Why are we here?")
 		W11 = np.identity(n)
@@ -311,12 +311,12 @@ def get_add_mat(op, sess):
 
 # assume R = W*x + b
 def get_matmul_mat(op,sess):
-	if is_signal(op.inputs[0]):
+	if is_signal(op.inputs[0]): # xW
 		with sess.as_default():
-			W = op.inputs[1].eval()
+			W = op.inputs[1].eval().transpose()
 		n = W.shape[0]
 		b = np.zeros([n,1])
-	elif is_signal(op.inputs[1]):
+	elif is_signal(op.inputs[1]): # Wx
 		with sess.as_default():
 			W = op.inputs[0].eval()
 		n = W.shape[0]
