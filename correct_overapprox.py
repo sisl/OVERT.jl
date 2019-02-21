@@ -135,7 +135,7 @@ def build_multi_step_network(theta_0, theta_dot_0, controller, dynamics, nsteps,
                 theta_dot_LBs = [relu_protector.apply(tdlb, name="tdlb") for tdlb in theta_dot_LBs]
                 theta_dot_UBs = [relu_protector.apply(tdub, name="tdub") for tdub in theta_dot_UBs]
                 theta_dot_hats = [relu_protector.apply(tdh, name="tdh") for tdh in theta_dot_hats]
-            
+
         # input of dynamics is torque(action), output is theta theta-dot at the next timestep
         with tf.name_scope("run_dynamics"):
             theta, theta_dot_LB, theta_dot_UB = dynamics.run(num=i+1, action=action, theta=theta, theta_dot=theta_dot)
@@ -144,7 +144,7 @@ def build_multi_step_network(theta_0, theta_dot_0, controller, dynamics, nsteps,
             thetas.append(theta) # collect all thetas from theta_1 onwards
             theta_dot = theta_dot_hats[i]
             
-    #
+#
     return (thetas, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs)
 
 def display_ops(sess):
@@ -225,11 +225,15 @@ def build_model(nsteps,
     # construct controller
     sess = tf.Session()
     if policy_file is None:
+        print("Using random controller")
         controller = Controller() # random controller
         controller_activations = 2
     else:
+        print("Using controller from rllab")
         controller = RllabController(policy_file, sess)
         controller_activations = 2 ## TODO: CHECK THAT THIS IS CORRECT
+
+    # policy works well up to here
 
     # construct dynamics
     dynamics = Dynamics()
@@ -293,7 +297,6 @@ def test_and_write(sess,
     for i in range(nsteps):
         key = 'assign_init_vals/theta_dot_hat_'+str(i+1)+':0'
         feed_dict[key] = init_theta_dot_hats[i]
-    sess.run(tf.global_variables_initializer())
     # run with test inputs
     thetas_v, theta_dot_v, theta_dot_hats_v, theta_dot_LBs_v, theta_dot_UBs_v = sess.run([thetas, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs], feed_dict=feed_dict)
     if verbose:
@@ -388,7 +391,6 @@ def write_nnet(sess, output_ops, feed_dict, activation_fn, activation_type, thet
     if verbose:
         print("condensed output: ", ff_output_tensors_v)
     # check equivalency
-    import pdb; pdb.set_trace()
     assert(all(abs(np.array(thetas_v).flatten() - ff_output_tensors_v[0:nsteps].flatten()))<1e-4) # thetas
     assert(all(abs(np.array(theta_dot_hats_v).flatten() - ff_output_tensors_v[nsteps:2*nsteps].flatten()))<1e-4) # theta dot hats
     assert(all(abs(np.array(theta_dot_LBs_v).flatten() - ff_output_tensors_v[2*nsteps:3*nsteps].flatten())<1e-4)) # theta dot LBs
@@ -397,7 +399,6 @@ def write_nnet(sess, output_ops, feed_dict, activation_fn, activation_type, thet
     #
     # Write to .nnet file
     # and write accompanying file with meta data like order of inputs and outputs
-    import pdb; pdb.set_trace()
     num_inputs = 2+nsteps
     means = [0.]*(num_inputs+1)
     ranges = [1.]*(num_inputs+1)
