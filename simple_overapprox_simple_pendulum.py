@@ -3,22 +3,7 @@ from numpy import array
 import matplotlib.pyplot as plt
 import tensorflow as tf
 #import sympy as sp
-
-# turn max and min into relus
-def ReLu(x):
-    return np.maximum(x,0.0)
-
-def ReLuMax(x,y):
-    return ReLu(x-y) + y
-
-def tfReLuMax(x,y, name=""):
-    return tf.add(tf.nn.relu(x-y), y, name=name+"tfrelu_0")
-
-def ReLuMin(x,y):
-    return -ReLuMax(-x,-y)
-
-def tfReLuMin(x,y, name=""):
-    return tf.multiply(-1.0, tfReLuMax(-x,-y), name=name+"tfrelu_1")
+from relu_approximations import ReLu, ReLuMax, tfReLuMax, ReLuMin, tfReLuMin, min_from_max
 
 class line():
     def __init__(self,*args, init_type='two points', **kwargs):
@@ -44,8 +29,11 @@ class line():
         x1,y1 = self.p1
         return -self.m*x1 + y1
 
+"""
+A class for containing the two-piece upper or lower bound for a single convex or concave region.
+"""
 class bound():
-    def __init__(self, line1, line2, combi_op, meta_combi_op, meta_combi_const):
+    def __init__(self, line1, line2, combi_op, meta_combi_op, meta_combi_const, use_truemax=True):
         self.line1 = line1
         self.line2 = line2
         self.combi_op = combi_op
@@ -54,20 +42,43 @@ class bound():
         self.meta_combi_const_tf = tf.constant(self.meta_combi_const)
         self.eval_bound = lambda x: meta_combi_op(combi_op(line1.eq(x), line2.eq(x)), meta_combi_const)
         # tensorflow stuff
-        if combi_op == np.minimum:
-            self.combi_op_tf = tfReLuMin
-        elif combi_op == np.maximum:
-            self.combi_op_tf = tfReLuMax
-        # 
-        if meta_combi_op == np.minimum:
-            self.meta_combi_op_tf = tfReLuMin
-        elif meta_combi_op == np.maximum:
-            self.meta_combi_op_tf = tfReLuMax
+        combis = []
+        for op in [combi_op, meta_combi_op]:
+            if op == np.minimum:
+                if use_truemax:
+                    combis.append(min_from_max)
+                else:
+                    combis.append(tfReLuMin)
+            elif op == np.maximum:
+                if use_truemax:
+                    combis.append(tf.maximum)
+                else:
+                    combis.append(tfReLuMax)
+        self.combi_op_tf = combis[0]
+        self.meta_combi_op_tf = combis[1]
+
         # eval bound, in tf
         with tf.name_scope("bound"):
             self.tf_eval_bound = lambda x: self.meta_combi_op_tf(
                 self.combi_op_tf(line1.tfeq(x), line2.tfeq(x)), 
                 self.meta_combi_const_tf)
+
+"""
+A class where all bound pieces can be added together to create a single LB object or single UB object.
+"""
+class additive_bound():
+    def __init__(self, pieces):
+        self.pieces = pieces # pieces of bounds that will be added together
+    def eval(self, x): # additive evaluation
+        out = self.pieces[0].eval_bound(x)
+        for i in range(1, len(self.pieces)):
+            out = out + self.pieces[i].eval_bound(x)
+        return out
+    def tf_eval(self, x):
+        out = self.pieces[0].tf_eval_bound(x)
+        for i in range(1, len(self.pieces)):
+            out = out + self.pieces[i].tf_eval_bound(x)
+        return out
 
 # pass in a function
 def build_sin_approx(fun, c1, convex_reg, concave_reg):
@@ -130,7 +141,9 @@ def build_sin_approx(fun, c1, convex_reg, concave_reg):
     ccv_UB = bound(ccv_UB_lines[0], ccv_UB_lines[1], np.minimum, np.maximum, 0.0)
     #
     # can do the offset at the very end (maybe the scaling too? oh well)
-    return ((cvx_LB, ccv_LB),(cvx_UB, ccv_UB))
+    LB = additive_bound([cvx_LB, ccv_LB])
+    UB = additive_bound([cvx_UB, ccv_UB])
+    return (LB, UB)
 
 def testing():
     xdat =  np.linspace(-np.pi, np.pi, 200)
@@ -144,8 +157,8 @@ def testing():
 
     plt.plot(xdat, sindat+c2)
 
-    plt.plot(xdat, LB[0].eval_bound(xdat) + LB[1].eval_bound(xdat) + c2)
-    plt.plot(xdat, UB[0].eval_bound(xdat) + UB[1].eval_bound(xdat) + c2)
+    plt.plot(xdat, LB.eval(xdat) + c2)
+    plt.plot(xdat, UB.eval(xdat) + c2)
 
     plt.xlabel('x')
     plt.ylabel('y')
@@ -160,44 +173,57 @@ def testing():
             op = ReLuMin
         return op
 
-    for b in LB:
+    for b in LB.pieces:
         b.combi_op = swap_out_for_relus(b.combi_op)
         b.meta_combi_op = swap_out_for_relus(b.meta_combi_op)
 
-    for b in UB:
+    for b in UB.pieces:
         b.combi_op = swap_out_for_relus(b.combi_op)
         b.meta_combi_op = swap_out_for_relus(b.meta_combi_op)
 
     plt.plot(xdat, sindat+c2)
 
-    plt.plot(xdat, LB[0].eval_bound(xdat) + LB[1].eval_bound(xdat) + c2)
-    plt.plot(xdat, UB[0].eval_bound(xdat) + UB[1].eval_bound(xdat) + c2)
+    plt.plot(xdat, LB.eval(xdat) + c2)
+    plt.plot(xdat, UB.eval(xdat) + c2)
 
     plt.show()
 
-    print("LB: ", LB[0].eval_bound(1.0) + LB[1].eval_bound(1.0) + c2)
-    print("UB: ", UB[0].eval_bound(1.0) + UB[1].eval_bound(1.0) + c2)
+    print("LB: ", LB.eval(1.0) + c2)
+    print("UB: ", UB.eval(1.0) + c2)
 
     # woo! The ReLu Maxes are implemented correctly :)
 
     #######################################################################
 
     # build a graph where there is a single scalar, theta, as input
-    theta = tf.Variable([1.0], name="theta")
+    theta = tf.placeholder(shape=(1,), name="theta", dtype='float32')
 
     # meta_combi_op(combi_op(line1.eq(x), line2.eq(x)), meta_combi_const)
     with tf.name_scope("LB"):
-        tfLB = LB[0].tf_eval_bound(theta) + LB[1].tf_eval_bound(theta) + tf.constant([c2])
+        tfLB = LB.tf_eval(theta) + tf.constant([c2])
     with tf.name_scope("UB"):
-        tfUB = UB[0].tf_eval_bound(theta) + UB[1].tf_eval_bound(theta) + tf.constant([c2])
+        tfUB = UB.tf_eval(theta) + tf.constant([c2])
 
     # test the graph so far
     sess = tf.Session()
-    sess.run(tf.global_variables_initializer())
-    sess.run([tfLB, tfUB])
+    [tfLB_v, tfUB_v] = sess.run([tfLB, tfUB], feed_dict={theta: np.array([1.0])})
+    print("tfLB: ", tfLB_v)
+    print("tfUB: ", tfUB_v)
 
-    print("tfLB: ", sess.run(tfLB))
-    print("tfUB: ", sess.run(tfUB))
+    # eval at all the points
+    lb = []; ub = []
+    for x in xdat:
+        lb.append(sess.run([tfLB], feed_dict={theta: np.array([x])}))
+        ub.append(sess.run([tfUB], feed_dict={theta: np.array([x])}))
+
+    lb = np.array(lb).flatten()
+    ub = np.array(ub).flatten()
+
+    # plot
+    plt.plot(xdat, sindat + c2)
+    plt.plot(xdat, lb)
+    plt.plot(xdat, ub)
+    plt.show()
 
     # whoo! The tf implementation works!
 
