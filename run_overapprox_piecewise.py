@@ -18,7 +18,7 @@ verbose = True
 output_pb = True
 output_nnet = False
 f_id = str(int(np.round(np.random.rand()*5000)))
-tensorboard_log_dir = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/real_controller_correct_accel_bound_"+f_id
+tensorboard_log_dir = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/real_controller_piecewise_accel_bound_"+f_id
 network_dir = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files"
 nsteps = 2
 
@@ -32,7 +32,7 @@ build_model(nsteps,
                 policy_file=policy_file, 
                 activation_type="Relu",
                 activation_fn=tf.nn.relu,
-                dynamics_fun="constant",
+                dynamics_fun="piecewise",
                 m=0.25,
                 l=0.1,
                 verbose=verbose)

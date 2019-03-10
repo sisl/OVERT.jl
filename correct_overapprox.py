@@ -271,6 +271,9 @@ def build_model(nsteps,
                 activation_type="Relu",
                 activation_fn=tf.nn.relu,
                 policy_output_node_name="", 
+                dynamics_fun="constant",
+                m=0.25,
+                l=0.1,
                 controller_activations=None,  
                 verbose=True):
 
@@ -296,136 +299,12 @@ def build_model(nsteps,
     mass in kg (original: 0.25)
     length in meters (original: 0.1)
     """
-    dynamics = Dynamics(m=0.25, l=0.1)
-
-    # put controller and dynamics together
-    thetas, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs = build_multi_step_network(theta_0, theta_dot_0, controller, dynamics, nsteps, controller_activations)
-
-    # condense output to only final theta
-    with tf.name_scope("condense_outputs"):
-        theta_out = tf.constant([[0.0]])@theta_dot + thetas[-1]
-
-    #################### testing and writing to file from here on out ##########
-    test_and_write(sess, 
-                theta_0, 
-                theta_dot_0, 
-                nsteps, 
-                thetas, 
-                theta_dot, 
-                theta_dot_hats, 
-                theta_dot_LBs, 
-                theta_dot_UBs, 
-                network_dir, 
-                f_id, 
-                output_pb, 
-                output_nnet, 
-                verbose,
-                activation_fn, 
-                activation_type,
-                tensorboard_log_dir)
-    return "success"
-
-
-def build_heavier_model(nsteps, 
-                output_pb, 
-                output_nnet, 
-                tensorboard_log_dir, 
-                network_dir, 
-                f_id,
-                policy_file=None, 
-                activation_type="Relu",
-                activation_fn=tf.nn.relu,
-                policy_output_node_name="", 
-                controller_activations=None,  
-                verbose=True):
-
-    with tf.variable_scope("initial_values"):
-        theta_0 = tf.placeholder(tf.float32, shape=(1,1), name="theta_0")
-        theta_dot_0 = tf.placeholder(tf.float32, shape=(1,1), name="theta_dot_0")
-
-    # construct controller
-    sess = tf.Session()
-    if policy_file is None:
-        print("Using random controller")
-        controller = Controller(sess) # random controller
-        controller_activations = 2
+    if dynamics_fun == "constant":
+        dynamics = Dynamics(m=m, l=l)
+    elif dynamics_fun == "piecewise":
+        dynamics = PiecewiseDynamics(m=m, l=l)
     else:
-        print("Using controller from rllab")
-        controller = RllabController(policy_file, sess)
-        controller_activations = 2 ## TODO: CHECK THAT THIS IS CORRECT
-
-    # policy works well up to here
-
-    # construct dynamics
-    """
-    mass in kg (original: 0.25)
-    length in meters (original: 0.1)
-    """
-    dynamics = Dynamics(m=0.3, l=0.1)
-
-    # put controller and dynamics together
-    thetas, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs = build_multi_step_network(theta_0, theta_dot_0, controller, dynamics, nsteps, controller_activations)
-
-    # condense output to only final theta
-    with tf.name_scope("condense_outputs"):
-        theta_out = tf.constant([[0.0]])@theta_dot + thetas[-1]
-
-    #################### testing and writing to file from here on out ##########
-    test_and_write(sess, 
-                theta_0, 
-                theta_dot_0, 
-                nsteps, 
-                thetas, 
-                theta_dot, 
-                theta_dot_hats, 
-                theta_dot_LBs, 
-                theta_dot_UBs, 
-                network_dir, 
-                f_id, 
-                output_pb, 
-                output_nnet, 
-                verbose,
-                activation_fn, 
-                activation_type,
-                tensorboard_log_dir)
-    return "success"
-
-def build_heavier_model_piecewise(nsteps, 
-                output_pb, 
-                output_nnet, 
-                tensorboard_log_dir, 
-                network_dir, 
-                f_id,
-                policy_file=None, 
-                activation_type="Relu",
-                activation_fn=tf.nn.relu,
-                policy_output_node_name="", 
-                controller_activations=None,  
-                verbose=True):
-
-    with tf.variable_scope("initial_values"):
-        theta_0 = tf.placeholder(tf.float32, shape=(1,1), name="theta_0")
-        theta_dot_0 = tf.placeholder(tf.float32, shape=(1,1), name="theta_dot_0")
-
-    # construct controller
-    sess = tf.Session()
-    if policy_file is None:
-        print("Using random controller")
-        controller = Controller(sess) # random controller
-        controller_activations = 2
-    else:
-        print("Using controller from rllab")
-        controller = RllabController(policy_file, sess)
-        controller_activations = 2 ## TODO: CHECK THAT THIS IS CORRECT
-
-    # policy works well up to here
-
-    # construct dynamics
-    """
-    mass in kg (original: 0.25)
-    length in meters (original: 0.1)
-    """
-    dynamics = PiecewiseDynamics(m=0.3, l=0.1)
+        raise NotImplementedError
 
     # put controller and dynamics together
     thetas, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs = build_multi_step_network(theta_0, theta_dot_0, controller, dynamics, nsteps, controller_activations)
