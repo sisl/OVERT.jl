@@ -12,6 +12,7 @@ import tensorflow as tf
 import numpy as np
 import os
 import joblib
+from simple_overapprox_simple_pendulum import line, bound, build_sin_approx
 
 # parsing support libs
 from tensorflow.python.framework import graph_util
@@ -21,42 +22,97 @@ from NNet.scripts.writeNNet import writeNNet
 
 # ideas from luke: model class. state class
 
+# constant dynamics block for pendulum
 class Dynamics():
-    def __init__(self): 
+    def __init__(self, m, l): 
         with tf.name_scope("dynamics_constants"):
-            self.m = 0.25 # kg
-            self.l = 0.1 # m
+            self.m = m #0.25 # kg
+            print("mass of pendulum: ", m)
+            self.l = l #0.1 # m
+            print("length of pendulum: ", l)
+            self.g = 9.8
+            dt = 0.05 # timestep (sec?)
             self.oomls = tf.constant([[(1/ (self.m*(self.l**2)) )]], name="torque_scaling")
             # currently accel bounds are constant but will be funcs of theta
-            self.accel_UB = lambda theta: tf.constant([[50.]])
-            self.accel_LB = lambda theta: tf.constant([[-50.]])
-            self.deltat = tf.constant(0.05*np.eye(1), dtype='float32', name="deltat")
+            self.max_grav_torque = self.g/self.l
+            self.deltat = tf.constant(dt*np.eye(1), dtype='float32', name="deltat")
+
+    def accel_UB(self, theta):
+        with tf.name_scope("accel_UB"):
+            return tf.constant([[self.max_grav_torque]]) # prev: 50
+
+    def accel_LB(self, theta): 
+        with tf.name_scope("accel_LB"):
+            return tf.constant([[-self.max_grav_torque]])
 
     def run(self, num, action, theta, theta_dot): 
         with tf.name_scope("Dynamics_"+str(num)):
             theta_hat = tf.add(theta, self.deltat@theta_dot, name="theta_"+str(num))
-            theta_dot_UB = tf.add(
+            with tf.name_scope("thdotUB"):
+                theta_dot_UB = tf.add(
                             theta_dot,
                             self.deltat@(self.oomls@action + self.accel_UB(theta)),
                             name="theta_dot_UB_"+str(num)
                         )
-            theta_dot_LB = tf.add(
+            with tf.name_scope("thdotLB"):
+                theta_dot_LB = tf.add(
                             theta_dot,
                             self.deltat@(self.oomls@action + self.accel_LB(theta)),
                             name="theta_dot_LB_"+str(num)
                         )
         return theta_hat, theta_dot_LB, theta_dot_UB
 
+# piecewise dynamics block for pendulum
+class PiecewiseDynamics():
+    def __init__(self, m, l):
+        self.m = m
+        print("mass of pendulum: ", m)
+        self.l = l
+        print("length of pendulum: ", l)
+        self.g = 9.8
+        dt = 0.05 # timestep
+        with tf.name_scope("dynamics_constants"):
+            self.deltat = tf.constant(dt*np.eye(1), dtype='float32', name="deltat")
+            self.oomls = tf.constant([[(1/ (self.m*(self.l**2)) )]], name="torque_scaling")
+            # build_sin_approx(fun, c1, convex_reg, concave_reg)
+            c1 = self.g/self.l
+            print("c1: ", c1)
+            fun = lambda x: c1*np.sin(x)
+            with tf.name_scope("sin_approx"):
+                LB, UB = build_sin_approx(fun, c1, [-np.pi, 0.0], [0.0, np.pi])
+            self.accel_UB = UB
+            self.accel_LB = LB
+    def run(self, num, action, theta, theta_dot):
+        with tf.name_scope("Dynamics_"+str(num)):
+            theta_hat = tf.add(theta, self.deltat@theta_dot, name="theta_"+str(num))
+            with tf.name_scope("thdotUB"):
+                theta_dot_UB = tf.add(
+                                theta_dot,
+                                self.deltat@(self.oomls@action + self.accel_UB.tf_apply(theta)),
+                                name="theta_dot_UB_"+str(num)
+                            )
+            # NOTE: there is elementwise multiplication in this bound: in the line() class and in the negation for creating min from tf.max
+            with tf.name_scope("thdotLB"):
+                theta_dot_LB = tf.add(
+                                theta_dot,
+                                self.deltat@(self.oomls@action + self.accel_LB.tf_apply(theta)),
+                                name="theta_dot_LB_"+str(num)
+                            )
+        return theta_hat, theta_dot_LB, theta_dot_UB
+            
+
+
 class Controller():
 
-    def __init__(self):
+    def __init__(self, sess):
         with tf.name_scope('Controller'):
-            self.W0 = tf.Variable(np.random.rand(4,2)*2-1, dtype='float32')
-            self.b0 = tf.Variable(np.random.rand(4,1)*2-1, dtype='float32')
-            self.W1 = tf.constant(np.random.rand(4,4)*2-1, dtype='float32')
-            self.b1 = tf.constant(np.random.rand(4,1)*2-1, dtype='float32')
-            self.Wf = tf.constant(np.random.rand(1,4)*2-1, dtype='float32')
-            self.bf = tf.constant(np.random.rand(1,1)*2-1, dtype='float32')
+            self.W0 = tf.Variable(np.random.rand(4,2)*.2-.1, dtype='float32')
+            self.b0 = tf.Variable(np.random.rand(4,1)*.2-.1, dtype='float32')
+            self.W1 = tf.constant(np.random.rand(4,4)*.2-.1, dtype='float32')
+            self.b1 = tf.constant(np.random.rand(4,1)*.2-.1, dtype='float32')
+            self.Wf = tf.constant(np.random.rand(1,4)*.2-.1, dtype='float32')
+            self.bf = tf.constant(np.random.rand(1,1)*.2-.1, dtype='float32')
+            sess.run([tf.global_variables_initializer()])
     def run(self, state0):
         state = tf.nn.relu(self.W0@state0 + self.b0)
         state = tf.nn.relu(self.W1@state + self.b1)
@@ -226,7 +282,7 @@ def build_model(nsteps,
     sess = tf.Session()
     if policy_file is None:
         print("Using random controller")
-        controller = Controller() # random controller
+        controller = Controller(sess) # random controller
         controller_activations = 2
     else:
         print("Using controller from rllab")
@@ -236,7 +292,140 @@ def build_model(nsteps,
     # policy works well up to here
 
     # construct dynamics
-    dynamics = Dynamics()
+    """
+    mass in kg (original: 0.25)
+    length in meters (original: 0.1)
+    """
+    dynamics = Dynamics(m=0.25, l=0.1)
+
+    # put controller and dynamics together
+    thetas, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs = build_multi_step_network(theta_0, theta_dot_0, controller, dynamics, nsteps, controller_activations)
+
+    # condense output to only final theta
+    with tf.name_scope("condense_outputs"):
+        theta_out = tf.constant([[0.0]])@theta_dot + thetas[-1]
+
+    #################### testing and writing to file from here on out ##########
+    test_and_write(sess, 
+                theta_0, 
+                theta_dot_0, 
+                nsteps, 
+                thetas, 
+                theta_dot, 
+                theta_dot_hats, 
+                theta_dot_LBs, 
+                theta_dot_UBs, 
+                network_dir, 
+                f_id, 
+                output_pb, 
+                output_nnet, 
+                verbose,
+                activation_fn, 
+                activation_type,
+                tensorboard_log_dir)
+    return "success"
+
+
+def build_heavier_model(nsteps, 
+                output_pb, 
+                output_nnet, 
+                tensorboard_log_dir, 
+                network_dir, 
+                f_id,
+                policy_file=None, 
+                activation_type="Relu",
+                activation_fn=tf.nn.relu,
+                policy_output_node_name="", 
+                controller_activations=None,  
+                verbose=True):
+
+    with tf.variable_scope("initial_values"):
+        theta_0 = tf.placeholder(tf.float32, shape=(1,1), name="theta_0")
+        theta_dot_0 = tf.placeholder(tf.float32, shape=(1,1), name="theta_dot_0")
+
+    # construct controller
+    sess = tf.Session()
+    if policy_file is None:
+        print("Using random controller")
+        controller = Controller(sess) # random controller
+        controller_activations = 2
+    else:
+        print("Using controller from rllab")
+        controller = RllabController(policy_file, sess)
+        controller_activations = 2 ## TODO: CHECK THAT THIS IS CORRECT
+
+    # policy works well up to here
+
+    # construct dynamics
+    """
+    mass in kg (original: 0.25)
+    length in meters (original: 0.1)
+    """
+    dynamics = Dynamics(m=0.3, l=0.1)
+
+    # put controller and dynamics together
+    thetas, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs = build_multi_step_network(theta_0, theta_dot_0, controller, dynamics, nsteps, controller_activations)
+
+    # condense output to only final theta
+    with tf.name_scope("condense_outputs"):
+        theta_out = tf.constant([[0.0]])@theta_dot + thetas[-1]
+
+    #################### testing and writing to file from here on out ##########
+    test_and_write(sess, 
+                theta_0, 
+                theta_dot_0, 
+                nsteps, 
+                thetas, 
+                theta_dot, 
+                theta_dot_hats, 
+                theta_dot_LBs, 
+                theta_dot_UBs, 
+                network_dir, 
+                f_id, 
+                output_pb, 
+                output_nnet, 
+                verbose,
+                activation_fn, 
+                activation_type,
+                tensorboard_log_dir)
+    return "success"
+
+def build_heavier_model_piecewise(nsteps, 
+                output_pb, 
+                output_nnet, 
+                tensorboard_log_dir, 
+                network_dir, 
+                f_id,
+                policy_file=None, 
+                activation_type="Relu",
+                activation_fn=tf.nn.relu,
+                policy_output_node_name="", 
+                controller_activations=None,  
+                verbose=True):
+
+    with tf.variable_scope("initial_values"):
+        theta_0 = tf.placeholder(tf.float32, shape=(1,1), name="theta_0")
+        theta_dot_0 = tf.placeholder(tf.float32, shape=(1,1), name="theta_dot_0")
+
+    # construct controller
+    sess = tf.Session()
+    if policy_file is None:
+        print("Using random controller")
+        controller = Controller(sess) # random controller
+        controller_activations = 2
+    else:
+        print("Using controller from rllab")
+        controller = RllabController(policy_file, sess)
+        controller_activations = 2 ## TODO: CHECK THAT THIS IS CORRECT
+
+    # policy works well up to here
+
+    # construct dynamics
+    """
+    mass in kg (original: 0.25)
+    length in meters (original: 0.1)
+    """
+    dynamics = PiecewiseDynamics(m=0.3, l=0.1)
 
     # put controller and dynamics together
     thetas, theta_dot, theta_dot_hats, theta_dot_LBs, theta_dot_UBs = build_multi_step_network(theta_0, theta_dot_0, controller, dynamics, nsteps, controller_activations)
@@ -330,7 +519,7 @@ def test_and_write(sess,
 
     # write to tensorboard
     write_to_tensorboard(tensorboard_log_dir, sess)
-    # next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/new_approach_3605
+    # next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/new_approach_3605 --host=localhost --port=1234
 
 
 def write_pb(sess, output_ops, feed_dict, network_dir, f_id, verbose):
