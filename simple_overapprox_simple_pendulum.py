@@ -57,10 +57,26 @@ class bound():
         self.combi_op_tf = combis[0]
         self.meta_combi_op_tf = combis[1]
 
-        # eval bound, in tf
+    # eval bound, in tf
+    def tf_apply_bound(self, x):
         with tf.name_scope("bound"):
-            self.tf_eval_bound = lambda x: self.meta_combi_op_tf(
-                self.combi_op_tf(line1.tfeq(x), line2.tfeq(x)), 
+            a = self.meta_combi_op_tf is tfReLuMax
+            b = self.meta_combi_op_tf is tf.maximum
+            c = self.meta_combi_const == 0.0
+            d = self.meta_combi_op_tf is tfReLuMin
+            e = self.meta_combi_op_tf is tf.minimum
+            f = self.meta_combi_op_tf is min_from_max
+            if ((a or b) and c): # max of a value and 0 is just a relu
+                return tf.nn.relu(
+                    self.combi_op_tf(self.line1.tfeq(x), self.line2.tfeq(x))
+                    )
+            elif ((d or e or f) and c): # min of a value and 0 is -relu(-x)
+                return -1*tf.nn.relu(
+                    -1*self.combi_op_tf(self.line1.tfeq(x), self.line2.tfeq(x))
+                    )
+            else:
+                return self.meta_combi_op_tf(
+                self.combi_op_tf(self.line1.tfeq(x), self.line2.tfeq(x)), 
                 self.meta_combi_const_tf)
 
 """
@@ -74,11 +90,12 @@ class additive_bound():
         for i in range(1, len(self.pieces)):
             out = out + self.pieces[i].eval_bound(x)
         return out
-    def tf_eval(self, x):
-        out = self.pieces[0].tf_eval_bound(x)
-        for i in range(1, len(self.pieces)):
-            out = out + self.pieces[i].tf_eval_bound(x)
-        return out
+    def tf_apply(self, x):
+        with tf.name_scope("additive_bound"):
+            out = self.pieces[0].tf_apply_bound(x)
+            for i in range(1, len(self.pieces)):
+                out = out + self.pieces[i].tf_apply_bound(x)
+            return out
 
 # pass in a function
 def build_sin_approx(fun, c1, convex_reg, concave_reg):
@@ -139,7 +156,7 @@ def build_sin_approx(fun, c1, convex_reg, concave_reg):
     ccv_LB = bound(ccv_LB_lines[0], ccv_LB_lines[1], np.minimum, np.maximum, 0.0)
     ccv_UB_lines = construct_max_lip_bound(fun, concave_reg, flag="UB", max_lip=max_lip)
     ccv_UB = bound(ccv_UB_lines[0], ccv_UB_lines[1], np.minimum, np.maximum, 0.0)
-    #
+    # 
     # can do the offset at the very end (maybe the scaling too? oh well)
     LB = additive_bound([cvx_LB, ccv_LB])
     UB = additive_bound([cvx_UB, ccv_UB])
@@ -147,7 +164,7 @@ def build_sin_approx(fun, c1, convex_reg, concave_reg):
 
 def testing():
     xdat =  np.linspace(-np.pi, np.pi, 200)
-    c1=2.0
+    c1=5.0
     c2=-5.0
     fun = lambda x: c1*np.sin(x)
     sindat = fun(xdat)
@@ -200,9 +217,9 @@ def testing():
 
     # meta_combi_op(combi_op(line1.eq(x), line2.eq(x)), meta_combi_const)
     with tf.name_scope("LB"):
-        tfLB = LB.tf_eval(theta) + tf.constant([c2])
+        tfLB = LB.tf_apply(theta) + tf.constant([c2])
     with tf.name_scope("UB"):
-        tfUB = UB.tf_eval(theta) + tf.constant([c2])
+        tfUB = UB.tf_apply(theta) + tf.constant([c2])
 
     # test the graph so far
     sess = tf.Session()
