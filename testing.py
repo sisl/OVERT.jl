@@ -99,14 +99,19 @@ def more_complex3(p):
 	F = x+y
 	return [F]
 
-# write a test for multiple inputs
-def most_complex4():
-	pass
+# write a test for Identity
+def identity(p):
+	W1 = tf.constant(np.random.rand(3,2), dtype='float32')
+	W2 = tf.constant(np.random.rand(3,2), dtype='float32')
+	q1 = tf.nn.relu(W1@p)
+	q2 = tf.identity(W2@p)
+	F = q1 + tf.nn.relu(q2)
+	return [F]
 
 p = tf.placeholder(shape=(2,1), dtype='float32')
 pval = np.array([[-2.0],[2.0]])
 
-for fn in [two_layer, split, mul_split, concat, skip, more_complex1, more_complex2, more_complex3]:
+for fn in [two_layer, split, mul_split, concat, skip, more_complex1, more_complex2, more_complex3, identity]:
 
 	q_list = fn(p) #skip(p) #two_layer(p)
 	activation = tf.nn.relu #tf.identity
@@ -122,6 +127,8 @@ for fn in [two_layer, split, mul_split, concat, skip, more_complex1, more_comple
 
 	# squish and then eval
 	W,b,inputs = parsing.parse_network([q.op for q in q_list], [], [], [], [], 'Relu', sess)
+	if fn is identity:
+		import pdb; pdb.set_trace()
 	W.reverse()
 	b.reverse()
 	net = parsing.create_tf_network(W,b,inputs=p, activation=activation, act_type=act_type, output_activated=oa)
