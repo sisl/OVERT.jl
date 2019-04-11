@@ -55,7 +55,9 @@ print("theta_dot_hats: ", theta_dot_hats_v)
 print("theta_dot_LBs: ", theta_dot_LBs_v)
 print("theta_dot_UBs: ", theta_dot_UBs_v)
 
-output_op_names = collect_output_ops([thetas, theta_dot_hats, theta_dot_LBs, theta_dot_UBs])
+import pdb; pdb.set_trace()
+output_ops = collect_output_ops([thetas, theta_dot_hats, theta_dot_LBs, theta_dot_UBs])
+output_op_names = [op.name for op in output_ops]
 print("output_ops: ", output_op_names)
 
 # parse and eval and turn into .nnet and set up inequalities in NV.jl
