@@ -5,6 +5,7 @@ import numpy as np
 
 # neg -> matmultiply by -1
 # sub -> matmultiply by -1 and add
+# DAMN I have to implement either Neg or elementwise multiply
 
 # turn max and min into relus
 def ReLu(x):
@@ -31,9 +32,10 @@ def relu_sigmoid(x, name=""):
 	return tfReluMin(tf.nn.relu(0.25*x + 0.5),1.0, name=name)
 
 def get_identity(x):
-	if x.shape[0].value > 1:
+	# shape of None indicates that this is the batch dim
+	if (x.shape[0].value is None) or (x.shape[0].value > 1):
 		longdim = 0
-	elif x.shape[1].value >1:
+	elif (x.shape[1].value is None) or (x.shape[1].value >1):
 		longdim = 1
 	elif x.shape[0].value == 1 and x.shape[1].value == 1:
 		longdim = 1
@@ -41,21 +43,27 @@ def get_identity(x):
 		raise NotImplementedError
 	return longdim, np.eye(x.shape[longdim].value)
 
-def negate_tensor(x):
+# def negate_tensor_matmul(x):
 	"""
 	Negate tensor with matmul times negative identity
 	"""
 	# if type(x) in [int, float]:
 	# 	return -1*x
-	longdim, eye = get_identity(x)
-	neye = tf.constant(-1*eye, dtype='float32')
-	if longdim == 0:
-		negx = neye@x
-	elif longdim == 1:
-		negx = x@neye
-	else:
-		raise NotImplementedError
-	return negx
+	# longdim, eye = get_identity(x)
+	# neye = tf.constant(-1*eye, dtype='float32')
+	# if longdim == 0:
+	# 	negx = neye@x
+	# elif longdim == 1:
+	# 	negx = x@neye
+	# else:
+	# 	raise NotImplementedError
+	#return negx
+
+def negate_tensor(x):
+	"""
+	Negate tensor with elementwise mul
+	"""
+	return tf.constant([[-1.0]])*x
 
 def min_from_max(x, y, name=""):
 	"""
