@@ -191,7 +191,7 @@ def stepEnv(env, policy, nsteps, vals):
     print("end sim.")
     return obsList # thetas and thetadots
 
-def check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds):
+def check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds, nsteps):
     # check if SAT example is REAL or due to OVERAPPROX
     # gonna wanna import mypendulumenv
     # pull the controller out of the composed graph
@@ -202,21 +202,61 @@ def check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds):
     env = gym.envs.make(envStr) #  record_video=True (how to get vidoe to record??)
     sess = load_network(frozen_graph)
     policy = Lightweight_policy(sess)
-    obsList = stepEnv(env, policy, 2, vals)
+    obsList = stepEnv(env, policy, nsteps, vals)
     # compare values
     # compare theta values
-    print("theta1 from sim: ", obsList[0][0]*180/np.pi) # theta1
-    print("theta1 from SAT: ", vals[4]*180/np.pi)
-    print("theta2 from sim: ", obsList[1][0]*180/np.pi) # theta1
-    print("theta2 from SAT: ", vals[5]*180/np.pi)
+
+    print("theta_0: ", vals[0]*180/np.pi)
+    print("theta_dot_0: ", vals[1]*180/np.pi)
+
+    sov = nsteps + 2 # start output var
+    inbounds = True
+    for i in range(nsteps):
+        tkey = "theta_"+str(i+1)
+        a = obsList[i][0] <= bounds.outputs_max[tkey]
+        b = obsList[i][0] >= bounds.outputs_min[tkey]
+        print(tkey, " min: ", bounds.outputs_min[tkey]*180/np.pi)
+        print(tkey, " max: ", bounds.outputs_max[tkey]*180/np.pi)
+        print(tkey," from sim: ", obsList[i][0]*180/np.pi) # theta1
+        print(tkey," from SAT: ", vals[sov+i]*180/np.pi)
+        if not (a and b):
+            print(tkey, " failure")
+        #
+        tdkey = "theta_dot_"+str(i+1)
+        c = obsList[i][1] <= bounds.outputs_max[tdkey]
+        d = obsList[i][1] >= bounds.outputs_min[tdkey]
+        print(tdkey, " min: ", bounds.outputs_min[tdkey]*180/np.pi)
+        print(tdkey, " max: ", bounds.outputs_max[tdkey]*180/np.pi)
+        print(tdkey, " from sim: ", obsList[i][1]*180/np.pi) # thetadot1
+        print(tdkey, " from SAT: ", vals[sov+nsteps+i]*180/np.pi)
+        if not (c and d):
+            print(tdkey, " failure")
+        #
+        inbounds = inbounds and a and b and c and d
+    # print("theta2 from sim: ", obsList[1][0]*180/np.pi) # theta1
+    # print("theta2 from SAT: ", vals[5]*180/np.pi)
+    # print("thetadot2 from sim: ", obsList[1][1]*180/np.pi) # thetadot1
+    # print("thetadot2 from SAT: ", vals[7]*180/np.pi)
     
-    if "theta_2" in bounds.outputs_max:
-        strkey = "theta_2"
-    elif "thetas" in bounds.outputs_max:
-        strkey = "thetas"
-    a = obsList[1][0][0] <= bounds.outputs_max[strkey]
-    b = obsList[1][0][0] >= bounds.outputs_min[strkey]
-    if a and b:
+    # BOOKMARK
+
+    # if "theta_2" in bounds.outputs_max:
+    #     strkey = "theta_2"
+    # elif "thetas" in bounds.outputs_max:
+    #     strkey = "thetas"
+    
+    # keys = ["theta_1", "theta_2", "theta_dot_1", "theta_dot_2"]
+    # obs = [obsList[0][0], obsList[1][0], obsList[0][1], obsList[1][1]]
+    # for i in range(len(keys)):
+    #     key = keys[i]
+    #     print("key: ", key)
+    #     a = obs[i] <= bounds.outputs_max[key]
+    #     print("max: ", bounds.outputs_max[key]*180/np.pi)
+    #     print("val: ", obs[i]*180/np.pi)
+    #     b = obs[i] >= bounds.outputs_min[key]
+    #     print("min: ", bounds.outputs_min[key]*180/np.pi)
+    #     inbounds = inbounds and a and b
+    if inbounds:
         return "OVERAPPROX"
     else:
         return "REAL"
