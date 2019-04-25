@@ -227,35 +227,16 @@ def check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds, nsteps):
         d = obsList[i][1] >= bounds.outputs_min[tdkey]
         print(tdkey, " min: ", bounds.outputs_min[tdkey]*180/np.pi)
         print(tdkey, " max: ", bounds.outputs_max[tdkey]*180/np.pi)
+        print(tdkey, "_LB: ", vals[sov+2*nsteps+i]*180/np.pi)
+        print(tdkey, "_UB: ", vals[sov+3*nsteps+i]*180/np.pi)
+        # recall: LB and UB are calculated from SAT example, not from sim trajectory. and may disagree after 1st timestep
         print(tdkey, " from sim: ", obsList[i][1]*180/np.pi) # thetadot1
         print(tdkey, " from SAT: ", vals[sov+nsteps+i]*180/np.pi)
         if not (c and d):
             print(tdkey, " failure")
         #
         inbounds = inbounds and a and b and c and d
-    # print("theta2 from sim: ", obsList[1][0]*180/np.pi) # theta1
-    # print("theta2 from SAT: ", vals[5]*180/np.pi)
-    # print("thetadot2 from sim: ", obsList[1][1]*180/np.pi) # thetadot1
-    # print("thetadot2 from SAT: ", vals[7]*180/np.pi)
-    
-    # BOOKMARK
 
-    # if "theta_2" in bounds.outputs_max:
-    #     strkey = "theta_2"
-    # elif "thetas" in bounds.outputs_max:
-    #     strkey = "thetas"
-    
-    # keys = ["theta_1", "theta_2", "theta_dot_1", "theta_dot_2"]
-    # obs = [obsList[0][0], obsList[1][0], obsList[0][1], obsList[1][1]]
-    # for i in range(len(keys)):
-    #     key = keys[i]
-    #     print("key: ", key)
-    #     a = obs[i] <= bounds.outputs_max[key]
-    #     print("max: ", bounds.outputs_max[key]*180/np.pi)
-    #     print("val: ", obs[i]*180/np.pi)
-    #     b = obs[i] >= bounds.outputs_min[key]
-    #     print("min: ", bounds.outputs_min[key]*180/np.pi)
-    #     inbounds = inbounds and a and b
     if inbounds:
         return "OVERAPPROX"
     else:

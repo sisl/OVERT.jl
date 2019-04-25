@@ -390,7 +390,7 @@ def test_and_write(sess,
     # outputting a frozen .pb file ~ ~ ~
     # if parsing with maraboupy parser, can only have a single output node
     if output_pb:
-        write_pb(sess, output_ops, feed_dict, network_dir, f_id, verbose)
+        write_pb(sess, output_ops, network_dir, f_id, verbose, feed_dict=feed_dict)
     write_to_tensorboard(tensorboard_log_dir, sess)
     # if want to output a .nnet, must convert to being ff
     if output_nnet:
@@ -401,27 +401,33 @@ def test_and_write(sess,
     # next run at command line, e.g.:  tensorboard --logdir=/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/new_approach_3605 --host=localhost --port=1234
 
 
-def write_pb(sess, output_ops, feed_dict, network_dir, f_id, verbose):
-    with tf.name_scope("Output"):
-        output = concat_outputs(output_ops)
+def write_pb_core(sess, output_op_list, network_dir, f_id, verbose):
     # convert variables to constants
     output_graph_def = graph_util.convert_variables_to_constants(
     sess, # sess used to retrieve weights
     sess.graph.as_graph_def(), # graph def used to retrieve nodes
-    [output.op.name] # output node names used to select useful nodes
+    output_op_list # output node names used to select useful nodes
     )
     if verbose:
         display_graph_def_info(output_graph_def)
-    # write to file!
+     # write to file!
     output_graph_name = os.path.join(network_dir, "graph_def_"+f_id+".pb")
     with tf.gfile.GFile(output_graph_name, "w") as f:
         f.write(output_graph_def.SerializeToString())
-    # collect output op names for ops pre-condensation
-    output_op_names = [op.name for op in output_ops]
+
+def write_pb(sess, output_ops, network_dir, f_id, verbose, feed_dict={}):
+    with tf.name_scope("Output"):
+        output = concat_outputs(output_ops)
+    
+    write_pb_core(sess, [output.op.name], network_dir, f_id, verbose)
+   
     # collect input list to write to metadata
-    input_list = [k[:-2] for k in feed_dict.keys()]
-    # write metadata to file (used in loading and verifying controller)
-    write_metadata(input_list, output_op_names, output.op.name, network_dir, f_id)
+    if len(feed_dict)>0:
+        # collect output op names for ops pre-condensation
+        output_op_names = [op.name for op in output_ops]
+        input_list = [k[:-2] for k in feed_dict.keys()]
+        # write metadata to file (used in loading and verifying controller)
+        write_metadata(input_list, output_op_names, output.op.name, network_dir, f_id)
 
 
 def write_nnet(sess, output_ops, feed_dict, activation_fn, activation_type, thetas_v, theta_dot_hats_v, theta_dot_LBs_v, theta_dot_UBs_v, network_dir, nsteps, f_id, verbose):

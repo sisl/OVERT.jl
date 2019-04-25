@@ -12,9 +12,9 @@ true_stdout = sys.stdout
 
 # graph_def_gentler_random_controller_2_steps_4856.pb
 run_number = str(int(np.ceil(np.random.rand()*1000)))
-fnumber = "1674"
+fnumber = "4674"
 fname = "graph_def_" #real_controller_2_steps_"
-nsteps = 2 # only used in lookin at specific equations
+nsteps = 2 # only used in lookin at specific equations and overapprox checking
 fprefix = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files"
 frozen_graph = os.path.join(fprefix, fname+fnumber+".pb")
 meta_data = os.path.join(fprefix, "meta_data_"+fnumber+".txt")
@@ -40,14 +40,15 @@ sys.stdout = open(logname, 'w')
 inputVars = network.inputVars
 print("inputVars:", inputVars)
 outputVars = network.outputVars
+print("outputVars: ", outputVars)
 outputVarList = list(np.array(outputVars).flatten())
 
-
 #d1, d2 = map_inputs(network, inputs) # for use with controllers parsed using parsing.py into ff networks
+
 d1, d2 = map_inputs_fromVarMap(varMapOpstoNames(network.varMap), inputs) # for use with other networks that have not been condensed
 
 # set bounds on outputs
-bounds = set_bounds(network, d1, d2, bounds_2, network_dir, run_number)
+bounds = set_bounds(network, d1, d2, bounds_2_5, network_dir, run_number)
 
 # make sure all lower bounds are less than all upper bounds
 check_bounds(network.upperBounds, network.lowerBounds)
@@ -87,11 +88,14 @@ def solve_with_marabou(network, marabou_log_dir):
 solve=True
 if solve:
     sys.stdout = true_stdout
+    print("solving...")
     vals, stats, exit_code = solve_with_marabou(network, marabou_log_dir)
     sys.stdout = open(logname, 'a')
+    print("exit code: ", exit_code)
     if exit_code == 1: # SAT
+        print(vals)
         envStr = 'MyPendulum-v0'
-        SATus = check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds)
+        SATus = check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds, nsteps)
         print("SATus:", SATus)
     sys.stdout = true_stdout
 """

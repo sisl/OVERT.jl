@@ -72,7 +72,7 @@ def set_bounds(network, input_long2short, input_long2var, bounds_fun, fdir, run_
         else:
             print(il2s[li], " not in bounds object max")
 
-    # set output bounds bc they'll always be in the same order
+    # set output bounds -- they'll always be in the same order
     # first three are thetas, 3 tdh, 3 tdlb, 3 tdub
     # 0,1,2    3,4,5    6,7,8   9,10,11
     # i = 0,1,2
@@ -82,28 +82,26 @@ def set_bounds(network, input_long2short, input_long2var, bounds_fun, fdir, run_
     print("original output vars: ", output_vars)
 
     nsteps = int(len(output_vars) / 4.0) # e.g. 3
+    print("nsteps: ", nsteps)
+    # for all complement_output_sets that we add, we want to OR all of them
+    complement_output_sets = []
     for i in range(nsteps): # only bound thetas
-        # set hyperrectangle bounds
-        # bounds we care about
-        if "thetas" in bounds.outputs_min:
-            LB = bounds.outputs_min["thetas"]
-            UB = bounds.outputs_max["thetas"]
-            Y = addComplementOutputSet(network, 
-                LB=LB, 
-                UB=UB,
-                x=output_vars[i]
-                )
-        elif "theta_"+str(i+1) in bounds.outputs_min:
-            print("Applying complement output bound for ", "theta_"+str(i+1))
-            LB = bounds.outputs_min["theta_"+str(i+1)]
-            UB = bounds.outputs_max["theta_"+str(i+1)]
-            Y = addComplementOutputSet(network, 
-                LB=LB, 
-                UB=UB,
-                x=output_vars[i]
-                )
-        # bounds we care about:
-        # set inequality bounds: vars_i*coeffs_i <= scalar
+        # set hyperrectangle output bounds
+        # theta output bounds
+        theta_i = "theta_"+str(i+1)
+        if theta_i in bounds.outputs_min:
+            print("Applying complement output bound for ", theta_i)
+            LB = bounds.outputs_min[theta_i]
+            UB = bounds.outputs_max[theta_i]
+            complement_output_sets.append((LB, UB, output_vars[i]))
+        # theta dot hat output bounds
+        theta_dot_i = "theta_dot_"+str(i+1)
+        if theta_dot_i in bounds.outputs_min:
+            print("Applying complement output bound for ", theta_dot_i )
+            LB = bounds.outputs_min[theta_dot_i]
+            UB = bounds.outputs_max[theta_dot_i]
+            complement_output_sets.append((LB, UB, output_vars[i+nsteps]))
+        # set inequality bounds as a constraint, not a check: vars_i*coeffs_i <= scalar
         # LB - tdh <=0   -->  LB <= tdh
         #import pdb; pdb.set_trace()
         addInequality(network, [output_vars[i+2*nsteps], output_vars[i+nsteps]], [1.0, -1.0], 0.0) 
@@ -111,7 +109,11 @@ def set_bounds(network, input_long2short, input_long2var, bounds_fun, fdir, run_
         addInequality(network, [output_vars[i+3*nsteps], output_vars[i+nsteps]], [-1.0, 1.0], 0.0) 
         # result: LB <= tdh <= UB
 
-    network.outputVars = output_vars[:nsteps].reshape(nsteps,1)
+    # actually take all planned complement output set bounds and implement them
+    # with 1 big "OR" statement
+    success = addComplementOutputSets(network, complement_output_sets)
+
+    #network.outputVars = output_vars[:nsteps].reshape(nsteps,1)
     # outputs are thetas only
 
     return bounds

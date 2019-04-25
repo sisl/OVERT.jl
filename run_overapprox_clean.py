@@ -20,7 +20,7 @@ output_nnet = False
 f_id = str(int(np.round(np.random.rand()*5000)))
 tensorboard_log_dir = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/real_controller_correct_accel_bound_"+f_id
 network_dir = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files"
-nsteps = 2
+nsteps = 5
 
 
 build_model(nsteps, 

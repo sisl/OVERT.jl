@@ -1,17 +1,17 @@
 import colored_traceback.always
-from qj_global import qj
 
 from sandbox.rocky.tf.algos.ppo import PPO
 from sandbox.rocky.tf.algos.vpg import VPG
 
-from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
+from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline, LinearFeatureBaselineTranspose
 from rllab.envs.gym_env import GymEnv
 from sandbox.rocky.tf.envs.base import TfEnv
 from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import run_experiment_lite
-from sandbox.rocky.tf.policies.gaussian_mlp_policy import SimpleGaussianMLPPolicy
+from sandbox.rocky.tf.policies.gaussian_mlp_policy import SimpleGaussianMLPPolicy, GaussianMLPPolicy, GaussianMLP2Policy
 import tensorflow as tf
-from OverApprox.relu_approximations import relu_tanh
+tf.enable_eager_execution()
+from OverApprox.relu_approximations import relu_tanh, linearized_tanh
 
 
 #########  A SCRIPT FOR TRAINING AN EXPERT WITH TANH ACTIVATION
@@ -22,12 +22,13 @@ def run_task(*_):
     # action space may need to use a CategoricalMLPPolicy (see the trpo_gym_cartpole.py example)
     env = TfEnv(GymEnv("MyPendulum-v0", record_video=False))
     #
-    policy = SimpleGaussianMLPPolicy(
+    policy = GaussianMLP2Policy(
         name="policy",
         env_spec=env.spec,
         # The neural network policy should have two hidden layers, each with 32 hidden units.
         hidden_sizes= (4,4), #(128, 128, 128, 128, 128, 128),
-        hidden_nonlinearity=tf.nn.relu, # relu_tanh
+        hidden_nonlinearity=tf.nn.relu, #linearized_tanh
+        # tf.nn.relu, # relu_tanh
         #output_nonlinearity=tf.nn.sigmoid
         # idea: define new tf nonlinearity that is a cap, made up of two relus
     )
@@ -40,9 +41,9 @@ def run_task(*_):
         baseline=baseline,
         batch_size=4000,
         max_path_length=env.horizon,
-        n_itr=200,
+        n_itr=1000,
         discount=0.99,
-        step_size=0.01, # 0.01
+        step_size=0.0075, # 0.01
         # Uncomment both lines (this and the plot parameter below) to enable plotting
         # plot=True,
     )
@@ -55,9 +56,9 @@ run_experiment_lite(
     n_parallel=5,
     # Only keep the snapshot parameters for the last iteration
     snapshot_mode="last",
-    exp_name="relu_small_network_vpg_capped_action_trying_simpler_dense_layer",
+    exp_name="relu_small_network_ppo_capped_action_simpler_dense_layer_xW_learn_std_smaller_learning_rate",
     # Specifies the seed for the experiment. If this is not provided, a random seed
     # will be used
-    seed=1,
+    seed=0,
     # plot=True,
 )

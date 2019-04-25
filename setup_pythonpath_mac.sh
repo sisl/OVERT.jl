@@ -12,3 +12,5 @@ export PYTHONPATH=$basepath/Dropbox/AAHAA/src/gym:$PYTHONPATH
 export PYTHONPATH=$basepath/Dropbox/AAHAA/src/RNNs4Marabou:$PYTHONPATH
 export PYTHONPATH=$basepath/Dropbox/AAHAA/src/OverApprox:$PYTHONPATH
 export PYTHONPATH=$basepath/Dropbox/AAHAA/src/Marabou:$PYTHONPATH
+export PYTHONPATH=$basepath/Dropbox/AAHAA/src/Marabou/maraboupy:$PYTHONPATH
+export PYTHONPATH=$basepath/Dropbox/AAHAA/src/NNet:$PYTHONPATH
