@@ -42,7 +42,7 @@ for i in range(len(W)):
 for i in range(len(b)):
     f.write("b"+str(i)+"\n")
     for row in range(b[i].shape[0]):
-        f.write(str(b[i][row]) + ", ")
+        f.write(str(b[i][row, 0]) + ", ")
         f.write("\n")
 
 f.write("Info: \n")

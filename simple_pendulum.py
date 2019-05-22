@@ -42,12 +42,12 @@ def create_dynamics_block(num, var_dict):
 		fun = lambda x: c1*np.sin(x)
 
 		# build_sin_approx(fun, c1, convex_reg, concave_reg)
-		LB, UB = build_sin_approx(fun, c1, [-np.pi, 0], [0, np.pi])
+		LB, UB = build_sin_approx(fun, c1, [-np.pi, 0.], [0., np.pi])
 
 		with tf.name_scope("LB"):
-		    theta_dd_LB = LB[0].tf_eval_bound(theta_t_LB) + LB[1].tf_eval_bound(theta_t_LB) + c2_LB
+		    theta_dd_LB = LB[0].tf_apply_bound(theta_t_LB) + LB[1].tf_apply_bound(theta_t_LB) + c2_LB
 		with tf.name_scope("UB"):
-		    theta_dd_UB = UB[0].tf_eval_bound(theta_t_UB) + UB[1].tf_eval_bound(theta_t_UB) + c2_UB
+		    theta_dd_UB = UB[0].tf_apply_bound(theta_t_UB) + UB[1].tf_apply_bound(theta_t_UB) + c2_UB
 
 		# Euler integration
 		deltat = tf.constant([0.05], name="delta_t")

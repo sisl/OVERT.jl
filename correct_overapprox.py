@@ -261,6 +261,11 @@ def concat_outputs(op_list):
         z[i] = 0.
     return out
 
+def record_policy(directory, fid, policy_file):
+    filename = os.path.join(directory, "policy_file_data" + fid + ".txt")
+    with open(filename,'w') as file:
+        file.write(policy_file + "\n \n")
+
 def build_model(nsteps, 
                 output_pb, 
                 output_nnet, 
@@ -291,8 +296,7 @@ def build_model(nsteps,
         print("Using controller from rllab")
         controller = RllabController(policy_file, sess)
         controller_activations = 2 ## TODO: CHECK THAT THIS IS CORRECT
-
-    # policy works well up to here
+        record_policy(network_dir, f_id, policy_file)
 
     # construct dynamics
     """

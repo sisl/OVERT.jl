@@ -9,8 +9,12 @@ include("utils.jl")
 #(-I)   (-LB)
 
 # read network and setup inputs and outputs
-my_nnet = read_nnet("/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files/correct_overrapprox_const_dyn_2867.nnet")
-# my_nnet = read_nnet("nnet_files/correct_overrapprox_const_dyn_4948.nnet")
+my_nnet = 
+try
+	read_nnet("/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files/correct_overrapprox_const_dyn_2867.nnet")
+catch;
+	read_nnet("nnet_files/correct_overrapprox_const_dyn_2867.nnet")
+end
 # inputs: (5)
 # import/assign_init_vals/theta_dot_hat_1,
 # import/assign_init_vals/theta_dot_hat_2,

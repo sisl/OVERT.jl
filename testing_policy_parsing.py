@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import joblib
-from rllab.sampler.utils import rollout
+from rllab.sampler.utils import rollout, deterministic_rollout
 from rllab.envs.gym_env import GymEnv
 from sandbox.rocky.tf.envs.base import TfEnv
 from correct_overapprox import ReluProtector, build_multi_step_network, display_ops, write_to_tensorboard, write_metadata, collect_output_ops
@@ -28,7 +28,7 @@ with sess.as_default():
     # can sim policy to test it! :DDD
     if sim:
         env = TfEnv(GymEnv("MyPendulum-v0", record_video=False))
-        path = rollout(env, policy, max_path_length=500, animated=True, speedup=2, always_return_paths=True)
+        path = deterministic_rollout(env, policy, max_path_length=500, animated=True, speedup=2, always_return_paths=True)
         print("reward: ", sum(path["rewards"]))
         input("enter to continue")
 
@@ -81,6 +81,8 @@ ffnet_output = sess.run([ffnet], feed_dict={ff_input: test_input_Wx})
 assert all(rllab_output[0] - ffnet_output[0]<1e-3)
 print("tests pass!") 
 
+
+# write to file as .nnet or .pb !!
 
 
 

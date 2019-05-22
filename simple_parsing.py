@@ -1,4 +1,5 @@
 # code to test that network parsing works!
+# Used in development, before whole function was written
 
 import tensorflow as tf
 import numpy as np

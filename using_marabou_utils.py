@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 from maraboupy.MarabouUtils import *
 import gym
+import matplotlib.pyplot as plt
 
 
 def read_inout_metadata(meta_data):
@@ -82,6 +83,37 @@ def stringify(eq):
     s = s[:-2] + "<= " + str(eq.scalar)
     return s
 
+def eval_marabou(network, theta, theta_dot):
+    # eval with marabou
+    network.setLowerBound(0, theta)
+    network.setUpperBound(0, theta)
+    network.setLowerBound(1, theta_dot)
+    network.setUpperBound(1, theta_dot)
+    print_io_bounds(network, network.inputVars, network.outputVars)
+    vals, stats, exit_code = network.solve()
+    return (vals, stats, exit_code)
+
+def read_graph(filename):
+    with tf.gfile.GFile(filename, "rb") as f:
+        graph_def = tf.GraphDef()
+        graph_def.ParseFromString(f.read())
+    with tf.Graph().as_default() as graph:
+        tf.import_graph_def(graph_def, name="")
+    sess = tf.Session(graph=graph)
+    return sess
+
+def eval_from_tf(filename, input_dict, outputs):
+    # filename: string of .pb filename with frozen graph
+    # input_dict: (opname, value) pairs in a dictionary
+    # outputs: opname array-like
+    sess = read_graph(filename)
+    feed_dict = {}
+    for k in input_dict.keys():
+        feed_dict[k+":0"] = input_dict[k]
+    outputs = [o+":0" for o in outputs]
+    output_vals = sess.run(outputs, feed_dict = feed_dict)
+    return output_vals
+
 def compare_marabou_tf(network, theta, theta_dot, nsteps, outputVarList):
     # evaluate and make sure that marabou and tensorflow produce the same outputs
     # evlaute with maraboou: fine, outputs will be thetas
@@ -108,7 +140,7 @@ def compare_marabou_tf(network, theta, theta_dot, nsteps, outputVarList):
         network.setLowerBound(i, inputs[i])
         network.setUpperBound(i, inputs[i])
     print_io_bounds(network, network.inputVars, network.outputVars)
-    vals, stats = network.solve()
+    vals, stats, exit_code = network.solve()
 
     for i in range(nsteps):
         inputs.append(vals[2+i]) # add theta dot hat values
@@ -141,6 +173,36 @@ def print_io_bounds(network, inputVars, outputVars):
     output_lb = get_specific_bounds(outputVars, network.lowerBounds)
     print("output_lb: ", output_lb)
 
+def plot_bounded_dynamics(filename, fixed_vars, var_to_sample, outputs, fun):
+    # fixed vars: {var: val, var: val,...}
+    # vars to sample: (var: [a,b])
+    # outputs: [a1, a2, a3, ...]
+    # fun: analytical form of the dynamics function
+    # NOTE: untested.
+    # the idea is to plot (a slice of) the bounds of the dynamics function and 
+    # the function itself
+    sess = read_graph(filename)
+    feed_dict = fixed_vars
+    k = var_to_sample[0]
+    a = var_to_sample[1][0]
+    b = var_to_sample[1][1]
+    x = np.zeros((1000,1))
+    y = np.zeros((1000,len(outputs)))
+    z = np.linspace(a,b, 1000)
+    q = np.zeros((1000,1))
+    for i in range(1000):
+        x[i] = (np.random.rand()*(b-a) + a)
+        feed_dict[k+":0"] = x[i]
+        output_vals = sess.run(outputs, feed_dict = feed_dict)
+        y[i,:] = np.array(output_vals).flatten().reshape(1,-1)
+        q[i] = fun(z[i])
+    # plotting
+    f = plt.figure()
+    for i in range(len(outputs)):
+        plt.plot(x, y[:,i])
+    plt.plot(z,q, label="original")    
+    plt.show()
+    return f
 
 def load_network(frozen_graph):
     # load network

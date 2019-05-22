@@ -11,8 +11,8 @@ true_stdout = sys.stdout
 
 
 # graph_def_gentler_random_controller_2_steps_4856.pb
-run_number = str(int(np.ceil(np.random.rand()*1000)))
-fnumber = "4674"
+run_number = str(int(np.ceil(np.random.rand()*10000)))
+fnumber = "17306"
 fname = "graph_def_" #real_controller_2_steps_"
 nsteps = 2 # only used in lookin at specific equations and overapprox checking
 fprefix = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files"
@@ -30,7 +30,7 @@ if os.path.exists(marabou_log_dir): # don't overwrite old data!!!
     raise FileExistsError
 
 output_op_name, inputs, outputs = read_inout_metadata(meta_data)
-# ?? Could order of inputs be causing a problem?
+
 network = Marabou.read_tf(frozen_graph, outputName=output_op_name)
 
 # redirect to file
@@ -56,25 +56,11 @@ check_bounds(network.upperBounds, network.lowerBounds)
 # check upper and lower bounds of inputs
 print_io_bounds(network, inputVars, outputVars)
 
-# get equations with specific vars, eg. theta dot hats
-# equns = find_spec_equ(network.equList, inputVars[nsteps:2*nsteps]) #theta-dot-hats
-# [print(e) for e in equns]
-# equns2 = find_spec_equ(network.equList, outputVars[nsteps:2*nsteps]) #
-# [print(e) for e in equns2]
 equns3 = find_spec_equ(network.equList, outputVars[:nsteps]) #
 [print(e) for e in equns3]
 
-# eval and make sure they produce the same outputs
-run = False
-if run:
-    network.setLowerBound(2, -1000.)
-    network.setUpperBound(2, 1000.)
-    network.setLowerBound(3, -1000.)
-    network.setUpperBound(3, 1000.)
-    theta = 90*np.pi/180
-    theta_dot = -0.01*np.pi/180
-    compare_marabou_tf(network, theta, theta_dot, nsteps, outputVarList)
-
+import pdb; pdb.set_trace()
+# run_script('testing_using_maraboupy.py')
 
 # call Marabou solver
 def solve_with_marabou(network, marabou_log_dir):
@@ -85,7 +71,7 @@ def solve_with_marabou(network, marabou_log_dir):
     print("stats: ", stats)
     return vals, stats, exit_code
 
-solve=True
+solve=False
 if solve:
     sys.stdout = true_stdout
     print("solving...")
