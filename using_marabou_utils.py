@@ -7,6 +7,12 @@ import gym
 import matplotlib.pyplot as plt
 
 
+def set_adjustable_vars(adj_inputs, d2, network):
+    # d1 maps long input names to variable numbers
+    network.adjustable_vars = []
+    for i in adj_inputs:
+        network.adjustable_vars.append(d2[i])
+
 def read_inout_metadata(meta_data):
     with open(meta_data) as f:
         line = f.readline()
