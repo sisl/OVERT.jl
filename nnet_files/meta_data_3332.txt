@@ -1,0 +1,6 @@
+concatenated output op name: 
+Output/add_14
+inputs: 
+initial_values/theta_0,initial_values/theta_dot_0,assign_init_vals/theta_dot_hat_4,assign_init_vals/theta_dot_hat_1,assign_init_vals/theta_dot_hat_2,assign_init_vals/theta_dot_hat_3,
+outputs: 
+relu_protection_3/theta_o_3,relu_protection_3/theta_o_4,relu_protection_3/theta_o_5,run_dynamics_3/Dynamics_4/theta_4,relu_protection_3/tdh_4,relu_protection_3/tdh_5,relu_protection_3/tdh_6,relu_protection_3/tdh_7,relu_protection_3/tdlb_3,relu_protection_3/tdlb_4,relu_protection_3/tdlb_5,run_dynamics_3/Dynamics_4/thdotLB/theta_dot_LB_4,relu_protection_3/tdub_3,relu_protection_3/tdub_4,relu_protection_3/tdub_5,run_dynamics_3/Dynamics_4/thdotUB/theta_dot_UB_4,
