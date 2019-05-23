@@ -7,11 +7,26 @@ import gym
 import matplotlib.pyplot as plt
 
 
-def set_adjustable_vars(adj_inputs, d2, network):
+def get_adjustable_vars(adj_inputs, d2):
     # d1 maps long input names to variable numbers
-    network.adjustable_vars = []
+    adjustable_vars = []
     for i in adj_inputs:
-        network.adjustable_vars.append(d2[i])
+        adjustable_vars.append(d2[i])
+    return adjustable_vars
+
+def get_dependencies(nsteps):
+    dependencies = []
+    for i in range(nsteps):
+        if i == 0:
+            pfx1 = ""
+        else:
+            pfx1 = "_"+str(i)
+        pfx2 = str(i+1)
+        s1 = "run_dynamics"+pfx1+"/Dynamics_"+pfx2+"/thdotLB/theta_dot_LB_"+pfx2+":0"
+        s2 = "run_dynamics"+pfx1+"/Dynamics_"+pfx2+"/thdotUB/theta_dot_UB_"+pfx2+":0"
+        d = "assign_init_vals/theta_dot_hat_"+pfx2+":0"
+        dependencies.append( ((s1,s2),d) )
+    return dependencies
 
 def read_inout_metadata(meta_data):
     with open(meta_data) as f:
@@ -243,23 +258,25 @@ class Lightweight_policy():
             })
         return action[0], {"":""}
 
-def stepEnv(env, policy, nsteps, vals):
+def stepEnv(env, policy, nsteps, vals, render):
     # step through 2 steps of simulation
     print("begin sim.")
     env.env.reset()
     env.env.state = np.array([vals[0], vals[1]]) # set theta0 and thetadot0
-    env.env.render()
+    if render:
+        env.env.render()
     obsList = []
     for i in range(nsteps):
         action, _ = policy.get_action(env.env.state)
         obs, _, _, _ = env.env.step(action) # get theta and thetadot
         obsList.append(obs)
-        env.env.render()
-        input("enter to continue")
+        if render:
+            env.env.render()
+            input("enter to continue")
     print("end sim.")
     return obsList # thetas and thetadots
 
-def check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds, nsteps):
+def check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds, nsteps, render=True):
     # check if SAT example is REAL or due to OVERAPPROX
     # gonna wanna import mypendulumenv
     # pull the controller out of the composed graph
@@ -270,7 +287,7 @@ def check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds, nsteps):
     env = gym.envs.make(envStr) #  record_video=True (how to get vidoe to record??)
     sess = load_network(frozen_graph)
     policy = Lightweight_policy(sess)
-    obsList = stepEnv(env, policy, nsteps, vals)
+    obsList = stepEnv(env, policy, nsteps, vals, render)
     # compare values
     # compare theta values
 
