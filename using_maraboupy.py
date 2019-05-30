@@ -12,7 +12,7 @@ true_stdout = sys.stdout
 
 # graph_def_gentler_random_controller_2_steps_4856.pb
 run_number = str(int(np.ceil(np.random.rand()*10000)))
-fnumber = "17306"
+fnumber = "41475"
 fname = "graph_def_" #real_controller_2_steps_"
 nsteps = 2 # only used in lookin at specific equations and overapprox checking
 fprefix = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files"
@@ -48,7 +48,7 @@ outputVarList = list(np.array(outputVars).flatten())
 d1, d2 = map_inputs_fromVarMap(varMapOpstoNames(network.varMap), inputs) # for use with other networks that have not been condensed
 
 # set bounds on outputs
-bounds = set_bounds(network, d1, d2, bounds_2_5, network_dir, run_number)
+bounds = set_bounds(network, d1, d2, bounds_fixed_start, network_dir, run_number)
 
 # make sure all lower bounds are less than all upper bounds
 check_bounds(network.upperBounds, network.lowerBounds)
@@ -59,7 +59,6 @@ print_io_bounds(network, inputVars, outputVars)
 equns3 = find_spec_equ(network.equList, outputVars[:nsteps]) #
 [print(e) for e in equns3]
 
-import pdb; pdb.set_trace()
 # run_script('testing_using_maraboupy.py')
 
 # call Marabou solver
@@ -71,7 +70,7 @@ def solve_with_marabou(network, marabou_log_dir):
     print("stats: ", stats)
     return vals, stats, exit_code
 
-solve=False
+solve=True
 if solve:
     sys.stdout = true_stdout
     print("solving...")
