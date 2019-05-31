@@ -12,9 +12,9 @@ def create_network():
     true_stdout = sys.stdout
 
     run_number = str(int(np.ceil(np.random.rand()*10000)))
-    fnumber = "17306"
+    fnumber = "3332"
     fname = "graph_def_" #real_controller_2_steps_"
-    nsteps = 2
+    nsteps = 4
     fprefix = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files"
     frozen_graph = os.path.join(fprefix, fname+fnumber+".pb")
     meta_data = os.path.join(fprefix, "meta_data_"+fnumber+".txt")

@@ -25,7 +25,14 @@ f_id = str(int(np.round(np.random.rand()*50000)))
 tensorboard_log_dir = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/tensorboard_logs/real_controller_piecewise_accel_bound_"+f_id
 network_dir = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files"
 nsteps = 2
+m = 0.25; # trained with 0.25 mass
+l = 0.1;
 
+network_construction_log = network_dir + "/extra_metadata_"+f_id+".txt"
+with open(network_construction_log, 'w') as file:
+        file.write("Steps: " + str(nsteps) + "\n")
+        file.write("m = " + str(m) + "\n")
+        file.write("l = " + str(l) + "\n")
 
 build_model(nsteps, 
                 output_pb, 
@@ -37,6 +44,6 @@ build_model(nsteps,
                 activation_type="Relu",
                 activation_fn=tf.nn.relu,
                 dynamics_fun="piecewise",
-                m=0.25,
-                l=0.1,
+                m=m,
+                l=l,
                 verbose=verbose)
