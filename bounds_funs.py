@@ -94,10 +94,10 @@ def bounds_2_5():
 def bounds_fixed_start():
     bounds = pendulum_bounds()
     tsafe = 10
-    tdsafe = 60
+    tdsafe = 120
     # inputs
-    bounds.inputs_min["theta_0"] = (5)*np.pi/180
-    bounds.inputs_max["theta_0"] = (5)*np.pi/180
+    bounds.inputs_min["theta_0"] = (1)*np.pi/180
+    bounds.inputs_max["theta_0"] = (1)*np.pi/180
     bounds.inputs_min["theta_dot_0"] = 0*np.pi/180
     bounds.inputs_max["theta_dot_0"] = 0*np.pi/180
     # outputs

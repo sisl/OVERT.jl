@@ -25,10 +25,15 @@ def sim(file="",isdeterm=True, speedup=1, max_path_length=200, animated=True, wr
             env = data['env']
         else:
             env = VaryMassRolloutWrapper(data['env'])
+            print("m0: ", env.env.m0)
+            print("mf: ", env.env.mf)
+            # env = TfEnv(GymEnv("MyPendulum-v0", record_video=False))
+            # print("mass: ", env._wrapped_env.env.env.m)
         while True:
             path = rollout_fn(env, policy, max_path_length=max_path_length,
                            animated=animated, speedup=speedup, always_return_paths=True)
+            import pdb; pdb.set_trace()
             if not query_yes_no('Continue simulation?'):
                 break
 
-sim(file="/Users/Chelsea/Dropbox/AAHAA/src/rllab/data/local/experiment/curriculum_training_11142/params.pkl", wrap_env=True)
+sim(file="/Users/Chelsea/Dropbox/AAHAA/src/rllab/data/local/experiment/curriculum_training_27649/params.pkl", wrap_env=True)

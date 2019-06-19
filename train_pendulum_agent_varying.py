@@ -63,6 +63,6 @@ run_experiment_lite(
     exp_name="curriculum_training_"+str(int(np.ceil(np.random.rand()*50000))),
     # Specifies the seed for the experiment. If this is not provided, a random seed
     # will be used
-    seed=0,
+    seed=2, #int(np.ceil(np.random.rand()*100)),
     # plot=True,
 )

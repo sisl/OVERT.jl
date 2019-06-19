@@ -11,7 +11,7 @@ policy_file = policy_file + "Dropbox/AAHAA/src/rllab/data/local/experiment/"
 ################################################################################
 
 # good policy for 2dim observation (theta, thetadot)
-policy_name = "EXCELLENT_POLICY_relu_small_network_ppo_capped_action_simpler_dense_layer_xW_learn_std_smaller_learning_rate/"
+policy_name = "curriculum_training_11142/"
 
 # bad policy for image observation
 # policy_name = "convnet_1_ppo/"
