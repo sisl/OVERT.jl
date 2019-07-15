@@ -109,6 +109,29 @@ def bounds_2_5():
     #
     return bounds
 
+def bounds_fixed_start():
+    bounds = pendulum_bounds()
+    tsafe = 10
+    tdsafe = 120
+    # inputs
+    bounds.inputs_min["theta_0"] = (1)*np.pi/180
+    bounds.inputs_max["theta_0"] = (1)*np.pi/180
+    bounds.inputs_min["theta_dot_0"] = 0*np.pi/180
+    bounds.inputs_max["theta_dot_0"] = 0*np.pi/180
+    # outputs
+    # thetas
+    bounds.outputs_min["theta_1"] = -tsafe*np.pi/180
+    bounds.outputs_max["theta_1"] = tsafe*np.pi/180
+    bounds.outputs_min["theta_2"] = -tsafe*np.pi/180
+    bounds.outputs_max["theta_2"] = tsafe*np.pi/180
+    # theta dots
+    bounds.outputs_min["theta_dot_1"] = -tdsafe*np.pi/180
+    bounds.outputs_max["theta_dot_1"] = tdsafe*np.pi/180
+    bounds.outputs_min["theta_dot_2"] = -tdsafe*np.pi/180
+    bounds.outputs_max["theta_dot_2"] = tdsafe*np.pi/180
+    #
+    return bounds
+
 def bounds_3_5():
     bounds = pendulum_bounds()
     # theta dots

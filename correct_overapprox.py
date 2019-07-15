@@ -18,6 +18,7 @@ from simple_overapprox_simple_pendulum import line, bound, build_sin_approx
 from tensorflow.python.framework import graph_util
 import parsing
 from NNet.scripts.writeNNet import writeNNet
+from relu_approximations import min_from_max
 
 
 # ideas from luke: model class. state class
@@ -96,6 +97,50 @@ class PiecewiseDynamics():
                 theta_dot_LB = tf.add(
                                 theta_dot,
                                 self.deltat@(self.oomls@action + self.accel_LB.tf_apply(theta)),
+                                name="theta_dot_LB_"+str(num)
+                            )
+        return theta_hat, theta_dot_LB, theta_dot_UB
+
+# piecewise dynamics block for pendulum with range of mass
+class PiecewiseDynamicsRangeM():
+    def __init__(self, mrange, l):
+        assert mrange[0] <= mrange[1]
+        self.m1 = mrange[0]
+        self.m2 = mrange[1]
+        print("smallest mass of pendulum: ", self.m1)
+        print("largest mass of pendulum: ", self.m2)
+        self.l = l
+        print("length of pendulum: ", l)
+        self.g = 9.8
+        dt = 0.05 # timestep
+        with tf.name_scope("dynamics_constants"):
+            self.deltat = tf.constant(dt*np.eye(1), dtype='float32', name="deltat")
+            self.oom1ls = tf.constant([[(1/ (self.m1*(self.l**2)) )]], name="torque_scaling")
+            self.oom2ls = tf.constant([[(1/ (self.m2*(self.l**2)) )]], name="torque_scaling")
+            # build_sin_approx(fun, c1, convex_reg, concave_reg)
+            c1 = self.g/self.l
+            print("c1: ", c1)
+            fun = lambda x: c1*np.sin(x)
+            with tf.name_scope("sin_approx"):
+                LB, UB = build_sin_approx(fun, c1, [-np.pi, 0.0], [0.0, np.pi])
+            self.sin_UB = UB
+            self.sin_LB = LB
+    def run(self, num, action, theta, theta_dot):
+        with tf.name_scope("Dynamics_"+str(num)):
+            theta_hat = tf.add(theta, self.deltat@theta_dot, name="theta_"+str(num))
+            with tf.name_scope("thdotUB"):
+                u_UB = tf.maximum(self.oom1ls@action, self.oom2ls@action)
+                theta_dot_UB = tf.add(
+                                theta_dot,
+                                self.deltat@(u_UB + self.sin_UB.tf_apply(theta)),
+                                name="theta_dot_UB_"+str(num)
+                            )
+            # NOTE: there is elementwise multiplication in this bound: in the line() class and in the negation for creating min from tf.max
+            with tf.name_scope("thdotLB"):
+                u_LB = min_from_max(self.oom1ls@action, self.oom2ls@action)
+                theta_dot_LB = tf.add(
+                                theta_dot,
+                                self.deltat@(u_LB + self.sin_LB.tf_apply(theta)),
                                 name="theta_dot_LB_"+str(num)
                             )
         return theta_hat, theta_dot_LB, theta_dot_UB
@@ -278,6 +323,7 @@ def build_model(nsteps,
                 policy_output_node_name="", 
                 dynamics_fun="constant",
                 m=0.25,
+                mrange = [],
                 l=0.1,
                 controller_activations=None,  
                 verbose=True):
@@ -307,6 +353,8 @@ def build_model(nsteps,
         dynamics = Dynamics(m=m, l=l)
     elif dynamics_fun == "piecewise":
         dynamics = PiecewiseDynamics(m=m, l=l)
+    elif dynamics_fun == "piecewise_mrange":
+        dynamics = PiecewiseDynamicsRangeM(mrange=mrange, l=l)
     else:
         raise NotImplementedError
 

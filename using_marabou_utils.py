@@ -38,6 +38,26 @@ def read_inout_metadata(meta_data):
         outputs = f.readline()
         return output_op_name, inputs, outputs
 
+def read_extra_mass_metadata(file):
+    with open(file) as f:
+        line = f.readline()
+        i = line.find(":")
+        nsteps = int(line[i+1:])
+        # find m1
+        line = f.readline()
+        i = line.find("=")
+        m1 = float(line[i+1:])
+        # find m2
+        line = f.readline()
+        i = line.find("=")
+        m2 = float(line[i+1:])
+        # find l
+        line = f.readline()
+        i = line.find("=")
+        l = float(line[i+1:])
+    return nsteps, m1, m2, l
+
+
 def read_output_metadata(meta_data):
     with open(meta_data) as f:
         line = f.readline()
@@ -248,7 +268,7 @@ class Lightweight_policy():
         pass
     def get_action(self, state):
         state_t = state.flatten()
-        print("theta for getting action: ", state_t[0]*180/np.pi, " deg")
+        #print("theta for getting action: ", state_t[0]*180/np.pi, " deg")
         action = self.sess.run([self.controller_output],
             feed_dict = {
             get_output("initial_values/theta_0", graph=self.sess.graph): 
@@ -258,41 +278,42 @@ class Lightweight_policy():
             })
         return action[0], {"":""}
 
-def stepEnv(env, policy, nsteps, vals, render):
-    # step through 2 steps of simulation
-    print("begin sim.")
-    env.env.reset()
-    env.env.state = np.array([vals[0], vals[1]]) # set theta0 and thetadot0
+def stepEnv(env, policy, nsteps, vals, render, verbose=True):
+    # step through nsteps steps of simulation
+    if verbose:
+        print("begin sim.")
+    env.reset()
+    env.set_state(np.array([vals[0], vals[1]])) # set theta0 and thetadot0
     if render:
-        env.env.render()
+        env.render()
     obsList = []
     for i in range(nsteps):
-        action, _ = policy.get_action(env.env.state)
-        obs, _, _, _ = env.env.step(action) # get theta and thetadot
+        action, _ = policy.get_action(env.get_state())
+        obs, _, _, _ = env.step(action) # get theta and thetadot
         obsList.append(obs)
         if render:
-            env.env.render()
+            env.render()
             input("enter to continue")
-    print("end sim.")
+    if verbose:
+        print("end sim.")
     return obsList # thetas and thetadots
 
-def check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds, nsteps, render=True):
+def check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=True, verbose=True):
     # check if SAT example is REAL or due to OVERAPPROX
     # gonna wanna import mypendulumenv
     # pull the controller out of the composed graph
     # SET the state of the pendulum using the sat values
     # step twice 
     # look at the state values and compare them to limits
-    # then announce whether TRUE SAT or OVERAPPROX SAT
-    env = gym.envs.make(envStr) #  record_video=True (how to get vidoe to record??)
-    sess = load_network(frozen_graph)
+    # then announce whether TRUE SAT or OVERAPPROX SAT 
     policy = Lightweight_policy(sess)
-    obsList = stepEnv(env, policy, nsteps, vals, render)
+    obsList = stepEnv(env, policy, nsteps, vals, render, verbose=verbose)
     # compare values
     # compare theta values
 
-    print("theta_0: ", vals[0]*180/np.pi)
-    print("theta_dot_0: ", vals[1]*180/np.pi)
+    if verbose:
+        print("theta_0: ", vals[0]*180/np.pi)
+        print("theta_dot_0: ", vals[1]*180/np.pi)
 
     sov = nsteps + 2 # start output var
     inbounds = True
@@ -300,26 +321,36 @@ def check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds, nsteps, ren
         tkey = "theta_"+str(i+1)
         a = obsList[i][0] <= bounds.outputs_max[tkey]
         b = obsList[i][0] >= bounds.outputs_min[tkey]
-        print(tkey, " min: ", bounds.outputs_min[tkey]*180/np.pi)
-        print(tkey, " max: ", bounds.outputs_max[tkey]*180/np.pi)
-        print(tkey," from sim: ", obsList[i][0]*180/np.pi) # theta1
-        print(tkey," from SAT: ", vals[sov+i]*180/np.pi)
-        if not (a and b):
-            print(tkey, " failure")
+        e = vals[sov+i] < bounds.outputs_max[tkey]
+        f =  vals[sov+i] >  bounds.outputs_min[tkey]
+        if verbose:
+            print(tkey, " min: ", bounds.outputs_min[tkey]*180/np.pi)
+            print(tkey, " max: ", bounds.outputs_max[tkey]*180/np.pi)
+            print(tkey," from sim: ", obsList[i][0]*180/np.pi) # theta1
+            print(tkey," from SAT: ", vals[sov+i]*180/np.pi)
+            if not (a and b):
+                print(tkey, " failure")
+            if not (e and f):
+                print(tkey, " SAT failure")
         #
         tdkey = "theta_dot_"+str(i+1)
         c = obsList[i][1] <= bounds.outputs_max[tdkey]
         d = obsList[i][1] >= bounds.outputs_min[tdkey]
-        print(tdkey, " min: ", bounds.outputs_min[tdkey]*180/np.pi)
-        print(tdkey, " max: ", bounds.outputs_max[tdkey]*180/np.pi)
-        print(tdkey, "_LB: ", vals[sov+2*nsteps+i]*180/np.pi)
-        print(tdkey, "_UB: ", vals[sov+3*nsteps+i]*180/np.pi)
-        # recall: LB and UB are calculated from SAT example, not from sim trajectory. and may disagree after 1st timestep
-        print(tdkey, " from sim: ", obsList[i][1]*180/np.pi) # thetadot1
-        print(tdkey, " from SAT: ", vals[sov+nsteps+i]*180/np.pi)
-        if not (c and d):
-            print(tdkey, " failure")
-        #
+        g = (bounds.outputs_max[tdkey] - vals[sov+2*nsteps+i]) > 1e-5 
+        h = (vals[sov+2*nsteps+i] - bounds.outputs_min[tdkey]) > 1e-5
+        if verbose:
+            print(tdkey, " min: ", bounds.outputs_min[tdkey]*180/np.pi)
+            print(tdkey, " max: ", bounds.outputs_max[tdkey]*180/np.pi)
+            print(tdkey, "_LB: ", vals[sov+2*nsteps+i]*180/np.pi)
+            print(tdkey, "_UB: ", vals[sov+3*nsteps+i]*180/np.pi)
+            # recall: LB and UB are calculated from SAT example, not from sim trajectory. and may disagree after 1st timestep
+            print(tdkey, " from sim: ", obsList[i][1]*180/np.pi) # thetadot1
+            print(tdkey, " from SAT: ", vals[sov+nsteps+i]*180/np.pi)
+            if not (c and d):
+                print(tdkey, " failure")
+            if not (g and h):
+                print(tdkey, " SAT failure")
+            #
         inbounds = inbounds and a and b and c and d
 
     if inbounds:
@@ -327,6 +358,28 @@ def check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds, nsteps, ren
     else:
         return "REAL"
 
+# vary mass and see if we can find a real counter example
+def check_SAT_REAL_or_OVERAPPROX_varyM(sess, vals, env, bounds, nsteps, render=True, nsims=1000):
+    # expects an env of type VaryMassRolloutWrapper (defined in rllab by me)
+
+    # check extreme values of mass
+    for m in [env.env.m0, env.env.mf]:
+        env.env.set_param('m', m)
+        SATus = check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=False, verbose=False)
+        if SATus == "REAL":
+            # run again to print things
+            check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=True, verbose=True)
+            return SATus
+    i = 0
+    while i < nsims and SATus == "OVERAPPROX":
+        env.set_mass_randomly()
+        SATus = check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=False, verbose=False)
+        i += 1
+    # run again to print things
+    check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=True, verbose=True)
+    return SATus
+
+    
 
 
 

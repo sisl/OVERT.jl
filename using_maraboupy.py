@@ -6,6 +6,8 @@ from set_pendulum_bounds import *
 from bounds_funs import *
 from using_marabou_utils import *
 import sys
+import gym
+from simple_wrapper import SimpleWrapper
 
 true_stdout = sys.stdout
 
@@ -48,7 +50,7 @@ outputVarList = list(np.array(outputVars).flatten())
 d1, d2 = map_inputs_fromVarMap(varMapOpstoNames(network.varMap), inputs) # for use with other networks that have not been condensed
 
 # set bounds on outputs
-bounds = set_bounds(network, d1, d2, bounds_2_5, network_dir, run_number)
+bounds = set_bounds(network, d1, d2, bounds_3_5, network_dir, run_number)
 
 # make sure all lower bounds are less than all upper bounds
 check_bounds(network.upperBounds, network.lowerBounds)
@@ -59,7 +61,6 @@ print_io_bounds(network, inputVars, outputVars)
 equns3 = find_spec_equ(network.equList, outputVars[:nsteps]) #
 [print(e) for e in equns3]
 
-import pdb; pdb.set_trace()
 # run_script('testing_using_maraboupy.py')
 
 # call Marabou solver
@@ -71,7 +72,7 @@ def solve_with_marabou(network, marabou_log_dir):
     print("stats: ", stats)
     return vals, stats, exit_code
 
-solve=False
+solve=True
 if solve:
     sys.stdout = true_stdout
     print("solving...")
@@ -80,8 +81,9 @@ if solve:
     print("exit code: ", exit_code)
     if exit_code == 1: # SAT
         print(vals)
-        envStr = 'MyPendulum-v0'
-        SATus = check_SAT_REAL_or_OVERAPPROX(frozen_graph, vals, envStr, bounds, nsteps)
+        env = SimpleWrapper(gym.envs.make('MyPendulum-v0')) # , recordVideo=True)
+        sess = load_network(frozen_graph)
+        SATus = check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps)
         print("SATus:", SATus)
     sys.stdout = true_stdout
 """
