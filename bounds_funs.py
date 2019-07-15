@@ -1,9 +1,9 @@
 import numpy as np
+import os
 
 # Define the safe sets here, bounds will be inverted later (to hopefully get to
 # the result that reaching the complements of these sets is unstaisfiable)
 
-# TODO: I think I may only need 1 bound on tdlb and tdub outputs. e.g. 
 class bounds():
     def __init__(self):
         self.inputs_min = {}
@@ -27,6 +27,24 @@ class pendulum_bounds(bounds):
         # #  mins
         # self.outputs_min["tdlbs"] = -1000.
         # self.outputs_min["tdubs"] = -1000.
+
+    def log(self, fdir, run_n):
+        fname = os.path.join(fdir, "bounds_"+run_n+".txt")
+        with open(fname,'w') as f:
+            f.write("Input mins \n")
+            self.write_dict(self.inputs_min, 180/np.pi, f)
+            f.write("\nInput maxes \n")
+            self.write_dict(self.inputs_max, 180/np.pi, f)
+            f.write("\nOutput mins \n")
+            self.write_dict(self.outputs_min, 180/np.pi, f)
+            f.write("\nOutput maxes \n")
+            self.write_dict(self.outputs_max, 180/np.pi, f)
+
+    def write_dict(self, dictionary, mul, f):
+        for key in dictionary:
+            f.write(str(key)+": ")
+            f.write(str(dictionary[key]*mul)+"\n")
+
 
 # multiple steps, start small, don't get too big
 # unsat for both random and real controller
@@ -149,7 +167,7 @@ def bounds_5_5():
 def bounds_4_5():
     bounds = pendulum_bounds()
     # theta dots
-    tds = [120, 240, 120, 120, 120]
+    tds = [100, 500, 400, 300, 100]
     bounds.inputs_min["theta_dot_0"] = -tds[0]*np.pi/180
     bounds.inputs_max["theta_dot_0"] = tds[0]*np.pi/180
     for i in range(1,5):
@@ -157,7 +175,7 @@ def bounds_4_5():
         bounds.outputs_max["theta_dot_"+str(i)] = tds[i]*np.pi/180
     #
     # thetas
-    ts = [20, "NA", 20, 20, 20]
+    ts = [20, "NA", 50, 50, 20]
     bounds.inputs_min["theta_0"] = -ts[0]*np.pi/180
     bounds.inputs_max["theta_0"] = ts[0]*np.pi/180
     bounds.outputs_min["theta_1"] = \
@@ -167,6 +185,66 @@ def bounds_4_5():
             bounds.inputs_max["theta_0"] \
             + 0.1*bounds.inputs_max["theta_dot_0"]
     for i in range(2,5):
+        bounds.outputs_min["theta_"+str(i)] = -ts[i]*np.pi/180
+        bounds.outputs_max["theta_"+str(i)] = ts[i]*np.pi/180
+    #
+    return bounds
+
+def bounds_n(n, t0, td0):
+    bounds = pendulum_bounds()
+    # theta dots
+    tds = np.ones((n+1))*500
+    tds[0] = td0
+    tds[-1] = td0
+    bounds.inputs_min["theta_dot_0"] = -tds[0]*np.pi/180
+    bounds.inputs_max["theta_dot_0"] = tds[0]*np.pi/180
+    for i in range(1,n+1):
+        bounds.outputs_min["theta_dot_"+str(i)] = -tds[i]*np.pi/180
+        bounds.outputs_max["theta_dot_"+str(i)] = tds[i]*np.pi/180
+    #
+    # thetas
+    ts = np.ones((n+1))*50
+    ts[0] = t0
+    ts[-1] = t0
+    bounds.inputs_min["theta_0"] = -ts[0]*np.pi/180
+    bounds.inputs_max["theta_0"] = ts[0]*np.pi/180
+    bounds.outputs_min["theta_1"] = \
+            bounds.inputs_min["theta_0"] \
+            + 0.1*bounds.inputs_min["theta_dot_0"]
+    bounds.outputs_max["theta_1"] = \
+            bounds.inputs_max["theta_0"] \
+            + 0.1*bounds.inputs_max["theta_dot_0"]
+    for i in range(2,n+1):
+        bounds.outputs_min["theta_"+str(i)] = -ts[i]*np.pi/180
+        bounds.outputs_max["theta_"+str(i)] = ts[i]*np.pi/180
+    #
+    return bounds
+
+def bounds_n_special(n, tf):
+    bounds = pendulum_bounds()
+    # theta dots
+    tds = np.ones((n+1))*120
+    tds[0] = 60
+    tds[-1] = 60
+    bounds.inputs_min["theta_dot_0"] = -tds[0]*np.pi/180
+    bounds.inputs_max["theta_dot_0"] = tds[0]*np.pi/180
+    for i in range(1,n+1):
+        bounds.outputs_min["theta_dot_"+str(i)] = -tds[i]*np.pi/180
+        bounds.outputs_max["theta_dot_"+str(i)] = tds[i]*np.pi/180
+    #
+    # thetas
+    ts = np.ones((n+1))*30
+    ts[0] = 5
+    ts[-1] = tf
+    bounds.inputs_min["theta_0"] = -ts[0]*np.pi/180
+    bounds.inputs_max["theta_0"] = ts[0]*np.pi/180
+    bounds.outputs_min["theta_1"] = \
+            bounds.inputs_min["theta_0"] \
+            + 0.1*bounds.inputs_min["theta_dot_0"]
+    bounds.outputs_max["theta_1"] = \
+            bounds.inputs_max["theta_0"] \
+            + 0.1*bounds.inputs_max["theta_dot_0"]
+    for i in range(2,n+1):
         bounds.outputs_min["theta_"+str(i)] = -ts[i]*np.pi/180
         bounds.outputs_max["theta_"+str(i)] = ts[i]*np.pi/180
     #
