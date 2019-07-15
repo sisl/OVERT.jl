@@ -37,30 +37,16 @@ def map_inputs_fromVarMap(varMap, input_ops):
 #upperBound(dict2[long_input] 
 #   = input_max_value[dict1[long_input]])
 
-def log_bounds(fdir, run_n, bounds):
-    fname = os.path.join(fdir, "bounds_"+run_n+".txt")
-    with open(fname,'w') as f:
-        f.write("Input mins \n")
-        f.write(str(bounds.inputs_min))
-        f.write("Input maxes \n")
-        f.write(str(bounds.inputs_max))
-        f.write("Output mins \n")
-        f.write(str(bounds.outputs_min))
-        f.write("Output maxes \n")
-        f.write(str(bounds.outputs_max))
-
-
 
 # dict 1: long inputs -> short dict key names (e.g. theta_dot_hats)
 # dict 2: long_inputs -> variable numbers
-def set_bounds(network, input_long2short, input_long2var, bounds_fun, fdir, run_n):
+def set_bounds(network, input_long2short, input_long2var, bounds, fdir, run_n):
     # get order of inputs in ffnetwork
     il2s = input_long2short
     il2v = input_long2var
 
-    # get specific bound values
-    bounds = bounds_fun()
-    log_bounds(fdir, run_n, bounds)
+    # log specific bound values
+    bounds.log(fdir, run_n)
     # set input bounds
     for li in il2s.keys():
         if il2s[li] in bounds.inputs_min:
