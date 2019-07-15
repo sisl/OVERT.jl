@@ -12,9 +12,9 @@ true_stdout = sys.stdout
 
 # graph_def_gentler_random_controller_2_steps_4856.pb
 run_number = str(int(np.ceil(np.random.rand()*10000)))
-fnumber = "17306"
+fnumber = "3332"
 fname = "graph_def_" #real_controller_2_steps_"
-nsteps = 2 # only used in lookin at specific equations and overapprox checking
+nsteps = 4 # only used in lookin at specific equations and overapprox checking
 fprefix = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files"
 frozen_graph = os.path.join(fprefix, fname+fnumber+".pb")
 meta_data = os.path.join(fprefix, "meta_data_"+fnumber+".txt")
