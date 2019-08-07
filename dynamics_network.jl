@@ -124,10 +124,10 @@ x = collect(0:0.01:2*pi)
 z1 = 2*A*x - A*pi
 z2 = 4*A*x/pi - 6*A
 
-term1 = (A*pi - (relu(z1) + relu(-z1)))/2
-term2 = (-2*A + (relu(z2) + relu(-z2)))/2
-term3 = (term2 - (relu(term2) + relu(-term2)))/2
-term4 = (term1 + term3 + relu(term1 - term3) + relu(term3 - term1))/2
+term1 = (A*pi - (relu.(z1) + relu.(-z1)))/2
+term2 = (-2*A + (relu.(z2) + relu.(-z2)))/2
+term3 = (term2 - (relu.(term2) + relu.(-term2)))/2
+term4 = (term1 + term3 + relu.(term1 - term3) + relu.(term3 - term1))/2
 # plot(x, term4)
 
 #=
@@ -163,16 +163,16 @@ W2 = [ 1 0
        0 -1]
 L2 = Dense(W2, zeros(4), relu) # [z1, -z1, z2, -z2]
 
-W3 = [1 1 0 0
+W3 = [-1 -1 0 0
       0 0 1 1
       0 0 1 1
       0 0 -1 -1]
 L3 = Dense(0.5*W3, A*[π/2, -1, -1, 1], ReLUBypass(1, 2)) # [t1, t2, r(t2), r(-t2)]
 
-W4 = [1 0 0 0
+W4 = [2 0 0 0
       0 1 -1 -1
-      1 -1 1 1
-      -1 1 -1 -1]
+      2 -1 1 1
+      -2 1 -1 -1]
 L4 = Dense(0.5*W4, zeros(4), ReLUBypass(1, 2))  # [t1, t3, r(t1-t3), r(t3-t1)]
 
 W5 = [1, 1, 1, 1]'
@@ -180,3 +180,5 @@ L5 = Dense(0.5*W5, 0, identity) # bypass everything
 
 C = Chain(L1, L2, L3, L4, L5)
 C2 = relu_bypass(C)
+upperPlot = plot(x, C2.(x))
+upperPlot = plot!(x, sin.(x))
