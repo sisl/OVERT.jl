@@ -1,10 +1,160 @@
+using Flux, LinearAlgebra
 
+#### method 1, approximate step function
 function bin(θ, I = 6)
     a = [θ - (i-1)*pi/2 for i in 1:I]
-    relu.(a - 100*relu.(a .- pi/2))
+    relu.(a - 1e30*relu.(a .- pi/2))
 end
-function UB(θ)
+function UB(θ, I = 6)
     D = Diagonal([1, -1, -2/pi, 2/pi, 1, -1])
-    out = D*bin(θ)
-    out + [0, pi/2, 0, -1, 0, pi/2]
+    out = D*bin(θ, I)
+    out + [(i-1)*pi/2 for i in 1:I]
 end
+
+##### method 2, learn it with flux
+# Overload operations for our purposes NOTE: THIS IS TYPE PIRACY
+Base.:-(x::AbstractArray, y::Number) = x .- y
+Base.:+(x::AbstractArray, y::Number) = x .+ y
+Base.:-(x::Number, y::AbstractArray) = x .- y
+Base.:+(x::Number, y::AbstractArray) = x .+ y
+
+model = Chain(Dense(1, 10, relu), Dense(10, 10, relu), Dense(10, 4, relu), Dense(4, 1, identity))
+opt = ADAM(0.001, (0.9, 0.999))
+Xs = map(x-> [x], 0:0.1:2pi)
+data = collect(zip(Xs, foo.(Xs)))
+
+function loss(x, y)
+    return maximum(abs.(model(x) - y))
+end
+
+function foo(θ::Number)
+    θ = mod2pi(θ)
+    if 0 <= θ < pi
+        y = -abs(θ - pi/2) + pi/2
+    elseif pi <= θ <= 2pi
+        y = 2/pi*abs(θ - 3pi/2) - 1
+    end
+    return y
+end
+foo(θ) = foo.(θ)
+
+
+Flux.@epochs 500 Flux.train!(loss,  Flux.params(model), data,  opt)
+
+function _removedim(X)
+    v = eltype(X)()
+    for x in X
+        append!(v, x)
+    end
+    return v
+end
+
+xs = _removedim(Xs)
+ys = _removedim(Tracker.data.(model.(Xs)))
+# plot(xs, foo.(xs))
+plot(xs, sin.(xs))
+plot!(xs, ys)
+
+
+#=
+ Ax            -- [0, π/2]
+-Ax + Aπ       -- [π/2, π]
+-2Ax/π + 2A    -- [π, 3π/2]
+ 2Ax/π - 4A    -- [3π/2, π]
+=#
+x = collect(0:0.01:2*pi)
+z1 = 2*A*x - A*pi
+z2 = 4*A*x/pi - 6*A
+
+term1 = (A*pi - (relu(z1) + relu(-z1)))/2
+term2 = (-2*A + (relu(z2) + relu(-z2)))/2
+term3 = (term2 - (relu(term2) + relu(-term2)))/2
+term4 = (term1 + term3 + relu(term1 - term3) + relu(term3 - term1))/2
+plot(x, term4)
+
+
+
+# method 3 hard coded netword
+# Also type piracy:
+(D::Dense)(x::Number) = D.σ(D.W*x + D.b)
+
+struct ReLUBypass{T}
+    which_to_protect::T
+end
+ReLUBypass() = ReLUBypass(nothing)
+ReLUBypass(args...) = ReLUBypass(collect(args))
+(RB::ReLUBypass)(x) = identity(x) # so that a ReLUBypass can be used as an activation function. NOTE: consider reluing certain indices and bypassing others
+
+relu_bypass(L1::Dense{typeof(relu), A, B}, L2::Dense) where {A, B} = L1, L2
+function relu_bypass(L1::Dense, L2::Dense, which_to_protect =  L1.σ.which_to_protect)
+    W, b, σ = L1.W, L1.b, L1.σ
+    if which_to_protect == nothing
+        which_to_protect = collect(axes(b, 1))
+    end
+    n = size(W, 1)
+    I = Matrix(LinearAlgebra.I, n, n)
+    before = [I; -I[which_to_protect, :]]
+    after = before'
+
+    L1_new = Dense(before*W, before*b, relu)
+    L2_new = Dense(L2.W*after, L2.b, relu)
+    return L1_new, L2_new
+end
+
+function relu_bypass(C::Chain)
+    C2 = collect(C)
+    for i in 1:length(C)-1
+        Lᵢ, Lᵢ₊₁ = relu_bypass(C2[i], C2[i+1])
+        C2[i] = Lᵢ
+        C2[i+1] = Lᵢ₊₁
+    end
+    Chain(C2...)
+end
+
+#=
+
+x ->
+[2Ax - Aπ,  4A/π x - 6A] = [z1, z2]->
+Id ->
+[z1, -z1, z2, -z2] ->
+relu -> 0.5*[1 1 0 0;
+             0 0 1 1] [z1, -z1, z2, -z2] + [Aπ/2, -A] = [t1, t2] ->
+Id ->
+
+[t1, t2, -t2] ->
+
+relu(t1 and t2 get bypass) --> [t1, t2, r(t2), r(-t2)] ->
+
+0.5*[1, 0, 0, 0
+     0, 1, -1, -1] * [t1, t2, r(t2), r(-t2)]  = [t1, t3] ->
+
+Id -> [t1, t3, t1-t3, t3-t1]
+
+relu ->
+
+0.5*[1 1 1 1] [t1, t3, r(t1-t3), r(t3-t1)] ->
+
+-> OUT
+=#
+
+L1 = Dense([2A, 4A/π], [-A*π, -6A], ReLUBypass()) # [z1, z2]
+W2 = [ 1 0
+      -1 0
+       0 1
+       0 -1]
+L2 = Dense(W2, zeros(4), relu) # [z1, -z1, z2, -z2]
+W3 = [1 1 0 0
+      0 0 1 1
+      0 0 1 1
+      0 0 -1 -1]
+L3 = Dense(0.5*W3, A*[π/2, -1, -1, 1], ReLUBypass(1, 2)) # [t1, t2, r(t2), r(-t2)]
+W4 = [1 0 0 0
+      0 1 -1 -1
+      1 -1 1 1
+      -1 1 -1 -1]
+L4 = Dense(0.5*W4, zeros(4), ReLUBypass(1, 2))  # [t1, t3, r(t1-t3), r(t3-t1)]
+W5 = [1, 1, 1, 1]'
+L5 = Dense(0.5*W5, 0, identity) # bypass everything
+
+C = Chain(L1, L2, L3, L4, L5)
+C2 = relu_bypass(C)
