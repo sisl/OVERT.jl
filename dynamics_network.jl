@@ -70,8 +70,8 @@ ReLUBypass(args...) = ReLUBypass(collect(args))
 # so that a ReLUBypass can be used as an activation function.
 (RB::ReLUBypass{Nothing})(x) = identity(x)
 function (RB::ReLUBypass)(x)
-    out = deepcopy(x)
-    out[RB.which_to_protect] = relu.(out[RB.which_to_protect])
+    out = relu.(x)
+    out[RB.which_to_protect] = x[RB.which_to_protect]
     return out
 end
 Base.show(io::IO, RB::ReLUBypass{Nothing})  = print(io, "ReLUBypass(nothing)")
