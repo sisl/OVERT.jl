@@ -60,7 +60,7 @@ plot!(xs, ys)
 
 ##### method 3 hard coded netword
 struct ReLUBypass{T}
-    which_to_protect::T
+    protected::T
 end
 ReLUBypass() = ReLUBypass(nothing)
 ReLUBypass(args...) = ReLUBypass(collect(args))
@@ -68,13 +68,13 @@ ReLUBypass(args...) = ReLUBypass(collect(args))
 (RB::ReLUBypass{Nothing})(x) = identity(x)
 function (RB::ReLUBypass)(x)
     out = relu.(x)
-    out[RB.which_to_protect] = x[RB.which_to_protect]
+    out[RB.protected] = x[RB.protected]
     return out
 end
 
 Base.show(io::IO, RB::ReLUBypass{Nothing})  = print(io, "ReLUBypass(nothing)")
-Base.show(io::IO, RB::ReLUBypass{<:Number}) = print(io, "ReLUBypass($(RB.which_to_protect))")
-Base.show(io::IO, RB::ReLUBypass{<:Vector}) = print(io, "ReLUBypass$(Tuple(RB.which_to_protect))")
+Base.show(io::IO, RB::ReLUBypass{<:Number}) = print(io, "ReLUBypass($(RB.protected))")
+Base.show(io::IO, RB::ReLUBypass{<:Vector}) = print(io, "ReLUBypass$(Tuple(RB.protected))")
 
 # Also type piracy:
 # TODO to harmonize better with Flux, define a specialized broadcast behavior instead for ReLUBypass
@@ -88,16 +88,16 @@ FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
 relu_bypass(L1::Dense, L2::Dense) where {A, B} = L1, L2
 # if it's a ReLUBypass
 function relu_bypass(L1::Dense{<:ReLUBypass, A, B}, L2::Dense) where {A, B}
-    W, b, which_to_protect = L1.W, L1.b, L1.σ.which_to_protect
-    if which_to_protect == nothing
-        which_to_protect = collect(axes(b, 1))
+    W, b, protected = L1.W, L1.b, L1.σ.protected
+    if protected == nothing
+        protected = collect(axes(b, 1))
     end
     n = size(W, 1)
     I = Matrix(LinearAlgebra.I, n, n)
     # `before` only protects the indices we want, and `after` undoes the transformation
     # `before` needs to be left-multiplied by the weights and `after` right-multiplied
     # I.e. the full thing:   W₂*B'*σ(B*(W₁*x + b₁)) + b₂
-    before = [I; -I[which_to_protect, :]]
+    before = [I; -I[protected, :]]
     after = before'
 
     L1_new = Dense(before*W, before*b, relu)
