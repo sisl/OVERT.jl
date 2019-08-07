@@ -83,9 +83,20 @@ struct ReLUBypass{T}
 end
 ReLUBypass() = ReLUBypass(nothing)
 ReLUBypass(args...) = ReLUBypass(collect(args))
-(RB::ReLUBypass)(x) = identity(x) # so that a ReLUBypass can be used as an activation function. NOTE: consider reluing certain indices and bypassing others
+# so that a ReLUBypass can be used as an activation function.
+(RB::ReLUBypass{Nothing})(x) = identity(x)
+function (RB::ReLUBypass)(x)
+    out = deepcopy(x)
+    out[RB.which_to_protect] = relu.(out[RB.which_to_protect])
+    return out
+end
+Base.show(io::IO, RB::ReLUBypass{Nothing})  = print(io, "ReLUBypass(nothing)")
+Base.show(io::IO, RB::ReLUBypass{<:Number}) = print(io, "ReLUBypass($(RB.which_to_protect))")
+Base.show(io::IO, RB::ReLUBypass{<:Vector}) = print(io, "ReLUBypass$(Tuple(RB.which_to_protect))")
 
+# If it's already relu do nothing
 relu_bypass(L1::Dense{typeof(relu), A, B}, L2::Dense) where {A, B} = L1, L2
+
 function relu_bypass(L1::Dense, L2::Dense, which_to_protect =  L1.σ.which_to_protect)
     W, b, σ = L1.W, L1.b, L1.σ
     if which_to_protect == nothing
@@ -93,6 +104,9 @@ function relu_bypass(L1::Dense, L2::Dense, which_to_protect =  L1.σ.which_to_pr
     end
     n = size(W, 1)
     I = Matrix(LinearAlgebra.I, n, n)
+    # `before` only protects the indices we want, and `after` undoes the transformation
+    # `before` needs to be left-multiplied by the weights and `after` right-multiplied
+    # I.e. the full thing:   W₂*B'*σ(B*W₁*x + b₁) + b₂
     before = [I; -I[which_to_protect, :]]
     after = before'
 
@@ -102,13 +116,11 @@ function relu_bypass(L1::Dense, L2::Dense, which_to_protect =  L1.σ.which_to_pr
 end
 
 function relu_bypass(C::Chain)
-    C2 = collect(C)
+    C_bypassed = collect(C)
     for i in 1:length(C)-1
-        Lᵢ, Lᵢ₊₁ = relu_bypass(C2[i], C2[i+1])
-        C2[i] = Lᵢ
-        C2[i+1] = Lᵢ₊₁
+        C_bypassed[i:i+1] = relu_bypass(C_bypassed[i], C_bypassed[i+1])
     end
-    Chain(C2...)
+    Chain(C_bypassed...)
 end
 
 #=
