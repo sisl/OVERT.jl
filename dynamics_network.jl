@@ -78,10 +78,10 @@ Base.show(io::IO, RB::ReLUBypass{Nothing})  = print(io, "ReLUBypass(nothing)")
 Base.show(io::IO, RB::ReLUBypass{<:Number}) = print(io, "ReLUBypass($(RB.which_to_protect))")
 Base.show(io::IO, RB::ReLUBypass{<:Vector}) = print(io, "ReLUBypass$(Tuple(RB.which_to_protect))")
 
-# If it's already relu do nothing
-relu_bypass(L1::Dense{typeof(relu), A, B}, L2::Dense) where {A, B} = L1, L2
-
-function relu_bypass(L1::Dense, L2::Dense, which_to_protect =  L1.σ.which_to_protect)
+# If it's anything other than a bypass do nothing
+relu_bypass(L1::Dense, L2::Dense) where {A, B} = L1, L2
+# if it's a ReLUBypass
+function relu_bypass(L1::Dense{<:ReLUBypass, A, B}, L2::Dense, which_to_protect =  L1.σ.which_to_protect) where {A, B}
     W, b, σ = L1.W, L1.b, L1.σ
     if which_to_protect == nothing
         which_to_protect = collect(axes(b, 1))
@@ -102,7 +102,7 @@ end
 function relu_bypass(C::Chain)
     C_bypassed = collect(C)
     for i in 1:length(C)-1
-        C_bypassed[i:i+1] = relu_bypass(C_bypassed[i], C_bypassed[i+1])
+        C_bypassed[i:i+1] .= relu_bypass(C_bypassed[i], C_bypassed[i+1])
     end
     Chain(C_bypassed...)
 end
