@@ -59,9 +59,6 @@ plot!(xs, ys)
 
 
 ##### method 3 hard coded netword
-# Also type piracy:
-(D::Dense)(x::Number) = D.σ(D.W*x + D.b)
-
 struct ReLUBypass{T}
     which_to_protect::T
 end
@@ -74,15 +71,24 @@ function (RB::ReLUBypass)(x)
     out[RB.which_to_protect] = x[RB.which_to_protect]
     return out
 end
+
 Base.show(io::IO, RB::ReLUBypass{Nothing})  = print(io, "ReLUBypass(nothing)")
 Base.show(io::IO, RB::ReLUBypass{<:Number}) = print(io, "ReLUBypass($(RB.which_to_protect))")
 Base.show(io::IO, RB::ReLUBypass{<:Vector}) = print(io, "ReLUBypass$(Tuple(RB.which_to_protect))")
 
+# Also type piracy:
+# TODO to harmonize better with Flux, define a specialized broadcast behavior instead for ReLUBypass
+# (D::Dense{<:ReLUBypass, A, B})(x) where {A,B} = D.σ(D.W*x + D.b)
+(D::Dense)(x::Number) = D.σ.(D.W*x + D.b)
+FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
+(D::Dense{<:ReLUBypass, <:FluxArr, B})(x::FluxArr) where B = D.σ(D.W*x + D.b)
+
+
 # If it's anything other than a bypass do nothing
 relu_bypass(L1::Dense, L2::Dense) where {A, B} = L1, L2
 # if it's a ReLUBypass
-function relu_bypass(L1::Dense{<:ReLUBypass, A, B}, L2::Dense, which_to_protect =  L1.σ.which_to_protect) where {A, B}
-    W, b, σ = L1.W, L1.b, L1.σ
+function relu_bypass(L1::Dense{<:ReLUBypass, A, B}, L2::Dense) where {A, B}
+    W, b, which_to_protect = L1.W, L1.b, L1.σ.which_to_protect
     if which_to_protect == nothing
         which_to_protect = collect(axes(b, 1))
     end
@@ -90,12 +96,12 @@ function relu_bypass(L1::Dense{<:ReLUBypass, A, B}, L2::Dense, which_to_protect 
     I = Matrix(LinearAlgebra.I, n, n)
     # `before` only protects the indices we want, and `after` undoes the transformation
     # `before` needs to be left-multiplied by the weights and `after` right-multiplied
-    # I.e. the full thing:   W₂*B'*σ(B*W₁*x + b₁) + b₂
+    # I.e. the full thing:   W₂*B'*σ(B*(W₁*x + b₁)) + b₂
     before = [I; -I[which_to_protect, :]]
     after = before'
 
     L1_new = Dense(before*W, before*b, relu)
-    L2_new = Dense(L2.W*after, L2.b, relu)
+    L2_new = Dense(L2.W*after, L2.b, L2.σ)
     return L1_new, L2_new
 end
 
@@ -113,6 +119,7 @@ end
 -2Ax/π + 2A    -- [π, 3π/2]
  2Ax/π - 4A    -- [3π/2, π]
 =#
+A = 1
 x = collect(0:0.01:2*pi)
 z1 = 2*A*x - A*pi
 z2 = 4*A*x/pi - 6*A
