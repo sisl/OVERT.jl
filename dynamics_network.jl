@@ -229,4 +229,69 @@ plot(x, C4.(x))
 plot!(x, sin.(x))
 plot!(x, C2.(x))
 
-#### Stack the networks.
+#### Stack the networks. Essentially a layer by layer vcat (with some added intricacies)
+"""
+    vcat(layers::Dense...; [σ = nothing], [block_diagonal_weights = false])
+Vertically stack compatible `Flux.Dense` layers.
+ - `σ` - set the activation function for the output layer. If all layers do not have the same activation, then this field is required.
+ - `block_diagonal_weights` - whether to stack weights *vertically* or into a *block diagonal*, i.e. `[W₁; W₂;...]` or `[W₁ 0 ...; 0, W₂, 0...; ...]`.
+"""
+function Base.vcat(layers::Dense...; σ = nothing, block_diagonal_weights = false)
+    if σ == nothing
+        σ = layers[1].σ
+        @assert all(l-> σ == l.σ, layers) "All the layers to be concatenated
+            must have the same activation function unless the `σ` keyword is set"
+    end
+    weights = (l.W for l in layers)
+    biases  = (l.b for l in layers)
+    W = block_diagonal_weights ? block_diagonal(weights...) : vcat(weights...)
+    b = vcat(biases...)
+    Dense(W, b, σ)
+end
+
+"""
+    vcat(chains::Chain...)
+Vertically stack compatible `Flux.Chain`s
+"""
+function Base.vcat(chains::Chain...)
+    c1 = first(chains)
+    @assert all(length(c1) .== length.(chains)) "All of the Chains must be the same length to be `vcat`ed"
+    C = collect(c1)
+    for i in 1:length(c1)
+        C[i] = vcat((chain[i] for chain in chains)..., block_diagonal_weights = (i != 1))
+    end
+    Chain(C...)
+end
+
+
+"""
+    block_diagonal(arrays::AbstractMatrix...)
+Construct a fully populated block diagonal matrix from a sequence of arrays.
+
+# Example
+    julia> collect(LI)
+    3×3 Array{Int64,2}:
+     1  4  7
+     2  5  8
+     3  6  9
+
+    julia> block_diagonal(LI, LI)
+    6×6 Array{Int64,2}:
+     1  4  7  0  0  0
+     2  5  8  0  0  0
+     3  6  9  0  0  0
+     0  0  0  1  4  7
+     0  0  0  2  5  8
+     0  0  0  3  6  9
+"""
+function block_diagonal(arrays::AbstractMatrix...)
+    T = promote_type(eltype.(arrays)...)
+    A = zeros(T, sum(size.(arrays, 1)), sum(size.(arrays, 2)))
+    n = m = 0
+    for B in arrays
+        n1, m1 = size(B) .+ (n, m)
+        A[(n+1):n1, (m+1):m1] .= B
+        n, m = n1, m1
+    end
+    A
+end
