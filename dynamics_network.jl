@@ -121,13 +121,13 @@ end
 =#
 A = 1
 x = collect(0:0.01:2*pi)
-z1 = 2*A*x - A*pi
-z2 = 4*A*x/pi - 6*A
+z1 = @. 2*A*x - A*pi
+z2 = @. 4*A*x/pi - 6*A
 
-term1 = (A*pi - (relu.(z1) + relu.(-z1)))/2
-term2 = (-2*A + (relu.(z2) + relu.(-z2)))/2
-term3 = (term2 - (relu.(term2) + relu.(-term2)))/2
-term4 = (term1 + term3 + relu.(term1 - term3) + relu.(term3 - term1))/2
+term1 = @. (A*pi - (relu.(z1) + relu.(-z1)))/2
+term2 = @. (-2*A + (relu.(z2) + relu.(-z2)))/2
+term3 = @. (term2 - (relu.(term2) + relu.(-term2)))/2
+term4 = @. (term1 + term3 + relu.(term1 - term3) + relu.(term3 - term1))/2
 # plot(x, term4)
 
 #=
@@ -135,8 +135,8 @@ x ->
 [2Ax - Aπ,  4A/π x - 6A] = [z1, z2]->
 Id ->
 [z1, -z1, z2, -z2] ->
-relu -> 0.5*[1 1 0 0;
-             0 0 1 1] [z1, -z1, z2, -z2] + [Aπ/2, -A] = [t1, t2] ->
+relu -> 0.5*[-1 -1 0 0;
+             0  0  1 1] [z1, -z1, z2, -z2] + [Aπ/2, -A] = [t1, t2] ->
 Id ->
 
 [t1, t2, -t2] ->
