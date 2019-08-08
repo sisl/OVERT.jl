@@ -72,9 +72,7 @@ function (RB::ReLUBypass)(x)
     return out
 end
 
-Base.show(io::IO, RB::ReLUBypass{Nothing})  = print(io, "ReLUBypass(nothing)")
-Base.show(io::IO, RB::ReLUBypass{<:Number}) = print(io, "ReLUBypass($(RB.protected))")
-Base.show(io::IO, RB::ReLUBypass{<:Vector}) = print(io, "ReLUBypass$(Tuple(RB.protected))")
+Base.show(io::IO, RB::ReLUBypass) = print(io, "ReLUBypass($(repr(RB.protected)))")
 
 # Also type piracy:
 # TODO to harmonize better with Flux, define a specialized broadcast behavior instead for ReLUBypass
@@ -269,7 +267,7 @@ end
 Construct a fully populated block diagonal matrix from a sequence of arrays.
 
 # Example
-    julia> collect(LI)
+    julia> collect(LinearIndices((3,3)))
     3×3 Array{Int64,2}:
      1  4  7
      2  5  8
