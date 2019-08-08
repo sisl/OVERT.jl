@@ -1,15 +1,15 @@
-using Flux, LinearAlgebra
+using Flux, LinearAlgebra, Plots
 
-#### method 1, approximate step function
-function bin(θ, I = 6)
-    a = [θ - (i-1)*pi/2 for i in 1:I]
-    relu.(a - 1e30*relu.(a .- pi/2))
-end
-function UB(θ, I = 6)
-    D = Diagonal([1, -1, -2/pi, 2/pi, 1, -1])
-    out = D*bin(θ, I)
-    out + [(i-1)*pi/2 for i in 1:I]
-end
+# #### method 1, approximate step function
+# function bin(θ, I = 6)
+#     a = [θ - (i-1)*pi/2 for i in 1:I]
+#     relu.(a - 1e30*relu.(a .- pi/2))
+# end
+# function UB(θ, I = 6)
+#     D = Diagonal([1, -1, -2/pi, 2/pi, 1, -1])
+#     out = D*bin(θ, I)
+#     out + [(i-1)*pi/2 for i in 1:I]
+# end
 
 ##### method 2, learn it with flux
 # Overload operations for our purposes NOTE: THIS IS TYPE PIRACY
@@ -18,42 +18,42 @@ Base.:+(x::AbstractArray, y::Number) = x .+ y
 Base.:-(x::Number, y::AbstractArray) = x .- y
 Base.:+(x::Number, y::AbstractArray) = x .+ y
 
-model = Chain(Dense(1, 10, relu), Dense(10, 10, relu), Dense(10, 4, relu), Dense(4, 1, identity))
-opt = ADAM(0.001, (0.9, 0.999))
-Xs = map(x-> [x], 0:0.1:2pi)
-data = collect(zip(Xs, foo.(Xs)))
-
-function loss(x, y)
-    return maximum(abs.(model(x) - y))
-end
-
-function foo(θ::Number)
-    θ = mod2pi(θ)
-    if 0 <= θ < pi
-        y = -abs(θ - pi/2) + pi/2
-    elseif pi <= θ <= 2pi
-        y = 2/pi*abs(θ - 3pi/2) - 1
-    end
-    return y
-end
-foo(θ) = foo.(θ)
-
-
-Flux.@epochs 500 Flux.train!(loss,  Flux.params(model), data,  opt)
-
-function _removedim(X)
-    v = eltype(X)()
-    for x in X
-        append!(v, x)
-    end
-    return v
-end
-
-xs = _removedim(Xs)
-ys = _removedim(Tracker.data.(model.(Xs)))
-# plot(xs, foo.(xs))
-plot(xs, sin.(xs))
-plot!(xs, ys)
+# model = Chain(Dense(1, 10, relu), Dense(10, 10, relu), Dense(10, 4, relu), Dense(4, 1, identity))
+# opt = ADAM(0.001, (0.9, 0.999))
+# Xs = map(x-> [x], 0:0.1:2pi)
+# data = collect(zip(Xs, foo.(Xs)))
+#
+# function loss(x, y)
+#     return maximum(abs.(model(x) - y))
+# end
+#
+# function foo(θ::Number)
+#     θ = mod2pi(θ)
+#     if 0 <= θ < pi
+#         y = -abs(θ - pi/2) + pi/2
+#     elseif pi <= θ <= 2pi
+#         y = 2/pi*abs(θ - 3pi/2) - 1
+#     end
+#     return y
+# end
+# foo(θ) = foo.(θ)
+#
+#
+# Flux.@epochs 500 Flux.train!(loss,  Flux.params(model), data,  opt)
+#
+# function _removedim(X)
+#     v = eltype(X)()
+#     for x in X
+#         append!(v, x)
+#     end
+#     return v
+# end
+#
+# xs = _removedim(Xs)
+# ys = _removedim(Tracker.data.(model.(Xs)))
+# # plot(xs, foo.(xs))
+# plot(xs, sin.(xs))
+# plot!(xs, ys)
 
 
 
@@ -121,15 +121,26 @@ end
 =#
 A = 1
 x = collect(0:0.01:2*pi)
+ # Upper Bound #
 z1 = 2*A*x - A*pi
 z2 = 4*A*x/pi - 6*A
-
 term1 = (A*pi - (relu.(z1) + relu.(-z1)))/2
 term2 = (-2*A + (relu.(z2) + relu.(-z2)))/2
 term3 = (term2 - (relu.(term2) + relu.(-term2)))/2
 term4 = (term1 + term3 + relu.(term1 - term3) + relu.(term3 - term1))/2
 # plot(x, term4)
+# Lower Bound #
+z1 = 4*A*x/pi - 2*A;
+z2 = -2*A*x + 3*A*pi;
+term1 = (2*A - relu.(z1) - relu.(-z1))/2;
+term2 = (-A*pi + relu.(z2) + relu.(-z2))/2;
+term3 = (term1 + relu.(term1) + relu.(-term1))/2;
+term44 = (term3 + term2 - relu.(term3 - term2) - relu.(-term3 + term2))/2;
+# plot!(x, term44)
+# plot!(x, sin.(x))
 
+
+#### UPPER BOUND ###
 #=
 x ->
 [2Ax - Aπ,  4A/π x - 6A] = [z1, z2]->
@@ -154,6 +165,7 @@ relu ->
 
 -> OUT
 =#
+
 
 L1 = Dense([2A, 4A/π], [-A*π, -6A], ReLUBypass()) # [z1, z2]
 
@@ -180,5 +192,39 @@ L5 = Dense(0.5*W5, 0, identity) # bypass everything
 
 C = Chain(L1, L2, L3, L4, L5)
 C2 = relu_bypass(C)
-upperPlot = plot(x, C2.(x))
-upperPlot = plot!(x, sin.(x))
+# upperPlot = plot(x, C2.(x))
+# upperPlot = plot!(x, sin.(x))
+
+
+
+
+
+# ######## LOWER BOUND #######
+L1 = Dense([4A/π, -2A], [-2A, 3A*π], ReLUBypass()) # [z1, z2]
+
+W2 = [ 1 0
+      -1 0
+       0 1
+       0 -1]
+L2 = Dense(W2, zeros(4), relu) # [r(z1), r(-z1), r(z2), r(-z2)]
+
+W3 = [ 0 0 1 1
+      -1 -1 0 0
+      -1 -1 0 0
+       1 1 0 0]
+L3 = Dense(0.5*W3, A*[-π/2, 1, 1, -1], ReLUBypass(1, 2)) # [t2, t1, r(t1), r(-t1)] ... [t1, t2, r(t2), r(-t2)]
+
+W4 = [2 0 0 0
+      0 1 1 1
+      2 -1 -1 -1
+      -2 1 1 1]
+L4 = Dense(0.5*W4, zeros(4), ReLUBypass(1, 2))  # [t2, t3, r(t2-t3), r(t3-t2)] ...  [t1, t3, r(t1-t3), r(t3-t1)]
+
+W5 = [1, 1, -1, -1]'
+L5 = Dense(0.5*W5, 0, identity) # bypass everything
+
+C3 = Chain(L1, L2, L3, L4, L5)
+C4 = relu_bypass(C3)
+lowerPlot = plot(x, C4.(x))
+lowerPlot = plot!(x, sin.(x))
+totalPlot = plot!(x, C2.(x))
