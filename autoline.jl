@@ -123,31 +123,51 @@ function closed_form_piecewise_linear(pts)
     return equation
 end
 
-make_expr_dict(ex) = _make_expr_dict(deepcopy(ex))
-function _make_expr_dict(ex, D = Dict())
-    if !(ex isa Expr)
-        return
-    end
-    for (i, arg) in enumerate(ex.args)
-        _make_expr_dict(arg, D)
-        if arg isa Symbol || arg isa Number
-            continue
-        end
+# make_expr_dict(ex) = _make_expr_dict(deepcopy(ex))
+# function _make_expr_dict(ex, D = Dict())
+#     if !(ex isa Expr)
+#         return
+#     end
+#     for (i, arg) in enumerate(ex.args)
+#         _make_expr_dict(arg, D)
+#         if arg isa Symbol || arg isa Number
+#             continue
+#         end
 
-        if is_negative_expr(arg)
-            # the key for the positive part is necessarily
-            # already in the dict due to recursion order
-            return
-        elseif haskey(D, arg)
-            simplified_expr = D[arg]
-        else
-            D[:counter] = n = get(D, :counter, 0) + 1
-            D[arg] = Symbol("z$n")
-            simplified_expr = D[arg]
-        end
-        ex.args[i] = simplified_expr
-    end
-    D
+#         if is_negative_expr(arg)
+#             # the key for the positive part is necessarily
+#             # already in the dict due to recursion order
+#             return
+#         elseif haskey(D, arg)
+#             simplified_expr = D[arg]
+#         else
+#             D[:counter] = n = get(D, :counter, 0) + 1
+#             D[arg] = Symbol("z$n")
+#             simplified_expr = D[arg]
+#         end
+#         ex.args[i] = simplified_expr
+#     end
+#     D
+# end
+
+function make_expr_dict(ex)
+    D = Dict()
+    _make_expr_dict(deepcopy(ex), D)
+    return D
 end
+
+function _make_expr_dict(ex, D = Dict())
+    ex isa Expr || return ex
+    for (i, arg) in enumerate(ex.args)
+        ex.args[i] = _make_expr_dict(arg, D)
+    end
+    is_negative_expr(ex) && return ex
+    if !haskey(D, ex)
+        D[:counter] = n = get(D, :counter, 0) + 1
+        D[ex] = Symbol("z$n")
+    end
+    return D[ex]
+end
+
 
 is_negative_expr(ex) = ex.head == :call && ex.args[1] == :- && length(ex.args) == 2
