@@ -50,7 +50,7 @@ plot(x, equation.(x))
 """
     abs_to_relu!(ex::Expr)
     abs_to_relu(ex::Expr)
-function to convert an `abs(x)` expression to `relu(x) - relu(-x)`. Mutating and nonmutating versions.
+function to convert an `abs(x)` expression to `relu(x) + relu(-x)`. Mutating and nonmutating versions.
 """
 function abs_to_relu(ex::Expr)
     check_for_abs(ex)
@@ -68,11 +68,13 @@ function check_for_abs(ex::Expr)
     @assert length(ex.args) == 2 "Malformed expression. `abs` can take only one argument. Got $ex"
     return nothing
 end
+
 function check_for_maxmin(ex::Expr)
     ex.args[1] ∈ (:max, :min) || throw(ArgumentError("function is neither max nor min. Got $(ex.args[1])"))
     @assert length(ex.args) == 3 "max/min_to_abs can't handle more than two inputs at the moment."
     return nothing
 end
+
 function maxmin_to_abs(ex::Expr)
     check_for_maxmin(ex)
     a, b = ex.args[2:3]
@@ -114,9 +116,38 @@ function closed_form_piecewise_linear(pts)
             continue
         end
         line = :($m_new*x + $b_new)
-        maxmin = m_new > m ? :max : :min
-        equation = :($maxmin($equation, $maxmin($(pts[i][2]), $line)))
+        max_or_min = m_new > m ? :max : :min
+        equation = Expr(:call, max_or_min, equation, line)
         m = m_new
     end
     return equation
 end
+
+make_expr_dict(ex) = _make_expr_dict(deepcopy(ex))
+function _make_expr_dict(ex, D = Dict())
+    if !(ex isa Expr)
+        return
+    end
+    for (i, arg) in enumerate(ex.args)
+        _make_expr_dict(arg, D)
+        if arg isa Symbol || arg isa Number
+            continue
+        end
+
+        if is_negative_expr(arg)
+            # the key for the positive part is necessarily
+            # already in the dict due to recursion order
+            return
+        elseif haskey(D, arg)
+            simplified_expr = D[arg]
+        else
+            D[:counter] = n = get(D, :counter, 0) + 1
+            D[arg] = Symbol("z$n")
+            simplified_expr = D[arg]
+        end
+        ex.args[i] = simplified_expr
+    end
+    D
+end
+
+is_negative_expr(ex) = ex.head == :call && ex.args[1] == :- && length(ex.args) == 2
