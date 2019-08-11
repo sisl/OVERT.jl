@@ -171,3 +171,35 @@ end
 
 
 is_negative_expr(ex) = ex.head == :call && ex.args[1] == :- && length(ex.args) == 2
+
+
+# based on https://gist.github.com/davidagold/b94552828f4cf33dd3c8
+function simplify(e::Expr)
+    _simplify(e)
+end
+
+_simplify(e) = e
+function _simplify(e::Expr)
+    # apply the following only to expressions that call a function on arguments
+    if e.head == :call
+        op = e.args[1] # in such expressions, `args[1]` is the called function
+        simplified_args = [ _simplify(arg) for arg in e.args[2:end] ]
+        if op == :*
+            in(0, e.args[2:end]) && return 0 # return 0 if any args are 0
+            simplified_args = simplified_args[simplified_args .!= 1] # remove 1s
+        elseif op ∈ (:+, :-)
+            simplified_args = simplified_args[simplified_args .!= 0] # remove 0s
+        elseif op ∈ (:min, :max)
+            simplified_args = unique(simplified_args)
+        elseif op == :relu
+            length(simplified_args) > 1 && error("bad relu")
+            if simplified_args[1] isa Number
+                return simplified_args[1] <= 0 ? 0 : simplified_args[1]
+            end
+            return Expr(:call, op, simplified_args...)
+        end
+        length(simplified_args) == 0 ? 0 :
+        length(simplified_args) == 1 ? simplified_args[1] :
+        return Expr(:call, op, simplified_args...)
+    end
+end
