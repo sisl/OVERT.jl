@@ -1,4 +1,5 @@
 using Flux, LinearAlgebra, Plots
+using BSON: @save
 
 # #### method 1, approximate step function
 # function bin(θ, I = 6)
@@ -118,7 +119,7 @@ end
  2Ax/π - 4A    -- [3π/2, π]
 =#
 A = 1
-x = collect(0:0.01:2*pi)
+x = collect(-π:0.01:π)
  # Upper Bound #
 z1 = @. 2*A*x - A*pi
 z2 = @. 4*A*x/pi - 6*A
@@ -163,7 +164,7 @@ relu ->
 
 -> OUT
 =#
-
+L0 = Dense([1], [π], ReLUBypass())
 
 L1 = Dense([2A, 4A/π], [-A*π, -6A], ReLUBypass()) # [z1, z2]
 
@@ -185,10 +186,10 @@ W4 = [2 0 0 0
       -2 1 -1 -1]
 L4 = Dense(0.5*W4, zeros(4), ReLUBypass(1, 2))  # [t1, t3, r(t1-t3), r(t3-t1)]
 
-W5 = [1, 1, 1, 1]'
+W5 = [-1, -1, -1, -1]'
 L5 = Dense(0.5*W5, 0, identity) # bypass everything
 
-C = Chain(L1, L2, L3, L4, L5)
+C = Chain(L0, L1, L2, L3, L4, L5)
 C2 = relu_bypass(C)
 # upperPlot = plot(x, C2.(x))
 # upperPlot = plot!(x, sin.(x))
@@ -198,6 +199,8 @@ C2 = relu_bypass(C)
 
 
 # ######## LOWER BOUND #######
+L0 = Dense([1], [π], ReLUBypass())
+
 L1 = Dense([4A/π, -2A], [-2A, 3A*π], ReLUBypass()) # [z1, z2]
 
 W2 = [ 1 0
@@ -218,14 +221,16 @@ W4 = [2 0 0 0
       -2 1 1 1]
 L4 = Dense(0.5*W4, zeros(4), ReLUBypass(1, 2))  # [t2, t3, r(t2-t3), r(t3-t2)] ...  [t1, t3, r(t1-t3), r(t3-t1)]
 
-W5 = [1, 1, -1, -1]'
+W5 = [-1, -1, 1, 1]'
 L5 = Dense(0.5*W5, 0, identity) # bypass everything
 
-C3 = Chain(L1, L2, L3, L4, L5)
+C3 = Chain(L0, L1, L2, L3, L4, L5)
 C4 = relu_bypass(C3)
-plot(x, C4.(x))
+p = plot(x, C4.(x))
 plot!(x, sin.(x))
 plot!(x, C2.(x))
+
+
 
 #### Stack the networks. Essentially a layer by layer vcat (with some added intricacies)
 """
@@ -293,3 +298,13 @@ function block_diagonal(arrays::AbstractMatrix...)
     end
     A
 end
+
+
+
+# Stack into one net and plot to verify
+total = Base.vcat(C2, C4)
+plot(x, hcat(total.(x)...)'[:,1])
+plot!(x, hcat(total.(x)...)'[:,2])
+plot!(x, sin.(x))
+
+@save "dynamics_model.bson" total

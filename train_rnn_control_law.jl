@@ -2,6 +2,7 @@ using Flux
 using Plots, UnicodePlots
 using Base.Iterators: partition
 using LinearAlgebra
+using BSON: @save
 
 function θ_ddot_desired(x, m, L, g)
    u = desired_control(x)
@@ -13,7 +14,6 @@ fixrad(x) = (y = mod2pi(x); y > pi ? y-2pi : y)
 fixdeg(x) = (y = mod(x, 360); y > 180 ? y-360 : y)
 
 # function to generate traces at specified dt for training data #
-# put Flux.train! in a for loop with different data each time to simulate epochs but with different data
 function generate_x_train(N, dt, m, L, g)
    X_train = [zeros(2) for i in 1:N]
    X_train[1] = [0.1*(rand() - 0.5), 0.05*(rand() - 0.5)]
@@ -30,10 +30,10 @@ Base.:+(x::AbstractArray, y::Number) = x.+y
 Base.:-(x::Number, y::AbstractArray) = x.-y
 Base.:+(x::Number, y::AbstractArray) = x.+y
 
-
 # Define network #
-model = Chain(Dense(2, 4, relu), RNN(4, 4, relu), Dense(4, 2, identity))
-
+model = Chain(Dense(2, 4, relu), RNN(4, 4, relu), Dense(4, 1, identity))
+list = [2 4 4 1]  # size of each layer
+rnn_layer = 3  # what indices have rnn layers
 # Inverted pendulum dynamics parameters #
 g = 9.81;  L = 0.85;  m = 1;
 I = 8;     damp = 1;  w_n = 10;
@@ -53,18 +53,6 @@ function loss(x, y)
    return z + 100*norm(s)
 end
 
-
-# training setup and execution #
-dt = 0.005
-opt = ADAM(0.001, (0.9, 0.999))
-T = 100  # length of episode
-num_eps = 2500
-N = fill(T, num_eps)
-Xs = generate_x_train.(N, dt, 1, 0.85, 9.81)
-Ys = zeros.(length.(Xs))
-data = collect(zip(Xs, Ys))
-Flux.train!(loss,  Flux.params(model), data,  opt, cb = Flux.throttle(() -> @show(loss([[0.0, 0.1]], 0)), 1))
-
 # simulate policy after training #
 function sim(f, x, T, dt = 0.005)
    u = 0
@@ -80,17 +68,32 @@ function sim(f, x, T, dt = 0.005)
    return X
 end
 
+
+# training setup and execution #
+dt = 0.005
+opt = ADAM(0.001, (0.9, 0.999))
+T = 100  # length of episode
+num_eps = 8000
+N = fill(T, num_eps)
+Xs = generate_x_train.(N, dt, 1, 0.85, 9.81)
+Ys = zeros.(length.(Xs))
+data = collect(zip(Xs, Ys))
+Flux.train!(loss,  Flux.params(model), data,  opt, cb = Flux.throttle(() -> @show(loss([[0.0, 0.1]], 0)), 1))
+
+# plot a sim trace #
 function plotsim!(p, f = NN; dt = dt, T = 2T, s0 = [deg2rad(2), deg2rad(0)])
    s = sim(f, s0, T, dt)
    label = f == NN ? "NN" : "desired"
-   plot!(p, 1:T, fixdeg.(rad2deg.(s[:, 1])), label = label)
+   plot!(p, 1:T, fixdeg.(rad2deg.(s[:, 1])), label = label, xlabel="Time Step", ylabel="Degrees")
 end
+
 plotsim(args...) = plotsim!(plot(), args...)
 # plot a trace of time 'T' #
 NN(x) = Tracker.data(model(x))[1]
 p = plotsim(NN)
 plotsim!(p, desired_control)
-[plotsim!(p, NN, s0 = [0.1*(rand() - 0.5), 0.05*(rand() - 0.5)]) for i in 1:10]
+[plotsim!(p, NN, s0 = [0.1*(rand() - 0.5), 0.05*(rand() - 0.5)]) for i in 1:500]
 p
-# plot(1:T, fixdeg.(rad2deg.(X[:, 2])))
-# lineplot(1:T, fixdeg.(rad2deg.(X[:, 1])))
+
+weights_c = Tracker.data.(Flux.params(model));
+@save "controller_weights.bson" weights_c
