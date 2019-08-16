@@ -1,48 +1,48 @@
-using Flux, SymPy, Plots
+# using Flux, SymPy, Plots
 
-abs_val(x) = relu.(x) + relu.(-x)
-max_eval(a, b) = 0.5*(a + b + abs_val(a-b))
-min_eval(a, b) = 0.5*(a + b - abs_val(a-b))
+# abs_val(x) = relu.(x) + relu.(-x)
+# max_eval(a, b) = 0.5*(a + b + abs_val(a-b))
+# min_eval(a, b) = 0.5*(a + b - abs_val(a-b))
 
-struct Point
-    x::Float64
-    y::Float64
-end
+# struct Point
+#     x::Float64
+#     y::Float64
+# end
 
-function slope_int(pt1, pt2)
-    slope = (pt2.y - pt1.y)/(pt2.x - pt1.x)
-    intercept = -slope*pt1.x + pt1.y
-    return slope, intercept
-end
+# function slope_int(pt1, pt2)
+#     slope = (pt2.y - pt1.y)/(pt2.x - pt1.x)
+#     intercept = -slope*pt1.x + pt1.y
+#     return slope, intercept
+# end
 
-# pts should be a vector of Point types
-function get_line(pts)
-    @vars x
-    slope, int = slope_int(pts[1], pts[2])
-    equation = slope*x + int
-    for i in 2:length(pts)-1
-        slope_new, int_new = slope_int(pts[i], pts[i+1])
-        equation_new = slope_new*x + int_new
-        if slope_new > slope
-            equation = max_eval(equation, equation_new)
-        elseif slope_new < slope
-            equation = min_eval(equation, equation_new)
-        else
-            error("Non-vertex point given! Please remove this point.")
-        end
-        slope = slope_new
-    end
+# # pts should be a vector of Point types
+# function get_line(pts)
+#     @vars x
+#     slope, int = slope_int(pts[1], pts[2])
+#     equation = slope*x + int
+#     for i in 2:length(pts)-1
+#         slope_new, int_new = slope_int(pts[i], pts[i+1])
+#         equation_new = slope_new*x + int_new
+#         if slope_new > slope
+#             equation = max_eval(equation, equation_new)
+#         elseif slope_new < slope
+#             equation = min_eval(equation, equation_new)
+#         else
+#             error("Non-vertex point given! Please remove this point.")
+#         end
+#         slope = slope_new
+#     end
 
-    return equation
-end
+#     return equation
+# end
 
-## Example ##
-points = [Point(0.0, 0.0), Point(1.0, 1.0), Point(2.0, 0.0), Point(3.0, 1.0)]
-equation = get_line(points)
-print("\nPoints: ", points, "\n")
-print("\nEquation: ", equation, "\n")
-x = collect(0:0.01:3)
-plot(x, equation.(x))
+# ## Example ##
+# points = [Point(0.0, 0.0), Point(1.0, 1.0), Point(2.0, 0.0), Point(3.0, 1.0)]
+# equation = get_line(points)
+# print("\nPoints: ", points, "\n")
+# print("\nEquation: ", equation, "\n")
+# x = collect(0:0.01:3)
+# plot(x, equation.(x))
 
 
 
@@ -106,18 +106,34 @@ function slope_int(p1, p2)
     b = -m*x1 + y1
     return m, b
 end
+function lip_const(pts)
+    m = 0
+    for i in 1:length(pts)-1
+        mᵢ, b = slope_int(pts[i], pts[i+1])
+        if abs(mᵢ) > m
+            m = abs(mᵢ)
+        end
+    end
+    ceil(m)
+end
+
+lip_line(ℓ, pt) = lip_line = :($(ℓ)*x + $(pt[2] - ℓ*pt[1]))
 
 function closed_form_piecewise_linear(pts)
     m, b = slope_int(pts[1], pts[2])
     equation = :($m*x + $b)
+    ℓ = lip_const(pts)
     for i in 2:length(pts)-1
         m_new, b_new = slope_int(pts[i], pts[i+1])
         if m_new == m
             continue
         end
         line = :($m_new*x + $b_new)
-        max_or_min = m_new > m ? :max : :min
-        equation = Expr(:call, max_or_min, equation, line)
+        if m_new > m
+            equation = Expr(:call, :max, equation, :(min($(lip_line(ℓ, pts[i])), $line)))
+        else
+            equation = Expr(:call, :min, equation, :(max($(lip_line(-ℓ, pts[i])), $line)))
+        end
         m = m_new
     end
     return equation
@@ -153,6 +169,7 @@ end
 function make_expr_dict(ex)
     D = Dict()
     _make_expr_dict(deepcopy(ex), D)
+    delete!(D, :counter)
     return D
 end
 
@@ -185,16 +202,16 @@ function _simplify(e::Expr)
         op = e.args[1] # in such expressions, `args[1]` is the called function
         simplified_args = [ _simplify(arg) for arg in e.args[2:end] ]
         if op == :*
-            in(0, e.args[2:end]) && return 0 # return 0 if any args are 0
+            0 in e.args[2:end] && return 0 # return 0 if any args are 0
             simplified_args = simplified_args[simplified_args .!= 1] # remove 1s
         elseif op ∈ (:+, :-)
             simplified_args = simplified_args[simplified_args .!= 0] # remove 0s
         elseif op ∈ (:min, :max)
-            simplified_args = unique(simplified_args)
+            simplified_args = unique(simplified_args) # unique min/max args
         elseif op == :relu
             length(simplified_args) > 1 && error("bad relu")
             if simplified_args[1] isa Number
-                return simplified_args[1] <= 0 ? 0 : simplified_args[1]
+                return simplified_args[1] <= 0 ? 0 : simplified_args[1] # relu +/- when known
             end
             return Expr(:call, op, simplified_args...)
         end
