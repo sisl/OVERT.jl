@@ -94,9 +94,9 @@ function new_params(model, state_size)
     sizes_layers = layer_sizes(model)
     rnn_index = rnn_layer(model)
     size_latent = size(model[rnn_layer(model)].init)[1]
-    weights = Vector{Array{Float64}}(undef, num_layers(model)-1)
-    biases  = Vector{Array{Float64}}(undef, num_layers(model)-1)
-    for i = 1:num_layers(model)-1
+    weights = Vector{Array{Float64}}(undef, length(model))
+    biases  = Vector{Array{Float64}}(undef, length(model))
+    for i = 1:length(model)
         if i < rnn_index
             weights[i] = hcat(zeros(sizes_layers[i+1], size_latent), Tracker.data(model.layers[i].W))
             weights[i] = vcat(Matrix(1I, size_latent, sizes_layers[i]+size_latent), weights[i])
@@ -123,14 +123,19 @@ end
 # Returns which indices of each layer to ReLUBypass
 function bypass_nodes(model, state_size)
     size_latent = size(model[rnn_layer(model)].init)[1]
-    [i == rnn_layer(model) ? collect(1:state_size) : collect(1:size_latent+state_size) for i = 1:num_layers(model)-1]
+    [i == rnn_layer(model) ? collect(1:state_size) : collect(1:size_latent+state_size) for i = 1:length(model)]
 end
 
 # Returns number of layers of a model, including input layer
-num_layers(model) = 1 + sum([1 for l in model.layers])
+num_layers(model) = length(model) + 1
 
 # Return list of size of each layer in flux model. Input layer included.
-layer_sizes(x) = append!([size(x[1].W)[2]], [x.layers[i] isa Dense ? size(x[i].W)[1] : size(x[i].init)[1] for i=1:num_layers(x)-1])
+layer_sizes(x) = [layer_size(x[1], 2); layer_size.(x, 1)]
+
+
+weights(D::Dense) = D.W
+weights(R::Flux.Recur) = R.cell.Wi
+layer_size(L, i = nothing) = i == nothing ? size(weights(L)) : size(weights(L), i)
 
 # Return RNN Layer. (Input limited to one RNN layer)
 rnn_layer(model) = findfirst(l->l isa Flux.Recur, model.layers)
