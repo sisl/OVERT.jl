@@ -65,13 +65,6 @@ Base.show(io::IO, RB::ReLUBypass) = print(io, "ReLUBypass($(repr(RB.protected)))
 
 #### FLUX COMPATIBILITY SHOULD LIVE ON ITS OWN.
 
-# Also type piracy:
-# TODO to harmonize better with Flux, define a specialized broadcast behavior instead for ReLUBypass
-# (D::Dense{<:ReLUBypass, A, B})(x) where {A,B} = D.σ(D.W*x + D.b)
-(D::Dense)(x::Number) = D.σ.(D.W*x + D.b)
-FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
-(D::Dense{<:ReLUBypass, <:FluxArr, B})(x::FluxArr) where B = D.σ(D.W*x + D.b)
-
 # If it's anything other than a bypass do nothing
 relu_bypass(L1::Dense, L2::Dense) where {A, B} = L1, L2
 # if it's a ReLUBypass
@@ -104,6 +97,10 @@ Base.:+(x::AbstractArray, y::Number) = x .+ y
 Base.:-(x::Number, y::AbstractArray) = x .- y
 Base.:+(x::Number, y::AbstractArray) = x .+ y
 
-(D::Dense{<:ReLUBypass, A, B})(x::AbstractArray) where {A, B} = D.σ(D.W*x + D.b)
-(D::Dense{<:ReLUBypass, A, <:FluxArr})(x::AbstractArray) where A = D.σ(D.W*x + D.b)
-(D::Dense{<:ReLUBypass, <:FluxArr, <:FluxArr})(x::AbstractArray) where A = D.σ(D.W*x + D.b)
+# Also type piracy:
+# TODO to harmonize better with Flux, define a specialized broadcast behavior instead for ReLUBypass
+(D::Dense)(x::Number) = D.σ.(D.W*x + D.b) # NOTE: THIS ONE IS TYPE PIRACY
+FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
+(D::Dense{<:ReLUBypass, A, B})(x) where {A, B} = D.σ(D.W*x + D.b)
+(D::Dense{<:ReLUBypass, <:FluxArr, B})(x::AbstractArray{<:Real}) where B = D.σ(D.W*x + D.b)
+(D::Dense{<:ReLUBypass, <:FluxArr, B})(x::FluxArr) where B = D.σ(D.W*x + D.b)
