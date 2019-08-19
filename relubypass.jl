@@ -75,9 +75,8 @@ function relu_bypass(L1::Dense{<:ReLUBypass, T1, T2}, L2::Dense) where {T1, T2}
     end
     n = size(W, 1)
     I = Matrix(LinearAlgebra.I, n, n)
-    # `before` only protects the indices we want, and `after` undoes the transformation
-    # `before` needs to be left-multiplied by the weights and `after` right-multiplied
-    # I.e. the full thing:   W₂*B'*σ(B*(W₁*x + b₁)) + b₂
+    # `B` protects the indices we want. B' undoes the transformation.
+    # The full thing:   W₂*B'*σ(B*(W₁*x + b₁)) + b₂
     B = [I; -I[protected, :]]
     L1_new = Dense(B*W, B*b, relu)
     L2_new = Dense(L2.W*B', L2.b, L2.σ)
@@ -92,10 +91,10 @@ function relu_bypass(C::Chain)
     Chain(C_bypassed...)
 end
 
-Base.:-(x::AbstractArray, y::Number) = x .- y
-Base.:+(x::AbstractArray, y::Number) = x .+ y
-Base.:-(x::Number, y::AbstractArray) = x .- y
-Base.:+(x::Number, y::AbstractArray) = x .+ y
+# Base.:-(x::AbstractArray, y::Number) = x .- y
+# Base.:+(x::AbstractArray, y::Number) = x .+ y
+# Base.:-(x::Number, y::AbstractArray) = x .- y
+# Base.:+(x::Number, y::AbstractArray) = x .+ y
 
 # Also type piracy:
 # TODO to harmonize better with Flux, define a specialized broadcast behavior instead for ReLUBypass
