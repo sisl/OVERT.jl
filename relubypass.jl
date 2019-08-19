@@ -75,7 +75,7 @@ FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
 # If it's anything other than a bypass do nothing
 relu_bypass(L1::Dense, L2::Dense) where {A, B} = L1, L2
 # if it's a ReLUBypass
-function relu_bypass(L1::Dense{<:ReLUBypass, A, B}, L2::Dense) where {A, B}
+function relu_bypass(L1::Dense{<:ReLUBypass, T1, T2}, L2::Dense) where {T1, T2}
     W, b, protected = L1.W, L1.b, L1.σ.protected
     if protected == nothing
         protected = collect(axes(b, 1))
