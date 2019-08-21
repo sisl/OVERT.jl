@@ -1,6 +1,5 @@
 using Flux
-using Plots, UnicodePlots
-using Base.Iterators: partition
+using Plots
 using LinearAlgebra
 using BSON: @load
 
@@ -70,3 +69,26 @@ x = collect(-pi:0.01:pi)
 p2 = plot(x, Tracker.data(hcat(total.(x)...)'[:,1]))
 plot!(x, Tracker.data(hcat(total.(x)...)'[:,2]))
 plot!(x, sin.(x))
+
+# format for dynamics net is [θ, θ, θ_dot, u] (yes θ is repeated)
+s2in(a, u=0) = (length(a) == 2 || error(); [a[1]; a; u])
+
+function test_dynamics(D, x, T, dt = 0.005)
+   u = 0
+   X = zeros(T, 2)
+    for t in 1:T
+      θ, θ_dot = x
+      input_state = s2in(x, u)
+      next = D(input_state)
+
+      θ_ddot = u/(m*L^2) + (g/L)*sin(θ)
+      x .+= [θ_dot, θ_ddot].*dt
+      x[1] = fixrad(x[1])
+
+      next[2] <= x[2] <= next[3] || error("out of bounds velocity $x")
+      x[1] == next[1] || error("not equal to angle $x")
+
+      X[t, :] .= x
+   end
+   return X
+end
