@@ -103,3 +103,5 @@ FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
 (D::Dense{<:ReLUBypass, A, B})(x) where {A, B} = D.σ(D.W*x + D.b)
 (D::Dense{<:ReLUBypass, <:FluxArr, B})(x::AbstractArray{<:Real}) where B = D.σ(D.W*x + D.b)
 (D::Dense{<:ReLUBypass, <:FluxArr, B})(x::FluxArr) where B = D.σ(D.W*x + D.b)
+(D::Dense{<:ReLUBypass, A, B})(x::Number) where {A, B} = D.σ(D.W*x + D.b)
+(D::Dense{<:ReLUBypass, A, B})(x::AbstractArray) where {A, B} = D.σ(D.W*x + D.b)
