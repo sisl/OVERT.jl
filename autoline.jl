@@ -163,7 +163,7 @@ is_relu_expr(ex) = ex.head == :call && ex.args[1] == :relu
 # based on https://gist.github.com/davidagold/b94552828f4cf33dd3c8
 function simplify(e::Expr)
     # _simplify(e)
-    Meta.parse(string(Basic(e)))
+    Meta.parse(string(expand(Basic(e))))
 end
 
 # _simplify(e) = e
