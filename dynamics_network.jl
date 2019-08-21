@@ -14,10 +14,10 @@ using BSON: @save
 
 ##### method 2, learn it with flux
 # Overload operations for our purposes NOTE: THIS IS TYPE PIRACY
-Base.:-(x::AbstractArray, y::Number) = x .- y
-Base.:+(x::AbstractArray, y::Number) = x .+ y
-Base.:-(x::Number, y::AbstractArray) = x .- y
-Base.:+(x::Number, y::AbstractArray) = x .+ y
+# Base.:-(x::AbstractArray, y::Number) = x .- y
+# Base.:+(x::AbstractArray, y::Number) = x .+ y
+# Base.:-(x::Number, y::AbstractArray) = x .- y
+# Base.:+(x::Number, y::AbstractArray) = x .+ y
 
 # model = Chain(Dense(1, 10, relu), Dense(10, 10, relu), Dense(10, 4, relu), Dense(4, 1, identity))
 # opt = ADAM(0.001, (0.9, 0.999))
@@ -60,6 +60,7 @@ Base.:+(x::Number, y::AbstractArray) = x .+ y
 
 
 ##### method 3 hard coded network
+include("utils.jl")
 include("relubypass.jl")
 # struct ReLUBypass{T}
 #     protected::T
@@ -233,90 +234,90 @@ plot!(x, C2.(x))
 
 
 
-#### Stack the networks. Essentially a layer by layer vcat (with some added intricacies)
-"""
-    vcat(layers::Dense...; [σ = nothing], [block_diagonal_weights = false])
-Vertically stack compatible `Flux.Dense` layers.
- - `σ` - set the activation function for the output layer. If all layers do not have the same activation, then this field is required.
- - `block_diagonal_weights` - whether to stack weights *vertically* or into a *block diagonal*, i.e. `[W₁; W₂;...]` or `[W₁ 0 ...; 0, W₂, 0...; ...]`.
-"""
-function Base.vcat(layers::Dense...; σ = nothing, block_diagonal_weights = false)
-    if σ == nothing
-        σ = layers[1].σ
-        @assert all(l-> σ == l.σ, layers) "All the layers to be concatenated
-            must have the same activation function unless the `σ` keyword is set"
-    end
-    weights = (l.W for l in layers)
-    biases  = (l.b for l in layers)
-    W = block_diagonal_weights ? block_diagonal(weights...) : vcat(weights...)
-    b = vcat(biases...)
-    Dense(W, b, σ)
-end
+# #### Stack the networks. Essentially a layer by layer vcat (with some added intricacies)
+# """
+#     vcat(layers::Dense...; [σ = nothing], [block_diagonal_weights = false])
+# Vertically stack compatible `Flux.Dense` layers.
+#  - `σ` - set the activation function for the output layer. If all layers do not have the same activation, then this field is required.
+#  - `block_diagonal_weights` - whether to stack weights *vertically* or into a *block diagonal*, i.e. `[W₁; W₂;...]` or `[W₁ 0 ...; 0, W₂, 0...; ...]`.
+# """
+# function Base.vcat(layers::Dense...; σ = nothing, block_diagonal_weights = false)
+#     if σ == nothing
+#         σ = layers[1].σ
+#         @assert all(l-> σ == l.σ, layers) "All the layers to be concatenated
+#             must have the same activation function unless the `σ` keyword is set"
+#     end
+#     weights = (l.W for l in layers)
+#     biases  = (l.b for l in layers)
+#     W = block_diagonal_weights ? block_diagonal(weights...) : vcat(weights...)
+#     b = vcat(biases...)
+#     Dense(W, b, σ)
+# end
 
-"""
-    vcat(chains::Chain...)
-Vertically stack compatible `Flux.Chain`s
-"""
-function Base.vcat(chains::Chain...)
-    c1 = first(chains)
-    @assert all(length(c1) .== length.(chains)) "All of the Chains must be the same length to be `vcat`ed"
-    C = collect(c1)
-    for i in 1:length(c1)
-        C[i] = vcat((chain[i] for chain in chains)..., block_diagonal_weights = (i != 1))
-    end
-    Chain(C...)
-end
+# """
+#     vcat(chains::Chain...)
+# Vertically stack compatible `Flux.Chain`s
+# """
+# function Base.vcat(chains::Chain...)
+#     c1 = first(chains)
+#     @assert all(length(c1) .== length.(chains)) "All of the Chains must be the same length to be `vcat`ed"
+#     C = collect(c1)
+#     for i in 1:length(c1)
+#         C[i] = vcat((chain[i] for chain in chains)..., block_diagonal_weights = (i != 1))
+#     end
+#     Chain(C...)
+# end
 
 
-"""
-    block_diagonal(arrays...)
-Construct a fully populated block diagonal matrix from a sequence of arrays.
+# """
+#     block_diagonal(arrays...)
+# Construct a fully populated block diagonal matrix from a sequence of arrays.
 
-# Example
-    julia> LI = collect(LinearIndices((3,3)))
-    3×3 Array{Int64,2}:
-     1  4  7
-     2  5  8
-     3  6  9
+# # Example
+#     julia> LI = collect(LinearIndices((3,3)))
+#     3×3 Array{Int64,2}:
+#      1  4  7
+#      2  5  8
+#      3  6  9
 
-    julia> block_diagonal(LI, LI)
-    6×6 Array{Int64,2}:
-     1  4  7  0  0  0
-     2  5  8  0  0  0
-     3  6  9  0  0  0
-     0  0  0  1  4  7
-     0  0  0  2  5  8
-     0  0  0  3  6  9
+#     julia> block_diagonal(LI, LI)
+#     6×6 Array{Int64,2}:
+#      1  4  7  0  0  0
+#      2  5  8  0  0  0
+#      3  6  9  0  0  0
+#      0  0  0  1  4  7
+#      0  0  0  2  5  8
+#      0  0  0  3  6  9
 
-     julia> block_diagonal(vec(LI), LI)
-    12×4 Array{Int64,2}:
-     1  0  0  0
-     2  0  0  0
-     3  0  0  0
-     4  0  0  0
-     5  0  0  0
-     6  0  0  0
-     7  0  0  0
-     8  0  0  0
-     9  0  0  0
-     0  1  4  7
-     0  2  5  8
-     0  3  6  9
-"""
-function block_diagonal(arrays::AbstractMatrix...)
-    T = promote_type(eltype.(arrays)...)
-    A = zeros(T, sum(size.(arrays, 1)), sum(size.(arrays, 2)))
-    n = m = 0
-    for B in arrays
-        n1, m1 = size(B) .+ (n, m)
-        A[(n+1):n1, (m+1):m1] .= B
-        n, m = n1, m1
-    end
-    A
-end
-to_matrix(A::AbstractVector) = reshape(A, :, 1)
-to_matrix(M::AbstractMatrix) = M
-block_diagonal(arrays...) = block_diagonal(to_matrix.(arrays)...)
+#      julia> block_diagonal(vec(LI), LI)
+#     12×4 Array{Int64,2}:
+#      1  0  0  0
+#      2  0  0  0
+#      3  0  0  0
+#      4  0  0  0
+#      5  0  0  0
+#      6  0  0  0
+#      7  0  0  0
+#      8  0  0  0
+#      9  0  0  0
+#      0  1  4  7
+#      0  2  5  8
+#      0  3  6  9
+# """
+# function block_diagonal(arrays::AbstractMatrix...)
+#     T = promote_type(eltype.(arrays)...)
+#     A = zeros(T, sum(size.(arrays, 1)), sum(size.(arrays, 2)))
+#     n = m = 0
+#     for B in arrays
+#         n1, m1 = size(B) .+ (n, m)
+#         A[(n+1):n1, (m+1):m1] .= B
+#         n, m = n1, m1
+#     end
+#     A
+# end
+# to_matrix(A::AbstractVector) = reshape(A, :, 1)
+# to_matrix(M::AbstractMatrix) = M
+# block_diagonal(arrays...) = block_diagonal(to_matrix.(arrays)...)
 
 
 # Stack into one net and plot to verify
@@ -330,25 +331,6 @@ plot!(x, sin.(x))
 # produces [LB, UB]
 sin_over = total
 
-function add_bypass_variables(L::Dense, n_vars)
-    W, b, σ = L.W, L.b, L.σ
-    n = length(b)
-    b = [b; zeros(n_vars)]
-    W = block_diagonal(to_matrix(W), Matrix(LinearAlgebra.I, n_vars, n_vars))
-    if σ == relu
-        R = ReLUBypass(collect((n+1):length(b)))
-    elseif σ == identity
-        R = identity
-    end
-    Dense(W, b, R)
-end
-function add_bypass_variables(C::Chain, n_vars)
-    C_new = []
-    for L in C
-        push!(C_new, add_bypass_variables(L, n_vars))
-    end
-    Chain(C_new...)
-end
 
 # first add 3 bypassed variables to the sin network. θ, θ_dot, and u
 dynamics = add_bypass_variables(sin_over, 3)

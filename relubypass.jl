@@ -98,7 +98,6 @@ end
 
 # Also type piracy:
 # TODO to harmonize better with Flux, define a specialized broadcast behavior instead for ReLUBypass
-(D::Dense)(x::Number) = D.σ.(D.W*x + D.b) # NOTE: THIS ONE IS TYPE PIRACY
 FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
 (D::Dense{<:ReLUBypass, A, B})(x) where {A, B} = D.σ(D.W*x + D.b)
 (D::Dense{<:ReLUBypass, <:FluxArr, B})(x::AbstractArray{<:Real}) where B = D.σ(D.W*x + D.b)
