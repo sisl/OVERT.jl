@@ -60,57 +60,58 @@ Base.:+(x::Number, y::AbstractArray) = x .+ y
 
 
 ##### method 3 hard coded network
-struct ReLUBypass{T}
-    protected::T
-end
-ReLUBypass() = ReLUBypass(nothing)
-ReLUBypass(args...) = ReLUBypass(collect(args))
-# so that a ReLUBypass can be used as an activation function.
-(RB::ReLUBypass{Nothing})(x) = identity(x)
-function (RB::ReLUBypass)(x)
-    out = relu.(x)
-    out[RB.protected] = x[RB.protected]
-    return out
-end
+include("relubypass.jl")
+# struct ReLUBypass{T}
+#     protected::T
+# end
+# ReLUBypass() = ReLUBypass(nothing)
+# ReLUBypass(args...) = ReLUBypass(collect(args))
+# # so that a ReLUBypass can be used as an activation function.
+# (RB::ReLUBypass{Nothing})(x) = identity(x)
+# function (RB::ReLUBypass)(x)
+#     out = relu.(x)
+#     out[RB.protected] = x[RB.protected]
+#     return out
+# end
 
-Base.show(io::IO, RB::ReLUBypass) = print(io, "ReLUBypass($(repr(RB.protected)))")
+# Base.show(io::IO, RB::ReLUBypass) = print(io, "ReLUBypass($(repr(RB.protected)))")
 
-# Also type piracy:
-# TODO to harmonize better with Flux, define a specialized broadcast behavior instead for ReLUBypass
-# (D::Dense{<:ReLUBypass, A, B})(x) where {A,B} = D.σ(D.W*x + D.b)
-(D::Dense)(x::Number) = D.σ.(D.W*x + D.b)
-FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
-(D::Dense{<:ReLUBypass, <:FluxArr, B})(x::FluxArr) where B = D.σ(D.W*x + D.b)
+# # Also type piracy:
+# # TODO to harmonize better with Flux, define a specialized broadcast behavior instead for ReLUBypass
+# # (D::Dense{<:ReLUBypass, A, B})(x) where {A,B} = D.σ(D.W*x + D.b)
+# (D::Dense)(x::Number) = D.σ.(D.W*x + D.b)
+# FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
+# (D::Dense{<:ReLUBypass, <:FluxArr, B})(x::FluxArr) where B = D.σ(D.W*x + D.b)
 
 
-# If it's anything other than a bypass do nothing
-relu_bypass(L1::Dense, L2::Dense) where {A, B} = L1, L2
-# if it's a ReLUBypass
-function relu_bypass(L1::Dense{<:ReLUBypass, A, B}, L2::Dense) where {A, B}
-    W, b, protected = L1.W, L1.b, L1.σ.protected
-    if protected == nothing
-        protected = collect(axes(b, 1))
-    end
-    n = size(W, 1)
-    I = Matrix(LinearAlgebra.I, n, n)
-    # `before` only protects the indices we want, and `after` undoes the transformation
-    # `before` needs to be left-multiplied by the weights and `after` right-multiplied
-    # I.e. the full thing:   W₂*B'*σ(B*(W₁*x + b₁)) + b₂
-    before = [I; -I[protected, :]]
-    after = before'
+# # If it's anything other than a bypass do nothing
+# relu_bypass(L1::Dense, L2::Dense) where {A, B} = L1, L2
+# # if it's a ReLUBypass
+# function relu_bypass(L1::Dense{<:ReLUBypass, A, B}, L2::Dense) where {A, B}
+#     W, b, protected = L1.W, L1.b, L1.σ.protected
+#     if protected == nothing
+#         protected = collect(axes(b, 1))
+#     end
+#     n = size(W, 1)
+#     I = Matrix(LinearAlgebra.I, n, n)
+#     # `before` only protects the indices we want, and `after` undoes the transformation
+#     # `before` needs to be left-multiplied by the weights and `after` right-multiplied
+#     # I.e. the full thing:   W₂*B'*σ(B*(W₁*x + b₁)) + b₂
+#     before = [I; -I[protected, :]]
+#     after = before'
 
-    L1_new = Dense(before*W, before*b, relu)
-    L2_new = Dense(L2.W*after, L2.b, L2.σ)
-    return L1_new, L2_new
-end
+#     L1_new = Dense(before*W, before*b, relu)
+#     L2_new = Dense(L2.W*after, L2.b, L2.σ)
+#     return L1_new, L2_new
+# end
 
-function relu_bypass(C::Chain)
-    C_bypassed = collect(C)
-    for i in 1:length(C)-1
-        C_bypassed[i:i+1] .= relu_bypass(C_bypassed[i], C_bypassed[i+1])
-    end
-    Chain(C_bypassed...)
-end
+# function relu_bypass(C::Chain)
+#     C_bypassed = collect(C)
+#     for i in 1:length(C)-1
+#         C_bypassed[i:i+1] .= relu_bypass(C_bypassed[i], C_bypassed[i+1])
+#     end
+#     Chain(C_bypassed...)
+# end
 
 #=
  Ax            -- [0, π/2]
@@ -268,11 +269,11 @@ end
 
 
 """
-    block_diagonal(arrays::AbstractMatrix...)
+    block_diagonal(arrays...)
 Construct a fully populated block diagonal matrix from a sequence of arrays.
 
 # Example
-    julia> collect(LinearIndices((3,3)))
+    julia> LI = collect(LinearIndices((3,3)))
     3×3 Array{Int64,2}:
      1  4  7
      2  5  8
@@ -286,6 +287,21 @@ Construct a fully populated block diagonal matrix from a sequence of arrays.
      0  0  0  1  4  7
      0  0  0  2  5  8
      0  0  0  3  6  9
+
+     julia> block_diagonal(vec(LI), LI)
+    12×4 Array{Int64,2}:
+     1  0  0  0
+     2  0  0  0
+     3  0  0  0
+     4  0  0  0
+     5  0  0  0
+     6  0  0  0
+     7  0  0  0
+     8  0  0  0
+     9  0  0  0
+     0  1  4  7
+     0  2  5  8
+     0  3  6  9
 """
 function block_diagonal(arrays::AbstractMatrix...)
     T = promote_type(eltype.(arrays)...)
@@ -298,7 +314,9 @@ function block_diagonal(arrays::AbstractMatrix...)
     end
     A
 end
-
+to_matrix(A::AbstractVector) = reshape(A, :, 1)
+to_matrix(M::AbstractMatrix) = M
+block_diagonal(arrays...) = block_diagonal(to_matrix.(arrays)...)
 
 
 # Stack into one net and plot to verify
@@ -307,4 +325,51 @@ plot(x, hcat(total.(x)...)'[:,1])
 plot!(x, hcat(total.(x)...)'[:,2])
 plot!(x, sin.(x))
 
-@save "dynamics_model.bson" total
+@save "sin_net.bson" total
+
+# produces [LB, UB]
+sin_over = total
+
+function add_bypass_variables(L::Dense, n_vars)
+    W, b, σ = L.W, L.b, L.σ
+    n = length(b)
+    b = [b; zeros(n_vars)]
+    W = block_diagonal(to_matrix(W), Matrix(LinearAlgebra.I, n_vars, n_vars))
+    if σ == relu
+        R = ReLUBypass(collect((n+1):length(b)))
+    elseif σ == identity
+        R = identity
+    end
+    Dense(W, b, R)
+end
+function add_bypass_variables(C::Chain, n_vars)
+    C_new = []
+    for L in C
+        push!(C_new, add_bypass_variables(L, n_vars))
+    end
+    Chain(C_new...)
+end
+
+# first add 3 bypassed variables to the sin network. θ, θ_dot, and u
+dynamics = add_bypass_variables(sin_over, 3)
+
+# now add the mixing layer:
+# θ := θ + dt*θ_dot
+# θ_dot_lb := θ_dot + dt*(A*u + B*LBsin)
+# θ_dot_ub := θ_dot + dt*(A*u + B*UBsin)
+
+function mixing_layer(g=9.81, m=1, ℓ=0.85, dt=0.005)
+    dt = 0.005
+    A = dt / (m*ℓ^2)
+    B = 9.81dt / ℓ
+    W_mixing = [0 0 1 dt 0;
+                B 0 0 1 A;
+                0 B 0 1 A]
+
+    Dense(W_mixing, zeros(3), identity)
+end
+
+dynamics = Chain(dynamics..., mixing_layer())
+dynamics = relu_bypass(dynamics)
+
+@save "dynamics_model.bson" dynamics
