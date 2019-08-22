@@ -1,5 +1,4 @@
 using Flux, LinearAlgebra
-
 """
     struct ReLUBypass{T}
         protected::T
@@ -104,3 +103,17 @@ FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
 (D::Dense{<:ReLUBypass, <:FluxArr, B})(x::FluxArr) where B = D.σ(D.W*x + D.b)
 (D::Dense{<:ReLUBypass, A, B})(x::Number) where {A, B} = D.σ(D.W*x + D.b)
 (D::Dense{<:ReLUBypass, A, B})(x::AbstractArray) where {A, B} = D.σ(D.W*x + D.b)
+
+function (R::Flux.RNNCell{<:ReLUBypass, A, B})(h, x) where {A, B}
+    h = Tracker.data(h)
+    σ, Wi, Wh, b = R.σ, weights(R), latent_weights(R), bias(R)
+    h = σ(Wi*x .+ Wh*h .+ b)
+    return h, h
+end
+
+#=
+NOTES for later
+
+- can't use relubypass to train with because setindex is not differentiable in general. In our case it can be defined to be but we havn't done that.
+To get around a Tracker/flux error, we take the data of tracked arrays instead which means we can't train with relu bypass ever.
+=#

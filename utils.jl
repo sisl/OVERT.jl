@@ -22,14 +22,21 @@ end
 # Flux section:
 using Flux
 weights(D::Dense) = Tracker.data(D.W)
-weights(R::Flux.Recur) = Tracker.data(R.cell.Wi)
 bias(D::Dense) = Tracker.data(D.b)
-bias(R::Flux.Recur) = Tracker.data(R.cell.b)
-latent_weights(R::Flux.Recur) = Tracker.data(R.cell.Wh)
-latent_bias(R::Flux.Recur) = Tracker.data(R.cell.h)
+
+weights(R::Flux.RNNCell) = Tracker.data(R.Wi)
+bias(R::Flux.RNNCell) = Tracker.data(R.b)
+latent_weights(R::Flux.RNNCell) = Tracker.data(R.Wh)
+latent_bias(R::Flux.RNNCell) = Tracker.data(R.h)
+latent_size(R::Flux.RNNCell) = size(latent_weights(R))
+
+weights(R::Flux.Recur) = weights(R.cell)
+bias(R::Flux.Recur) = bias(R.cell)
+latent_weights(R::Flux.Recur) = latent_weights(R.cell)
+latent_bias(R::Flux.Recur) = latent_bias(R.cell)
+latent_size(R::Flux.Recur) = latent_size(R.cell)
 
 layer_size(L, i = nothing) = i == nothing ? size(weights(L)) : size(weights(L), i)
-latent_size(L::Flux.Recur) = size(latent_weights(L))
 
 # Type piracy for flux:
 (D::Dense)(x::Number) = D.σ.(D.W*x + D.b) # NOTE: THIS ONE IS TYPE PIRACY
