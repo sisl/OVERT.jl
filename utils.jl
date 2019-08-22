@@ -137,7 +137,7 @@ function add_bypass_variables(L::Dense, n_vars)
     b = [b; zeros(n_vars)]
     W = block_diagonal(W, I(n_vars))
     if σ == relu
-        R = ReLUBypass(collect(n .+ 1:n_vars))
+        R = ReLUBypass(collect(n .+ (1:n_vars)))
     elseif σ == identity
         R = identity
     end
@@ -146,7 +146,7 @@ end
 
 function add_bypass_variables(L::Flux.Recur, n_vars)
     Wi, b, σ = weights(L), bias(L), L.cell.σ
-    Wh, bh = latent_weights(L), latent_bias(L)
+    Wh, h = latent_weights(L), latent_bias(L)
 
     n = length(b)
     b = [b; zeros(n_vars)]
@@ -155,11 +155,11 @@ function add_bypass_variables(L::Flux.Recur, n_vars)
     Wh = block_diagonal(Wh, zeros(n_vars, n_vars))
 
     if σ == relu
-        R = ReLUBypass(collect(n .+ 1:n_vars))
+        R = ReLUBypass(collect(n .+ (1:n_vars)))
     elseif σ == identity
         R = identity
     end
-    cell = Flux.RNNCell(R, Wi, Wh, b, h)
+    cell = Flux.RNNCell(R, promote(Wi, Wh)..., b, h)
     Flux.Recur(cell)
 end
 
