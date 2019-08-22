@@ -42,23 +42,16 @@ end
 
 # Returns number of layers of a model, including input layer
 num_layers(model) = length(model) + 1
-
 # Return list of size of each layer in flux model. Input layer included.
 layer_sizes(x) = [layer_size(x[1], 2); layer_size.(x, 1)]
-
-
-weights(D::Dense) = Tracker.data(D.W)
-weights(R::Flux.Recur) = Tracker.data(R.cell.Wi)
-bias(D::Dense) = Tracker.data(D.b)
-bias(R::Flux.Recur) = Tracker.data(R.cell.b)
-latent_weights(l::Flux.Recur) = Tracker.data(l.cell.Wh)
-latent_bias(R::Flux.Recur) = Tracker.data(R.cell.h)
-
-layer_size(L, i = nothing) = i == nothing ? size(weights(L)) : size(weights(L), i)
-
 # Return RNN Layer. (Input limited to one RNN layer)
 rnn_layer(model) = findfirst(l->l isa Flux.Recur, model.layers)
 
+function shuffle_layer(in_len, out_vec)
+    W = I(in_len)[out_vec, :]
+    b = zeros(length(out_vec))
+    return Dense(W, b, identity)
+end
 
 
 
@@ -69,6 +62,7 @@ state = rand(2)
 eval_point2 = vcat(input, zeros(size_latent), state)
 long_in = [eval_point; rand(2)]
 bypassed = add_bypass_variables(rnn, 2)
+final = Chain(bypassed, shuffle_layer(3, [2, 2, 3, 1]), dynamics)
 
 ffnn = add_bypass_variables(rnn_to_ffnn(rnn), 2)
 ans_old = Tracker.data(rnn(eval_point))
@@ -81,11 +75,13 @@ print("\n\nRNN Latent State:  ", Tracker.data(rnn.layers[2].state))
 print("\nFFNN Latent State:        ", ans_new[2:end-2])
 
 print("\n\nInput State:             ", state)
-print("\nFFNN Pass Through State: ", ans_new[end-1:end], "\n")
+print("\nFFNN Pass Through State: ", ans_new[end-1:end])
 
 print("\n\nLong In: ", long_in)
 print("\nBypassed Check:  ", bypassed(long_in))
 
+print("\n\nFinal Output: θ, θ_dot_lb, θ_dot_ub")
+print("\nFinal Check:  ", final(long_in), "\n")
 
 
 
