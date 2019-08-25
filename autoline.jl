@@ -1,5 +1,8 @@
 # using Flux, SymPy, Plots
+using MacroTools, SymEngine
+import MacroTools.postwalk
 
+include("utils.jl")
 # abs_val(x) = relu.(x) + relu.(-x)
 # max_eval(a, b) = 0.5*(a + b + abs_val(a-b))
 # min_eval(a, b) = 0.5*(a + b - abs_val(a-b))
@@ -213,7 +216,8 @@ function Base.occursin(needle::Union{Symbol, Expr}, haystack::Expr)
     return false
 end
 
-ex = closed_form_piecewise_linear([(0,0), (1,1), (2, 0), (3, 1), (6, 11.258)])
+pts = [(0,0), (1,1), (2, 0), (3, 1), (6, 11.258)]
+ex = closed_form_piecewise_linear(pts)
 ex = simplify(to_relu_expression(ex))
 D = make_expr_dict(ex)
 ks = collect(keys(D))
@@ -244,8 +248,6 @@ end
 
 layers = layer_sort(B)
 
-using MacroTools, SymEngine
-import MacroTools.postwalk
 # Type piracy again:
 Base.Expr(B::Basic) = Meta.parse(string(B))
 
