@@ -1,7 +1,10 @@
 using Flux
 include("utils.jl")
 
-
+"""
+Used to add additional newlines that are necessary on Windows OS only.
+On windows, represents the newline tag `\\r\\n`. On unix, `NEWLINE` is an empty string.
+"""
 const NEWLINE = Sys.iswindows() ? "\r\n" : ""
 
 function to_comment(txt)
