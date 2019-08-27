@@ -4,53 +4,7 @@ import MacroTools.postwalk
 
 include("utils.jl")
 include("relubypass.jl")
-# abs_val(x) = relu.(x) + relu.(-x)
-# max_eval(a, b) = 0.5*(a + b + abs_val(a-b))
-# min_eval(a, b) = 0.5*(a + b - abs_val(a-b))
 
-# struct Point
-#     x::Float64
-#     y::Float64
-# end
-
-# function slope_int(pt1, pt2)
-#     slope = (pt2.y - pt1.y)/(pt2.x - pt1.x)
-#     intercept = -slope*pt1.x + pt1.y
-#     return slope, intercept
-# end
-
-# # pts should be a vector of Point types
-# function get_line(pts)
-#     @vars x
-#     slope, int = slope_int(pts[1], pts[2])
-#     equation = slope*x + int
-#     for i in 2:length(pts)-1
-#         slope_new, int_new = slope_int(pts[i], pts[i+1])
-#         equation_new = slope_new*x + int_new
-#         if slope_new > slope
-#             equation = max_eval(equation, equation_new)
-#         elseif slope_new < slope
-#             equation = min_eval(equation, equation_new)
-#         else
-#             error("Non-vertex point given! Please remove this point.")
-#         end
-#         slope = slope_new
-#     end
-
-#     return equation
-# end
-
-# ## Example ##
-# points = [Point(0.0, 0.0), Point(1.0, 1.0), Point(2.0, 0.0), Point(3.0, 1.0)]
-# equation = get_line(points)
-# print("\nPoints: ", points, "\n")
-# print("\nEquation: ", equation, "\n")
-# x = collect(0:0.01:3)
-# plot(x, equation.(x))
-
-
-
-## expression method:
 """
     abs_to_relu!(ex::Expr)
     abs_to_relu(ex::Expr)
@@ -103,6 +57,9 @@ function to_relu_expression(ex::Expr)
     return ex
 end
 
+##########################################################################################
+##### NOTE this section superceded by amir's piecewise method in newpiecewise.jl
+
 function slope_int(p1, p2)
     x1, y1 = p1
     x2, y2 = p2
@@ -137,6 +94,8 @@ function closed_form_piecewise_linear(pts)
     return equation
 end
 
+##########################################################################################
+
 function make_expr_dict(ex)
     D = Dict()
     ex = postwalk(ex) do e
@@ -153,51 +112,9 @@ end
 is_relu_expr(ex) = ex.head == :call && ex.args[1] == :relu
 
 # based on https://gist.github.com/davidagold/b94552828f4cf33dd3c8
-function simplify(e::Expr)
-    # _simplify(e)
-    # Meta.parse(string(expand(Basic(e))))
-    postwalk(e) do ex
-        _simplify(ex)
-    end
-end
+simplify(ex::Expr) = postwalk(e -> _simplify(e), ex)
 _simplify(s) = s
 _simplify(e::Expr) = Meta.parse(string(expand(Basic(e))))
-# _simplify(e) = e
-# function _simplify(e::Expr)
-#     # apply the following only to expressions that call a function on arguments
-#     if e.head == :call
-#         op = e.args[1] # in such expressions, `args[1]` is the called function
-#         simplified_args = [ _simplify(arg) for arg in e.args[2:end] ]
-#         if op == :*
-#             0 in e.args[2:end] && return 0 # return 0 if any args are 0
-#             simplified_args = simplified_args[simplified_args .!= 1] # remove 1s
-#         elseif op ∈ (:+, :-)
-#             simplified_args = simplified_args[simplified_args .!= 0] # remove 0s
-#         elseif op ∈ (:min, :max)
-#             simplified_args = unique(simplified_args) # unique min/max args
-#         elseif op == :relu
-#             @assert length(simplified_args) == 1 "relu of more than one argument isn't allowed"
-#             if simplified_args[1] isa Number
-#                 return simplified_args[1] <= 0 ? 0 : simplified_args[1] # relu +/- when known
-#             end
-#             return :(relu($(simplified_args[1])))
-#         end
-#         length(simplified_args) == 0 && return 0
-#         return Expr(:call, op, simplified_args...)
-#     end
-# end
-
-# exex = :(8x + 9z1 + 0*x + relu(x + x - 2 + 0) - min(1, 1, -4, -1, x))
-# postwalk(exex) do e
-#     @capture(e, h_(a__))
-#     Meta.parse()
-#     return e
-# end
-
-# function simplify_addition(ex)
-#     # requires SymEngine
-#     Meta.parse(string(Basic(ex)))
-# end
 
 # thinking/scripting:
 Base.occursin(x, y) = x == y
@@ -208,15 +125,6 @@ function Base.occursin(needle::Union{Symbol, Expr}, haystack::Expr)
     end
     return false
 end
-
-pts = [(0,0), (1,1), (2, 0), (3, 1), (6, 11.258)]
-ex = closed_form_piecewise_linear(pts)
-ex = simplify(to_relu_expression(ex))
-D = make_expr_dict(ex)
-ks = collect(keys(D))
-vs = collect(values(D))
-B = BitArray(occursin(v, k) for v in vs, k in ks)
-starting_nodes = findall(vec(sum(B, dims = 1)) .== 0)
 
 function layer_sort(D::AbstractDict)
     # construct adjacency matrix. Not checking for cycles since
@@ -246,8 +154,6 @@ function layer_sort(B::AbstractMatrix)
     layers
 end
 
-layers = layer_sort(B)
-
 # Type piracy again:
 Base.Expr(B::Basic) = Meta.parse(string(B))
 
@@ -276,28 +182,36 @@ function layerize(out)
         W[i, :] = coeff.(symbolic, syms)
         b[i] = subs(symbolic, (syms .=> 0)...)
     end
-    W, b, ReLUBypass(bypass_indices), Any[Expr.(syms)...]
+    W, b, ReLUBypass(bypass_indices), Union{Expr, Symbol}[Expr.(syms)...]
 end
 
 ## in general, must check that the dict is reversible
 reverse_dict(D::Dict) = Dict(v=>k for (k,v) in D)
-# reverse_dict(D::SortedDict) = SortedDict(v=>k for (k,v) in D)
 
 function to_network(D::Dict)
-    # D = SortedDict(D)
     layer_indices = layer_sort(D)
     exprs = collect(keys(D))
     syms = collect(values(D))
     layers = []
     out = Union{Expr, Symbol}[Symbol("z$(length(D))")]
     for layer in reverse(layer_indices)
-        # println(out, " | ", layer, " | ", syms[layer])
         replace_ind = map(z -> findfirst(z .== out), syms[layer])
-        # println(replace_ind)
         out[replace_ind] = exprs[layer]
         W, b, R, out = layerize(out)
         push!(layers, Dense(W, b, R))
     end
-    # println("out at the very end: ", out)
     reverse(layers)
 end
+
+
+# SCRIPT
+pts = [(0,0), (1,1), (2, 0), (3, 1), (6, 11.258)]
+ex = closed_form_piecewise_linear(pts)
+ex = simplify(to_relu_expression(ex))
+D = make_expr_dict(ex)
+ks = collect(keys(D))
+vs = collect(values(D))
+# B = BitArray(occursin(v, k) for v in vs, k in ks)
+# starting_nodes = findall(vec(sum(B, dims = 1)) .== 0)
+# layers = layer_sort(B)
+C = Chain(to_network(D)...)
