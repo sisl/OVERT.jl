@@ -99,7 +99,7 @@ end
 function make_expr_dict(ex)
     D = Dict()
     ex = postwalk(ex) do e
-        if e isa Expr && is_relu_expr(e)
+        if is_relu_expr(e)
             return get!(D, e, Symbol("z$(length(D)+1)"))
         end
         return e
@@ -109,7 +109,7 @@ function make_expr_dict(ex)
 end
 
 # is_negative_expr(ex) = ex.head == :call && ex.args[1] == :- && length(ex.args) == 2
-is_relu_expr(ex) = ex.head == :call && ex.args[1] == :relu
+is_relu_expr(ex) = ex isa Expr && ex.head == :call && ex.args[1] == :relu
 
 # based on https://gist.github.com/davidagold/b94552828f4cf33dd3c8
 simplify(ex::Expr) = postwalk(e -> _simplify(e), ex)
@@ -165,20 +165,39 @@ function get_symbols(ex::Union{Expr, Symbol})
     unique(syms)
 end
 
-# out is the vector or scalar symbol/expr we want
+"""
+    W, b, R, in = layerize(out::Vector{Union{Expr, Symbol}})
+
+Constructs a neural network layer that produces `out` as its output.
+The input to the layer is inferred based on the free symbols in `out`.
+
+# Returns
+    - `W` - weights matrix.
+    - `b` - bias vector.
+    - `R` - activation function. Generally a ReLUBypass.
+    - `in`- the inferred vector of inputs.
+
+# Examples
+    julia> out = [ :(relu(10x1 + x2 - 11)) ]
+    1-element Array{Expr,1}:
+     :(relu((10x1 + x2) - 11))
+
+    julia> layerize(out)
+    ([1.0 10.0], [-11.0], ReLUBypass(Int64[]), Union{Expr, Symbol}[:x2, :x1])
+"""
 function layerize(out)
-    syms = Basic.(union(get_symbols.(out)...))
+    syms = free_symbols(Basic.(out))
     n, m = length(out), length(syms)
     W = zeros(n, m)
     b = zeros(n)
     bypass_indices = Int[]
     for (i, o) in enumerate(out)
-        if o isa Expr && o.args[1] == :relu
+        if is_relu_expr(o)
             o = o.args[2]
         else
             push!(bypass_indices, i)
         end
-        symbolic = Basic(string(o))
+        symbolic = Basic(o)
         W[i, :] = coeff.(symbolic, syms)
         b[i] = subs(symbolic, (syms .=> 0)...)
     end
