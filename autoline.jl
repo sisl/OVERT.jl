@@ -139,29 +139,17 @@ end
 
 function make_expr_dict(ex)
     D = Dict()
-    ex = deepcopy(ex)
-    _make_expr_dict(ex, D)
-    lastone = Symbol("z$(length(D)+1)")
-    D[ex] = lastone
+    ex = postwalk(ex) do e
+        if e isa Expr && is_relu_expr(e)
+            return get!(D, e, Symbol("z$(length(D)+1)"))
+        end
+        return e
+    end
+    D[ex] = Symbol("z$(length(D)+1)")
     return D
 end
 
-function _make_expr_dict(ex, D = Dict())
-    ex isa Expr || return ex
-    for (i, arg) in enumerate(ex.args)
-        ex.args[i] = _make_expr_dict(arg, D)
-    end
-    is_negative_expr(ex) && return ex
-    !is_relu_expr(ex) && return ex
-    if !haskey(D, ex)
-        n = length(D)+1
-        D[ex] = Symbol("z$n")
-    end
-    return D[ex]
-end
-
-
-is_negative_expr(ex) = ex.head == :call && ex.args[1] == :- && length(ex.args) == 2
+# is_negative_expr(ex) = ex.head == :call && ex.args[1] == :- && length(ex.args) == 2
 is_relu_expr(ex) = ex.head == :call && ex.args[1] == :relu
 
 # based on https://gist.github.com/davidagold/b94552828f4cf33dd3c8
