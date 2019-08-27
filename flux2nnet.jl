@@ -1,61 +1,61 @@
-using Flux
-include("utils.jl")
+# using Flux
+# include("utils.jl")
 
 """
-Used to add additional newlines that are necessary on Windows OS only.
-On windows, represents the newline tag `\\r\\n`. On unix, `NEWLINE` is an empty string.
+Prepend `//` to each line of a string.
 """
-const NEWLINE = Sys.iswindows() ? "\r\n" : ""
+to_comment(txt) = "//"*replace(txt, "\n"=>"\n//")
 
-function to_comment(txt)
-    if Sys.iswindows()
-        return "//"*replace(txt, "\r\n"=>"\r\n//")
-    else
-        return "//"*replace(txt, "\n"=>"\n//")
-    end
-end
+"""
+    print_layer(file::IOStream, layer)
 
-# define / load model #
-model = Chain(Dense(2, 4, relu), Dense(4, 20, relu))
-
-# print single layer #
+print to `file` an object implementing `weights(layer)` and `bias(layer)`
+"""
 function print_layer(file::IOStream, layer)
-   print_row(W, i) = println(file, join(W[i,:], ", "), ",$NEWLINE")
+   print_row(W, i) = println(file, join(W[i,:], ", "), ",")
    W = weights(layer)
    b = bias(layer)
    [print_row(W, row) for row in axes(W, 1)]
-   [println(file, b[row], ",$NEWLINE") for row in axes(W, 1)]
+   [println(file, b[row], ",") for row in axes(W, 1)]
 end
 
-
-function print_header(file::IOStream, C; header_text="")
-   println(file, to_comment(header_text), NEWLINE)
+function print_header(file::IOStream, model; header_text="Default header text.\nShould replace with the real deal.")
+   println(file, to_comment(header_text))
    # num layers, num inputs, num outputs, max layer size
-   layer_sizes = [layer_size(C[1], 2); layer_size.(C, 1)]
-   num_layers = length(C)
+   layer_sizes = [layer_size(model[1], 2); layer_size.(model, 1)]
+   num_layers = length(model)
    num_inputs = layer_sizes[1]
    num_outputs = layer_sizes[end]
    max_layer = maximum(layer_sizes)
-   println(file, join([num_layers, num_inputs, num_outputs, max_layer], ", "), ",$NEWLINE")
+   println(file, join([num_layers, num_inputs, num_outputs, max_layer], ", "), ",")
    #layer sizes input, ..., output
-   println(file, join(layer_sizes, ", "), ",$NEWLINE")
+   println(file, join(layer_sizes, ", "), ",")
    # empty
-   println(file, "This line extraneous$NEWLINE")
+   println(file, "This line extraneous")
    # minimum vals of inputs (?)
-   println(file, -1e10, NEWLINE)
+   println(file, -1e10)
    # maximum vals of inputs (?)
-   println(file, 1e10, NEWLINE)
+   println(file, 1e10)
    # mean vals of inputs (?)
-   println(file, 0, NEWLINE)
+   println(file, 0)
    # range vals of inputs (?)
-   println(file, 1, NEWLINE)
+   println(file, 1)
    return nothing
 end
 
-function write_nnet(outfile, model; header_text = "Default header text.\nShould replace with the real deal.")
-   open(outfile, "w") do f
-      print_header(f, model, header_text=header_text)
-      [print_layer(f, layer) for layer in model]
-   end
-   nothing
+"""
+    write_nnet(filename, model[; header_text])
+
+Write `model` to \$filename.nnet. `model` needs to be an iterable object containing
+layers of a feed-forward, fully connect, neural network.
+Note: Will not error for non feed-forward or not fully-connected networks, so use with caution.
+"""
+function write_nnet(outfile, model; header_text="Default header text.\nShould replace with the real deal.")
+    name, ext = splitext(outfile, ".")
+    outfile = name*".nnet"
+    open(outfile, "w") do f
+        print_header(f, model, header_text=header_text)
+        [print_layer(f, layer) for layer in model]
+    end
+    nothing
 end
