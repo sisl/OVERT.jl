@@ -3,6 +3,7 @@ using MacroTools, SymEngine
 import MacroTools.postwalk
 
 include("utils.jl")
+include("relubypass.jl")
 # abs_val(x) = relu.(x) + relu.(-x)
 # max_eval(a, b) = 0.5*(a + b + abs_val(a-b))
 # min_eval(a, b) = 0.5*(a + b - abs_val(a-b))
@@ -166,9 +167,13 @@ is_relu_expr(ex) = ex.head == :call && ex.args[1] == :relu
 # based on https://gist.github.com/davidagold/b94552828f4cf33dd3c8
 function simplify(e::Expr)
     # _simplify(e)
-    Meta.parse(string(expand(Basic(e))))
+    # Meta.parse(string(expand(Basic(e))))
+    postwalk(e) do ex
+        _simplify(ex)
+    end
 end
-
+_simplify(s) = s
+_simplify(e::Expr) = Meta.parse(string(expand(Basic(e))))
 # _simplify(e) = e
 # function _simplify(e::Expr)
 #     # apply the following only to expressions that call a function on arguments
@@ -225,7 +230,14 @@ vs = collect(values(D))
 B = BitArray(occursin(v, k) for v in vs, k in ks)
 starting_nodes = findall(vec(sum(B, dims = 1)) .== 0)
 
-function layer_sort(B)
+function layer_sort(D::AbstractDict)
+    # construct adjacency matrix. Not checking for cycles since
+    # a neural network can't have cycles anyway, but maybe at some point.
+    B = BitArray(occursin(v, k) for v in values(D), k in keys(D))
+    layer_sort(B)
+end
+
+function layer_sort(B::AbstractMatrix)
     V = findall(vec(sum(B, dims = 1)) .== 0)
     isempty(V) && error("no parentless nodes")
     S = Set(V)
@@ -252,34 +264,12 @@ layers = layer_sort(B)
 Base.Expr(B::Basic) = Meta.parse(string(B))
 
 
-function get_symbols(ex)
+function get_symbols(ex::Union{Expr, Symbol})
     syms = Symbol[]
     ops = (:*, :+, :-, :relu)
     postwalk(e -> e isa Symbol && e ∉ ops ? push!(syms, e) : nothing, ex)
     unique(syms)
 end
-
-# minus_to_plus(ex::Expr) = Meta.parse(str_minus_to_plus(string(ex)))
-# function str_minus_to_plus(str::String)
-#     i = 1
-#     while i < length(str)
-#         if str[i] == '-' && str[i+1] == ' '
-#             str = str[1:i-1] * "+ -" * str[i+2:end]
-#             i += 2
-#         end
-#         i += 1
-#     end
-#     str
-# end
-
-# function extract_bias_term(ex)
-#     ex = deepcopy(ex)
-#     @assert ex.head == :call && ex.args[1] ∈ (:+, :-)
-#     i = findfirst(i-> i isa Number, ex.args)
-#     b = ex.args[i]
-#     deleteat!(ex.args, i)
-#     return ex, b
-# end
 
 # out is the vector or scalar symbol/expr we want
 function layerize(out)
@@ -303,22 +293,23 @@ end
 
 ## in general, must check that the dict is reversible
 reverse_dict(D::Dict) = Dict(v=>k for (k,v) in D)
+# reverse_dict(D::SortedDict) = SortedDict(v=>k for (k,v) in D)
 
 function to_network(D::Dict)
-    D = reverse_dict(D)
-    last_sym = Symbol("z$(length(D))")
-    out = [D[last_sym]]
+    # D = SortedDict(D)
+    layer_indices = layer_sort(D)
+    exprs = collect(keys(D))
+    syms = collect(values(D))
     layers = []
-    while !isempty(D)
+    out = Union{Expr, Symbol}[Symbol("z$(length(D))")]
+    for layer in reverse(layer_indices)
+        # println(out, " | ", layer, " | ", syms[layer])
+        replace_ind = map(z -> findfirst(z .== out), syms[layer])
+        # println(replace_ind)
+        out[replace_ind] = exprs[layer]
         W, b, R, out = layerize(out)
         push!(layers, Dense(W, b, R))
-        pop!(D, last_sym)
-        if isempty(D)
-            break
-        end
-        last_sym = Symbol("z$(length(D))")
-        out[findfirst(out .== last_sym)] = D[last_sym]
     end
+    # println("out at the very end: ", out)
     reverse(layers)
 end
-
