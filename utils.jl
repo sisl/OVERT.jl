@@ -15,9 +15,9 @@ using LinearAlgebra
 (I::UniformScaling{T})(n) where T = I(T, n, n)
 (I::UniformScaling{T})(A::AbstractMatrix) where T = I(size(A)...)
 
-function eye(dim)
-	return Matrix{Float64}(I, dim, dim)
-end
+# function eye(dim)
+# 	return Matrix{Float64}(I, dim, dim)
+# end
 
 # Flux section:
 using Flux
@@ -147,6 +147,10 @@ function add_bypass_variables(L::Dense, n_vars)
         R = ReLUBypass(collect(n .+ (1:n_vars)))
     elseif σ == identity
         R = identity
+    elseif σ isa ReLUBypass
+        R = ReLUBypass([σ.protected; collect(n .+ (1:n_vars))])
+    else
+        error("unsupported activation $σ")
     end
     Dense(W, b, R)
 end
