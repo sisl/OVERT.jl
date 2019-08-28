@@ -111,7 +111,6 @@ end
 # is_negative_expr(ex) = ex.head == :call && ex.args[1] == :- && length(ex.args) == 2
 is_relu_expr(ex) = ex isa Expr && ex.head == :call && ex.args[1] == :relu
 
-# based on https://gist.github.com/davidagold/b94552828f4cf33dd3c8
 simplify(ex::Expr) = postwalk(e -> _simplify(e), ex)
 _simplify(s) = s
 _simplify(e::Expr) = Meta.parse(string(expand(Basic(e))))
@@ -201,6 +200,14 @@ function layerize(out)
         W[i, :] = coeff.(symbolic, syms)
         b[i] = subs(symbolic, (syms .=> 0)...)
     end
+    if length(bypass_indices) == length(syms)
+        R = identity
+    elseif isempty(bypass_indices)
+        R = relu
+    else
+        R = ReLUBypass(bypass_indices)
+    end
+
     W, b, ReLUBypass(bypass_indices), Union{Expr, Symbol}[Expr.(syms)...]
 end
 
@@ -213,24 +220,43 @@ function to_network(D::Dict)
     syms = collect(values(D))
     layers = []
     out = Union{Expr, Symbol}[Symbol("z$(length(D))")]
-    for layer in reverse(layer_indices)
+    for (i, layer) in enumerate(reverse(layer_indices))
         replace_ind = map(z -> findfirst(z .== out), syms[layer])
         out[replace_ind] = exprs[layer]
         W, b, R, out = layerize(out)
+        if i == 1
+            R = identity
+        end
         push!(layers, Dense(W, b, R))
     end
     reverse(layers)
 end
 
+# TODO RENAME
+function to_network(pts::Vector)
+    ex = to_relu_expression(amirs_piecewise_linear(pts))
+    D = make_expr_dict(simplify(ex))
+    Chain(to_network(D)...)
+end
 
-# SCRIPT
-pts = [(0,0), (1,1), (2, 0), (3, 1), (6, 11.258)]
-ex = closed_form_piecewise_linear(pts)
-ex = simplify(to_relu_expression(ex))
-D = make_expr_dict(ex)
-ks = collect(keys(D))
-vs = collect(values(D))
-# B = BitArray(occursin(v, k) for v in vs, k in ks)
-# starting_nodes = findall(vec(sum(B, dims = 1)) .== 0)
-# layers = layer_sort(B)
-C = Chain(to_network(D)...)
+
+
+# # SCRIPT
+# pts = [(0,0), (1,1), (2, 0), (3, 1), (6, 11.258)]
+# # ex = closed_form_piecewise_linear(pts)
+# include("newpiecewise.jl")
+# ex = amirs_piecewise_linear(pts)
+# ex = simplify(to_relu_expression(ex))
+# D = make_expr_dict(ex)
+# ks = collect(keys(D))
+# vs = collect(values(D))
+# # B = BitArray(occursin(v, k) for v in vs, k in ks)
+# # starting_nodes = findall(vec(sum(B, dims = 1)) .== 0)
+# # layers = layer_sort(B)
+# C = Chain(to_network(D)...)
+# CC = relu_bypass(C)
+
+# # h(x) = (l = C(x); length(l) == 1 && return l[1])
+# # g(x) = (l = CC(x); length(l) == 1 && return l[1])
+# # eval(:(f(x) = $ex))
+# # plot([f, g, h], -2pi:0.01:2pi)

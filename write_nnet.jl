@@ -19,6 +19,12 @@ function print_layer(file::IOStream, layer)
    [println(file, b[row], ",") for row in axes(W, 1)]
 end
 
+"""
+    print_header(file::IOStream, model[; header_text])
+
+The NNet format has a particular header containing information about the network size and training data.
+`print_header` does not take training-related information into acount (subject to change).
+"""
 function print_header(file::IOStream, model; header_text="Default header text.\nShould replace with the real deal.")
    println(file, to_comment(header_text))
    # num layers, num inputs, num outputs, max layer size
@@ -32,13 +38,13 @@ function print_header(file::IOStream, model; header_text="Default header text.\n
    println(file, join(layer_sizes, ", "), ",")
    # empty
    println(file, "This line extraneous")
-   # minimum vals of inputs (?)
+   # minimum vals of inputs
    println(file, -1e10)
-   # maximum vals of inputs (?)
+   # maximum vals of inputs
    println(file, 1e10)
-   # mean vals of inputs (?)
+   # mean vals of inputs
    println(file, 0)
-   # range vals of inputs (?)
+   # range vals of inputs
    println(file, 1)
    return nothing
 end
