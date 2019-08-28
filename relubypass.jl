@@ -57,7 +57,9 @@ end
 
 Base.show(io::IO, RB::ReLUBypass) = print(io, "ReLUBypass($(repr(RB.protected)))")
 
-
+function Base.:(==)(R1::ReLUBypass{T}, R2::ReLUBypass{T}) where T
+    R1.protected == R2.protected
+end
 
 
 
