@@ -1,18 +1,16 @@
 using Flux, LinearAlgebra
+using BSON: @save, @load
 include("utils.jl")
 include("relubypass.jl")
-
 ################################################################################
-# This is the RNN we want to convert to FFNN.
-rnn = Chain(Dense(2, 4, relu), RNN(4, 4, relu), Dense(4, 1, identity))
 
-# Create the FFNN from the given RNN model. Currently the list "new" is hardcoded
+# Create the FFNN from the given RNN model.
 function rnn_to_ffnn(model)
     for i = 1:length(model)
         if model[i] isa Flux.Recur
-            W, b = unroll_rnn_layer(model, i)
+            W, b, R = unroll_rnn_layer(model, i)
             # update model
-            new = [[Dense(W[i], b[i], relu) for i=1:length(model)-1];  Dense(W[end], b[end], identity)]
+            new = [[Dense(W[i], b[i], R[i]) for i=1:length(model)-1];  Dense(W[end], b[end], model[end].σ)]
             model = Chain(new...)
         end
     end
@@ -20,23 +18,32 @@ function rnn_to_ffnn(model)
 end
 
 
-
 function unroll_rnn_layer(model, rnn_index)
     Wh  = latent_weights(model[rnn_index])
     W = Vector{Array{Float64}}(undef, length(model))
     B  = Vector{Array{Float64}}(undef, length(model))
+    R = Vector{Any}(undef, length(model))
+    size_latent = latent_size(model[rnn_index])
     for i = 1:length(model)
         if i == rnn_index
             WiWh = [weights(model[i]) latent_weights(model[i])]
-            bh = bias(model[i]) + latent_bias(model[i])
+            bh = bias(model[i])
             W[i] = [WiWh; WiWh]
             B[i] = [bh; bh]
         else
             W[i] = block_diagonal(weights(model[i]), Matrix(1I, size(Wh)))
             B[i] = [bias(model[i]); zeros(size(Wh)[1])]
         end
+        if i < rnn_index
+            R[i] = ReLUBypass(layer_size(model[i], 1) .+ (1:size_latent))
+        elseif i == rnn_index
+            R[i] = model[i].cell.σ
+        else
+            R[i] = model[i].σ
+        end
     end
-    return W, B
+
+    return W, B, R
 end
 
 
@@ -53,72 +60,33 @@ function shuffle_layer(in_len, out_vec)
     return Dense(W, b, identity)
 end
 
+controller = Chain(Dense(2, 4, relu), RNN(4, 4, relu), Dense(4, 1, identity))
+@load "controller_weights.bson" weights_c
+Flux.loadparams!(controller, weights_c)
 
+ffnn = rnn_to_ffnn(controller)
+ffnn_bypassed = add_bypass_variables(ffnn, 2)
+preshuffle = shuffle_layer(6, [1,2, 3,4,5,6, 1,2])
+postshuffle = shuffle_layer(7, [2,2,3,1,4,5,6,7])
+dynamics_bypassed = add_bypass_variables(dynamics, 4)
 
-# ## CHECK CORRECTNESS ##
-input = 2rand(2) - 1.0
-eval_point = input
-state = rand(2)
-eval_point2 = vcat(input, zeros(size_latent), state)
-long_in = [eval_point; rand(2)]
-bypassed = add_bypass_variables(rnn, 2)
-final = Chain(bypassed, shuffle_layer(3, [2, 2, 3, 1]), dynamics)
+pre_total = Chain(preshuffle, ffnn_bypassed..., postshuffle, dynamics_bypassed...)
+total_network = pre_total |> relu_bypass
 
-ffnn = add_bypass_variables(rnn_to_ffnn(rnn), 2)
-ans_old = Tracker.data(rnn(eval_point))
-ans_new = Tracker.data(ffnn(eval_point2))
-print("\nCheck for same control output and latent state:")
-print("\nRNN Out:        ", ans_old[1])
-print("\nFFNN Equiv Out: ", ans_new[1])
+@save "closed_loop_controller.bson" total_network
 
-print("\n\nRNN Latent State:  ", Tracker.data(rnn.layers[2].state))
-print("\nFFNN Latent State:        ", ans_new[2:end-2])
+@show x0 = rand(2)
+init = Float64.(Tracker.data(rnn[2].init))
+x0_ = [x0; init]
+x0__ = [x0_; x0]
 
-print("\n\nInput State:             ", state)
-print("\nFFNN Pass Through State: ", ans_new[end-1:end])
+_pretty_print(name, val) = println(rpad(name, 30), val)
+capture_layers(model, x) = [x = l(x) for l in model]
 
-print("\n\nLong In: ", long_in)
-print("\nBypassed Check:  ", bypassed(long_in))
+_pretty_print("RNN Out + latent", [rnn(x0); rnn[2].state] |> Tracker.data |> Vector{Float64})
+_pretty_print("FFNN Equiv", ffnn(x0_))
+_pretty_print("FFNN Bypass", ffnn_bypassed(x0__))
+_pretty_print("prefinal network", pre_total(x0_))
+_pretty_print("Final network", total_network(x0_))
 
-print("\n\nFinal Output: θ, θ_dot_lb, θ_dot_ub")
-print("\nFinal Check:  ", final(long_in), "\n")
-
-
-
-
-
-
-
-
-
-## EXTRANEOUS FUNCTIONS ##
-# # Creates a network where the input is ReLUBypassed for a given number of layers
-# function state_bypass(state_size, layer_count)
-#     layer_list = fill(Dense(Matrix(1I, state_size, state_size), zeros(state_size), ReLUBypass(collect(1:state_size)...)), (layer_count))
-#     out = relu_bypass(Chain(layer_list...))
-# end
-
-## EXTRANEOUS PRINTING OF INPUT RNN ##
-# # print weights #
-# for layer in model.layers
-#     if layer isa Flux.Dense
-#         print("\n\nDense Weights:\n")
-#         print(Tracker.data(layer.W))
-#     elseif layer isa Flux.Recur
-#         print("\n\nRNN Weights:\n")
-#         print("In:     ", Tracker.data(layer.cell.Wi), "\n")
-#         print("Latent: ", Tracker.data(layer.cell.Wh))
-#     end
-# end
-# # print biases #
-# for layer in model.layers
-#     if layer isa Flux.Dense
-#         print("\n\nDense Biases:\n")
-#         print(Tracker.data(layer.b))
-#     elseif layer isa Flux.Recur
-#         print("\n\nRNN Biases:\n")
-#         print("In:     ", Tracker.data(layer.cell.b), "\n")
-#         print("Latent: ", Tracker.data(layer.cell.h))
-#     end
-# end
-# print("\n\n")
+_pretty_print("Known point: [0, 0, init]", total_network([0;0;init]))
