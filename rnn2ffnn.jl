@@ -55,7 +55,7 @@ layer_sizes(x) = [layer_size(x[1], 2); layer_size.(x, 1)]
 rnn_layer(model) = findfirst(l->l isa Flux.Recur, model.layers)
 
 function shuffle_layer(in_len, out_vec)
-    W = I(in_len)[out_vec, :]
+    W = 1.0I(in_len)[out_vec, :]
     b = zeros(length(out_vec))
     return Dense(W, b, identity)
 end
