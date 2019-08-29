@@ -28,7 +28,7 @@ weights(R::Flux.RNNCell) = Tracker.data(R.Wi)
 bias(R::Flux.RNNCell) = Tracker.data(R.b)
 latent_weights(R::Flux.RNNCell) = Tracker.data(R.Wh)
 latent_bias(R::Flux.RNNCell) = Tracker.data(R.h)
-latent_size(R::Flux.RNNCell) = size(latent_weights(R))
+latent_size(R::Flux.RNNCell) = size(latent_weights(R), 1)
 
 weights(R::Flux.Recur) = weights(R.cell)
 bias(R::Flux.Recur) = bias(R.cell)
@@ -46,8 +46,10 @@ layer_size(L, i = nothing) = i == nothing ? size(weights(L)) : size(weights(L), 
 """
     vcat(layers::Dense...; [σ = nothing], [block_diagonal_weights = false])
 Vertically stack compatible `Flux.Dense` layers.
- - `σ` - set the activation function for the output layer. If all layers do not have the same activation, then this field is required.
- - `block_diagonal_weights` - whether to stack weights *vertically* or into a *block diagonal*, i.e. `[W₁; W₂;...]` or `[W₁ 0 ...; 0, W₂, 0...; ...]`.
+ - `σ` - set the activation function for the output layer. If all layers do not
+  have the same activation, then this field is required.
+ - `block_diagonal_weights` - whether to stack weights *vertically* or into a
+  *block diagonal*, i.e. `[W₁; W₂;...]` or `[W₁ 0 ...; 0, W₂, 0...; ...]`.
 """
 function Base.vcat(layers::Dense...; σ = nothing, block_diagonal_weights = false)
     if σ == nothing
@@ -181,4 +183,23 @@ function add_bypass_variables(C::Chain, n_vars)
         push!(C_new, add_bypass_variables(L, n_vars))
     end
     Chain(C_new...)
+end
+
+
+
+function stack_activations(L1, L2)
+    n1, n2 = layer_size(L1, 1), layer_size(L2, 1)
+    act1, act2 = L1.σ, L2.σ
+
+    act1 == relu == act2                        && return relu
+    act1 == identity == act2                    && return identity
+
+    act1 == identity && act2 == relu            && return ReLUBypass(1:n1)
+    act1 == relu && act2 == identity            && return ReLUBypass(n1 .+ (1:n2))
+
+    act1 == relu && act2 isa ReLUBypass         && return ReLUBypass(n1 .+ act2.protected)
+    act1 isa ReLUBypass && act2 isa ReLUBypass  && return ReLUBypass([act1.protected; n1 .+ act2.protected])
+    act1 isa ReLUBypass && act2 == relu         && return deepcopy(act1)
+
+    error("unsupported pair of activations. $act1 and $act2")
 end
