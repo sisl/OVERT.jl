@@ -64,6 +64,8 @@ controller = Chain(Dense(2, 4, relu), RNN(4, 4, relu), Dense(4, 1, identity))
 @load "controller_weights.bson" weights_c
 Flux.loadparams!(controller, weights_c)
 
+@load "dynamics_model.bson" dynamics
+
 ffnn = rnn_to_ffnn(controller)
 ffnn_bypassed = add_bypass_variables(ffnn, 2)
 preshuffle = shuffle_layer(6, [1,2, 3,4,5,6, 1,2])
@@ -76,14 +78,14 @@ total_network = pre_total |> relu_bypass
 @save "closed_loop_controller.bson" total_network
 
 @show x0 = rand(2)
-init = Float64.(Tracker.data(rnn[2].init))
+init = Float64.(Tracker.data(controller[2].init))
 x0_ = [x0; init]
 x0__ = [x0_; x0]
 
 _pretty_print(name, val) = println(rpad(name, 30), val)
 capture_layers(model, x) = [x = l(x) for l in model]
 
-_pretty_print("RNN Out + latent", [rnn(x0); rnn[2].state] |> Tracker.data |> Vector{Float64})
+_pretty_print("RNN Out + latent", [controller(x0); controller[2].state] |> Tracker.data |> Vector{Float64})
 _pretty_print("FFNN Equiv", ffnn(x0_))
 _pretty_print("FFNN Bypass", ffnn_bypassed(x0__))
 _pretty_print("prefinal network", pre_total(x0_))
