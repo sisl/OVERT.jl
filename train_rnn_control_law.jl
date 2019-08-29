@@ -16,9 +16,11 @@ fixdeg(x) = (y = mod(x, 360); y > 180 ? y-360 : y)
 θ_ddot_desired(x) = desired_control(x)/(PARAMS.m*PARAMS.L^2) + (PARAMS.g/PARAMS.L)*sin(x[1])
 desired_control(x) = -(PARAMS.m*PARAMS.L^2 + PARAMS.I)*((PARAMS.wₙ^2 + PARAMS.m*PARAMS.g*PARAMS.L/(PARAMS.m*PARAMS.L^2 + PARAMS.I))*x[1] + (PARAMS.damp*PARAMS.wₙ)*x[2])
 
-function generate_x_train(N, θ_mean, θ_dot_mean)
+random_start(θ_var, θ_dot_var) = [θ_var*(rand() - 0.5), θ_dot_var*(rand() - 0.5)]
+
+function generate_x_train(N, θ_var, θ_dot_var)
    X_train = [zeros(2) for i in 1:N]
-   X_train[1] = [θ_mean*(rand() - 0.5), θ_dot_mean*(rand() - 0.5)]
+   X_train[1] = random_start(θ_var, θ_dot_var)
    for i in 2:N
       θ, θ_dot = x = X_train[i-1]
       X_train[i] = [fixrad(θ + θ_dot*PARAMS.dt),   θ_dot + θ_ddot_desired(x)*PARAMS.dt]
@@ -27,19 +29,26 @@ function generate_x_train(N, θ_mean, θ_dot_mean)
 end
 
 function loss(x, y)
-   z = sum(Flux.mse.(model.(x), desired_control.(x)))
-   s = sim(x-> Tracker.data(model(x))[1], [deg2rad(10), deg2rad(0)], PARAMS.T)[end, :]
-   Flux.reset!(model)
-   return z + 100*norm(s)
+    u = model.(x)
+    z = sum(Flux.mse.(u, desired_control.(x)))
+
+    Flux.reset!(model)
+
+    f = x′ -> Tracker.data(model(x′))[1] # gets control output for x0 input
+    x0 = random_start(deg2rad(10), deg2rad(10))
+    s = sim(f, x0, PARAMS.T)[end, :] # get the T timestep state for x0
+
+    Flux.reset!(model)
+
+    return z + 100*norm(s) + 5*sum(abs, vcat(u...))
 end
 
 function sim(f, x, T)
-   u = 0
    X = zeros(T, 2)
    for t in 1:T
+      u = f(x)
       θ, θ_dot = x
       θ_ddot = u/(PARAMS.m*PARAMS.L^2) + (PARAMS.g/PARAMS.L)*sin(θ)
-      u = f(x)
       x .+= [θ_dot, θ_ddot].*PARAMS.dt
       x[1] = fixrad(x[1])
       X[t, :] .= x
@@ -47,13 +56,10 @@ function sim(f, x, T)
    return X
 end
 
-function plotsim!(p, f = NN; T = 2*PARAMS.T, s0 = [deg2rad(2), deg2rad(0)])
-   plot!(p, 1:T, fixdeg.(rad2deg.(sim(f, s0, T)[:, 1])), legend = false, xlabel="Time Step", ylabel="Degrees")
-end
 
-function train_pendulum(model, num_eps, θ_mean, θ_dot_mean)
+function train_pendulum(model, num_eps, θ_var, θ_dot_var)
    N  = fill(PARAMS.T, num_eps)
-   Xs = generate_x_train.(N, θ_mean, θ_dot_mean)
+   Xs = generate_x_train.(N, θ_var, θ_dot_var)
    Ys = zeros.(length.(Xs))
    data = collect(zip(Xs, Ys))
    opt  = ADAM(0.001, (0.9, 0.999))
@@ -61,12 +67,22 @@ function train_pendulum(model, num_eps, θ_mean, θ_dot_mean)
    return model
 end
 
+function plotsim!(p, f = NN; T = 2*PARAMS.T, s0 = [deg2rad(2), deg2rad(0)], state_var = 1)
+    ylabels = ("Degrees", "Degrees/sec")
+    plot!(p, 1:T, fixdeg.(rad2deg.(sim(f, s0, T)[:, state_var])), legend = false, xlabel="Time Step", ylabel=ylabels[state_var])
+end
+
+plotsim(args...; kwargs...) = plotsim!(plot(), args...; kwargs...)
+
 function plotting(model)
    # Plot resulting trajectories
-   plotsim(args...) = plotsim!(plot(), args...)
+
    NN(x) = Tracker.data(model(x))[1]
-   p = plotsim(NN)
-   [plotsim!(p, NN, s0 = [deg2rad(10)*(rand() - 0.5), deg2rad(5)*(rand() - 0.5)]) for i in 1:100]; p
+   p1 = plotsim(NN)
+   [plotsim!(p1, NN, s0 = [deg2rad(10)*(rand() - 0.5), deg2rad(5)*(rand() - 0.5)]) for i in 1:100]
+   p2 = plotsim(NN, state_var = 2)
+   [plotsim!(p2, NN, s0 = [deg2rad(10)*(rand() - 0.5), deg2rad(5)*(rand() - 0.5)], state_var = 2) for i in 1:100]
+   plot(p1, p2)
 end
 
 function save_weights(model)
