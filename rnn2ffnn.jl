@@ -69,7 +69,7 @@ Flux.loadparams!(controller, weights_c)
 ffnn = rnn_to_ffnn(controller)
 ffnn_bypassed = add_bypass_variables(ffnn, 2)
 preshuffle = shuffle_layer(6, [1,2, 3,4,5,6, 1,2])
-postshuffle = shuffle_layer(7, [2,2,3,1,4,5,6,7])
+postshuffle = shuffle_layer(7, [6,6,7,1,2,3,4,5])
 dynamics_bypassed = add_bypass_variables(dynamics, 4)
 
 pre_total = Chain(preshuffle, ffnn_bypassed..., postshuffle, dynamics_bypassed...)
