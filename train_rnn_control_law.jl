@@ -3,7 +3,7 @@ using Base.Iterators: partition
 using BSON: @save
 include("utils.jl")
 # To train a model first define the model. Ex: model = Chain(Dense(2, 4, relu), RNN(4, 4, relu), Dense(4, 1, identity))
-# Second, run the function train_pendulum(model, num_eps, θ_mean, θ_dot_mean)
+# Second, run the function train_pendulum(model, num_eps, θ_var, θ_dot_var)
 # You can view sim traces of the result by calling plotting(model)
 # Model weights can be saved using save_weights(model)
 
@@ -56,7 +56,6 @@ function sim(f, x, T)
    return X
 end
 
-
 function train_pendulum(model, num_eps, θ_var, θ_dot_var)
    N  = fill(PARAMS.T, num_eps)
    Xs = generate_x_train.(N, θ_var, θ_dot_var)
@@ -75,8 +74,6 @@ end
 plotsim(args...; kwargs...) = plotsim!(plot(), args...; kwargs...)
 
 function plotting(model)
-   # Plot resulting trajectories
-
    NN(x) = Tracker.data(model(x))[1]
    p1 = plotsim(NN)
    [plotsim!(p1, NN, s0 = [deg2rad(10)*(rand() - 0.5), deg2rad(5)*(rand() - 0.5)]) for i in 1:100]
