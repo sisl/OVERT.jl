@@ -1,5 +1,3 @@
-# using Flux
-# include("utils.jl")
 
 """
 Prepend `//` to each line of a string.
@@ -9,7 +7,7 @@ to_comment(txt) = "//"*replace(txt, "\n"=>"\n//")
 """
     print_layer(file::IOStream, layer)
 
-print to `file` an object implementing `weights(layer)` and `bias(layer)`
+Print to `file` an object implementing `weights(layer)` and `bias(layer)`
 """
 function print_layer(file::IOStream, layer)
    print_row(W, i) = println(file, join(W[i,:], ", "), ",")
@@ -23,9 +21,9 @@ end
     print_header(file::IOStream, model[; header_text])
 
 The NNet format has a particular header containing information about the network size and training data.
-`print_header` does not take training-related information into acount (subject to change).
+`print_header` does not take training-related information into account (subject to change).
 """
-function print_header(file::IOStream, model; header_text="Default header text.\nShould replace with the real deal.")
+function print_header(file::IOStream, model; header_text="")
    println(file, to_comment(header_text))
    # num layers, num inputs, num outputs, max layer size
    layer_sizes = [layer_size(model[1], 2); layer_size.(model, 1)]
@@ -39,9 +37,9 @@ function print_header(file::IOStream, model; header_text="Default header text.\n
    # empty
    println(file, "This line extraneous")
    # minimum vals of inputs
-   println(file, -1e10)
+   println(file, -1e5)
    # maximum vals of inputs
-   println(file, 1e10)
+   println(file, 1e5)
    # mean vals of inputs
    println(file, 0)
    # range vals of inputs
@@ -52,16 +50,18 @@ end
 """
     write_nnet(filename, model[; header_text])
 
-Write `model` to \$filename.nnet. `model` needs to be an iterable object containing
-layers of a feed-forward, fully connect, neural network.
-Note: Will not error for non feed-forward or not fully-connected networks, so use with caution.
+Write `model` to \$filename.nnet. `model` should be an iterable object containing
+layers of a feed-forward, fully connected neural network with ReLU activations.
+Note: Does not perform safety checks on inputs, so use with caution.
 """
 function write_nnet(outfile, model; header_text="Default header text.\nShould replace with the real deal.")
     name, ext = splitext(outfile, ".")
     outfile = name*".nnet"
     open(outfile, "w") do f
         print_header(f, model, header_text=header_text)
-        [print_layer(f, layer) for layer in model]
+        for layer in model
+            print_layer(f, layer)
+        end
     end
     nothing
 end
