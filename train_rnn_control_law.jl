@@ -34,13 +34,13 @@ function loss(x, y)
 
     Flux.reset!(model)
 
-    f = x′ -> Tracker.data(model(x′))[1] # gets control output for x0 input
+    f = x′ -> Tracker.data(model(x′))[1] # gets control output for x′ input
     x0 = random_start(deg2rad(10), deg2rad(10))
     s = sim(f, x0, PARAMS.T)[end, :] # get the T timestep state for x0
 
     Flux.reset!(model)
 
-    return z + 100*norm(s) + 5*sum(abs, vcat(u...))
+    return 0.1*z + 100*norm(s) + 5*sum(norm.(u))
 end
 
 function sim(f, x, T)
@@ -74,11 +74,13 @@ end
 plotsim(args...; kwargs...) = plotsim!(plot(), args...; kwargs...)
 
 function plotting(model)
+   Flux.reset!(model)
    NN(x) = Tracker.data(model(x))[1]
    p1 = plotsim(NN)
-   [plotsim!(p1, NN, s0 = [deg2rad(10)*(rand() - 0.5), deg2rad(5)*(rand() - 0.5)]) for i in 1:100]
+   [plotsim!(p1, NN, s0 = random_start(deg2rad(10), deg2rad(20))) for i in 1:100]
+   Flux.reset!(model)
    p2 = plotsim(NN, state_var = 2)
-   [plotsim!(p2, NN, s0 = [deg2rad(10)*(rand() - 0.5), deg2rad(5)*(rand() - 0.5)], state_var = 2) for i in 1:100]
+   [plotsim!(p2, NN, s0 = random_start(deg2rad(10), deg2rad(20)), state_var = 2) for i in 1:100]
    plot(p1, p2)
 end
 
