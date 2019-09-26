@@ -57,7 +57,7 @@ end
 
 Base.show(io::IO, RB::ReLUBypass) = print(io, "ReLUBypass($(repr(RB.protected)))")
 
-function Base.:(==)(R1::ReLUBypass{T}, R2::ReLUBypass{T}) where T
+function Base.:(==)(R1::ReLUBypass{A}, R2::ReLUBypass{B}) where {A, B}
     R1.protected == R2.protected
 end
 
@@ -92,11 +92,6 @@ function relu_bypass(C::Chain)
     Chain(C_bypassed...)
 end
 
-# Base.:-(x::AbstractArray, y::Number) = x .- y
-# Base.:+(x::AbstractArray, y::Number) = x .+ y
-# Base.:-(x::Number, y::AbstractArray) = x .- y
-# Base.:+(x::Number, y::AbstractArray) = x .+ y
-
 # Also type piracy:
 # TODO to harmonize better with Flux, define a specialized broadcast behavior instead for ReLUBypass
 FluxArr = AbstractArray{<:Union{Float32, Float64}, N} where N
@@ -116,6 +111,8 @@ end
 #=
 NOTES for later
 
-- can't use relubypass to train with because setindex is not differentiable in general. In our case it can be defined to be but we havn't done that.
-To get around a Tracker/flux error, we take the data of tracked arrays instead which means we can't train with relu bypass ever.
+- can't use relubypass to train with because setindex is not differentiable in general.
+In our case it can be defined to be but we havn't done that.
+To get around a Tracker/flux error, we take the data of tracked arrays instead
+which means we can't train with relu bypass ever.
 =#
