@@ -58,40 +58,60 @@ function to_relu_expression(ex::Expr)
 end
 
 ##########################################################################################
-##### NOTE this section superceded by amir's piecewise method in newpiecewise.jl
 
-function slope_int(p1, p2)
-    x1, y1 = p1
-    x2, y2 = p2
-    m = (y2 - y1)/(x2 - x1)
-    b = -m*x1 + y1
-    return m, b
-end
-function lip_const(pts)
-    m = [slope_int(pts[i], pts[i+1])[1] for i in 1:length(pts)-1]
-    ceil(maximum(abs.(m)))
-end
+"""
+Construct a symbolic expression for a line between the points (x₀, 1.0) on the left and (x₁, 0) on the right.
+`pos_unit` has positive slope while `neg_unit` has negative slope. Note that due to the left-to-right assumption
 
-lip_line(ℓ, pt) = :($(ℓ)*x + $(pt[2] - ℓ*pt[1]))
+    neg_unit(x₀, x₁) == pos_unit(x₁, x₀)
+"""
+neg_unit(x0, x1) = :($(1/(x0-x1)) * (x - $x1))
+"""
+Construct a symbolic expression for a line between the points (x₀, 0.0) on the left and (x₁, 1.0) on the right.
+`pos_unit` has positive slope while `neg_unit` has negative slope. Note that due to the left-to-right assumption
 
+    neg_unit(x₀, x₁) == pos_unit(x₁, x₀)
+"""
+pos_unit(x0, x1) = :($(1/(x1-x0)) * (x - $x0))
+
+"""
+    closed_form_piecewise_linear(pts)::Expr
+
+Constructs a closed-form piecewise linear expression from an ordered (left to right) sequence of points.
+The method is inspired by the paper by Lum and Chua (cite) that considers a piecewise linear function of the form:
+`f(x) = Σᵢ(yᵢ⋅gᵢ(xᵢ))` where `gᵢ(xⱼ) = δᵢⱼ`
+Here in the 1D case, `gᵢ = max(0, yᵢ*min(L1, L2))`, where `L1` and `L2` are the lines "ramping up" towards xᵢ
+and "ramping down" away from xᵢ. The function returns an `Expr` based on a variable `x`.
+This can be turned into a callable function `f` by running something like `eval(:(f(x) = \$expression_of_x))`.
+
+# Example
+    julia> pts = [(0,0), (1,1), (2, 0)]
+    3-element Array{Tuple{Int64,Int64},1}:
+     (0, 0)
+     (1, 1)
+     (2, 0)
+
+    julia> closed_form_piecewise_linear(pts)
+    :(max(0, 0 * (-1.0 * (x - 1))) + max(0, 1 * min(1.0 * (x - 0), -1.0 * (x - 2))) + max(0, 0 * (1.0 * (x - 1))))
+"""
 function closed_form_piecewise_linear(pts)
-    m, b = slope_int(pts[1], pts[2])
-    equation = :($m*x + $b)
-    ℓ = lip_const(pts)
-    for i in 2:length(pts)-1
-        m_new, b_new = slope_int(pts[i], pts[i+1])
-        if m_new == m
-            continue
-        end
-        line = :($m_new*x + $b_new)
-        if m_new > m
-            equation = Expr(:call, :max, equation, :(min($(lip_line(ℓ, pts[i])), $line)))
-        else
-            equation = Expr(:call, :min, equation, :(max($(lip_line(-ℓ, pts[i])), $line)))
-        end
-        m = m_new
+    n = length(pts)
+    x, y = first.(pts), last.(pts) # split the x and y coordinates
+    G = []
+    for i in 2:n-1
+        x0, x1, x2 = x[i-1:i+1] # consider the "triangulation" of points x0,x1,x2
+        L1 = pos_unit(x0, x1) # x0-x1 is an increasing linear unit
+        L2 = neg_unit(x1, x2) # x1-x2 is a decreasing linear unit
+        gᵢ = :($(y[i]) * max(0, min($L1, $L2)))
+        push!(G, gᵢ)
     end
-    return equation
+    # first and last points are special cases that ignore the min
+    g₀ = :($(y[1]) * max(0, $(neg_unit(x[1], x[2]))))
+    gᵣ = :($(y[end]) * max(0, $(pos_unit(x[end-1], x[end]))))
+    # Order doesn't matter now but for our debugging purposes earlier we enforce sequential ordering.
+    pushfirst!(G, g₀)
+    push!(G, gᵣ)
+    return :(+$(G...))
 end
 
 ##########################################################################################
@@ -234,7 +254,7 @@ end
 
 # TODO RENAME
 function to_network(pts::Vector)
-    ex = to_relu_expression(amirs_piecewise_linear(pts))
+    ex = to_relu_expression(closed_form_piecewise_linear(pts))
     D = make_expr_dict(simplify(ex))
     Chain(to_network(D)...)
 end
