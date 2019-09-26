@@ -10,6 +10,8 @@ from sandbox.rocky.tf.envs.vary_wrapper import VaryWrapper
 from rllab.envs.normalized_env import normalize
 from rllab.misc.instrument import run_experiment_lite
 from sandbox.rocky.tf.policies.gaussian_mlp_policy import SimpleGaussianMLPPolicy, GaussianMLPPolicy, GaussianMLP2Policy
+from sandbox.rocky.tf.policies.gaussian_gru_policy import GaussianGRUPolicy
+from sandbox.rocky.tf.policies.simple_RNN_policy_categorical import CategoricalSimpleRNNPolicy
 import tensorflow as tf
 tf.enable_eager_execution()
 from OverApprox.relu_approximations import relu_tanh, linearized_tanh
@@ -21,11 +23,13 @@ def run_task(*_):
     
     env = TfEnv(GymEnv("MyPendulum-v0", record_video=False))
     #
-    policy = GaussianMLP2Policy(
+    policy = GaussianGRUPolicy( #GaussianMLP2Policy(
         name="policy",
         env_spec=env.spec,
         # The neural network policy should have two hidden layers, each with 32 hidden units.
-        hidden_sizes= (4,4), #(128, 128, 128, 128, 128, 128),
+        #hidden_sizes= (4,4), #(128, 128, 128, 128, 128, 128),
+        hidden_dim=4,
+        #layer_dim=4,
         hidden_nonlinearity=tf.nn.relu, #linearized_tanh
         # tf.nn.relu, # relu_tanh
         #output_nonlinearity=tf.nn.sigmoid
