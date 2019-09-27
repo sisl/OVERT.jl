@@ -397,8 +397,7 @@ def load_network_wrapper(fprefix, fnumber, fname):
     frozen_graph = os.path.join(fprefix, fname+fnumber+".pb")
     meta_data = os.path.join(fprefix, "meta_data_"+fnumber+".txt")
     output_op_name, inputs, outputs = read_inout_metadata(meta_data)
-    network = Marabou.read_tf(frozen_graph, outputName=output_op_name)
-    return frozen_graph, network, inputs
+    return frozen_graph, output_op_name, inputs
 
 def set_up_logging(fnumber):
     run_number = str(int(np.ceil(np.random.rand()*10000)))
@@ -415,7 +414,6 @@ def set_up_logging(fnumber):
     # redirect to file
     logname = os.path.join(network_dir,'run_'+run_number+'_peripheral.log')
     print("log: ", logname)
-    sys.stdout = open(logname, 'w')
     return logname, marabou_log_dir, network_dir, run_number
  
 def check_SAT(frozen_graph, vals, bounds, nsteps):

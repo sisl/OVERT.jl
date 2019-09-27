@@ -12,17 +12,18 @@ from simple_wrapper import SimpleWrapper
 true_stdout = sys.stdout
 
 # graph_def_gentler_random_controller_2_steps_4856.pb
-fnumber = "2097"
+fnumber = "38358"
 fname = "graph_def_" #real_controller_2_steps_"
-nsteps = 2 # only used in lookin at specific equations and overapprox checking
+nsteps = 4 # only used in lookin at specific equations and overapprox checking
 fprefix = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files"
 
 # load network
-frozen_graph, network, inputs = load_network_wrapper(fprefix, fnumber, fname)
+frozen_graph, output_op_name, inputs = load_network_wrapper(fprefix, fnumber, fname)
+network = Marabou.read_tf(frozen_graph, outputName=output_op_name)
 
 # set up logging
 logname, marabou_log_dir, network_dir, run_number = set_up_logging(fnumber)
-
+sys.stdout = open(logname, 'w')
 # some debugging
 inputVars = network.inputVars
 print("inputVars:", inputVars)
@@ -37,7 +38,7 @@ d1, d2 = map_inputs_fromVarMap(varMapOpstoNames(network.varMap), inputs) # for u
 
 # set bounds on outputs
 # TODO: want there to be an error if number of steps in bounds don't match number of steps of network
-bounds = set_bounds(network, d1, d2, bounds_2_5, network_dir, run_number)
+bounds = set_bounds(network, d1, d2, bounds_4_5, network_dir, run_number)
 
 # make sure all lower bounds are less than all upper bounds
 check_bounds(network.upperBounds, network.lowerBounds)
@@ -59,7 +60,8 @@ if solve:
     print("exit code: ", exit_code)
     if exit_code == 1: # SAT    
         SATus = check_SAT(frozen_graph, vals, bounds, nsteps)
-        sys.stdout = true_stdout
+    sys.stdout = true_stdout
+
 """
 recall:
 enum ExitCode {

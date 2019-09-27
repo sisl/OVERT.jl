@@ -49,7 +49,6 @@ def set_bounds(network, input_long2short, input_long2var, bounds_fun, fdir, run_
     bounds = bounds_fun()
     bounds.log(fdir, run_n)
     # set input bounds
-    import pdb; pdb.set_trace()
     for li in il2s.keys():
         if il2s[li] in bounds.inputs_min:
             network.setLowerBound(il2v[li], bounds.inputs_min[il2s[li]])
@@ -146,9 +145,9 @@ def set_k_bounds(network, input_long2short, input_long2var, bounds_fun, fdir, ru
     # for all complement_output_sets that we add, we want to OR all of them
     complement_output_sets = []
     for i in range(nsteps):
-        theta_i = "theta_" + str(i + 1)
+        theta_i = "theta_" + str(i + 1) # starts at theta_1
         theta_dot_i = "theta_dot_" + str(i + 1)
-        if i in range(1,stepk):
+        if (i+1) in range(1,stepk):
             ########################################
             # set "assume" bounds for steps 1:k-1
             # for theta, set bounds
@@ -170,7 +169,7 @@ def set_k_bounds(network, input_long2short, input_long2var, bounds_fun, fdir, ru
             # -tdhUB + tdh <= 0 -->  tdh <= tdhUB
             addInequality(network, [output_vars[i + 3 * nsteps], output_vars[i + nsteps]], [-1.0, 1.0], 0.0)
             # result: tdhLB <= tdh <= tdhUB
-        elif i == stepk:
+        elif (i+1) == stepk:
             ########################################
             # set complement output set bounds for k
             # set hyperrectangle output "test" bounds
