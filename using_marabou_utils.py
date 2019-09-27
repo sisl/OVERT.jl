@@ -5,6 +5,10 @@ import tensorflow as tf
 from maraboupy.MarabouUtils import *
 import gym
 import matplotlib.pyplot as plt
+import os
+from simple_wrapper import SimpleWrapper
+from maraboupy import Marabou
+import sys
 
 
 def get_adjustable_vars(adj_inputs, d2):
@@ -378,6 +382,50 @@ def check_SAT_REAL_or_OVERAPPROX_varyM(sess, vals, env, bounds, nsteps, render=T
     # run again to print things
     check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=True, verbose=True)
     return SATus
+
+# call Marabou solver
+def solve_with_marabou(network, marabou_log_dir):
+    print("Solving with Marabou...")
+    vals, stats, exit_code = network.solve(marabou_log_dir)
+    if len(vals)>0:
+        print("Input vals: ", [vals[iv] for iv in np.array(network.inputVars).flatten()])
+        print("Output vals: ", [vals[iv] for iv in np.array(network.outputVars).flatten()])
+    print("stats: ", stats)
+    return vals, stats, exit_code
+
+def load_network_wrapper(fprefix, fnumber, fname):
+    frozen_graph = os.path.join(fprefix, fname+fnumber+".pb")
+    meta_data = os.path.join(fprefix, "meta_data_"+fnumber+".txt")
+    output_op_name, inputs, outputs = read_inout_metadata(meta_data)
+    network = Marabou.read_tf(frozen_graph, outputName=output_op_name)
+    return frozen_graph, network, inputs
+
+def set_up_logging(fnumber):
+    run_number = str(int(np.ceil(np.random.rand()*10000)))
+    # make path in which to store outputs
+    network_dir = '/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/MarabouLogs/network_'+fnumber
+    if not os.path.exists(network_dir):
+        os.mkdir(network_dir)
+    # set up marabou logging
+    marabou_log_dir = os.path.join(network_dir, 'run_'+run_number+'_marabou.log')
+    print(marabou_log_dir)
+    if os.path.exists(marabou_log_dir): # don't overwrite old data!!!
+        raise FileExistsError
+    #
+    # redirect to file
+    logname = os.path.join(network_dir,'run_'+run_number+'_peripheral.log')
+    print("log: ", logname)
+    sys.stdout = open(logname, 'w')
+    return logname, marabou_log_dir, network_dir, run_number
+ 
+def check_SAT(frozen_graph, vals, bounds, nsteps):
+    env = SimpleWrapper(gym.envs.make('MyPendulum-v0')) # , recordVideo=True)
+    sess = load_network(frozen_graph)
+    SATus = check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps)
+    print("SATus: ", SATus)
+    return SATus
+
+
 
     
 

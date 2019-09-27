@@ -11,46 +11,33 @@ from simple_wrapper import SimpleWrapper
 
 true_stdout = sys.stdout
 
-
 # graph_def_gentler_random_controller_2_steps_4856.pb
-run_number = str(int(np.ceil(np.random.rand()*10000)))
-fnumber = "3332"
+fnumber = "2097"
 fname = "graph_def_" #real_controller_2_steps_"
-nsteps = 4 # only used in lookin at specific equations and overapprox checking
+nsteps = 2 # only used in lookin at specific equations and overapprox checking
 fprefix = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/nnet_files"
-frozen_graph = os.path.join(fprefix, fname+fnumber+".pb")
-meta_data = os.path.join(fprefix, "meta_data_"+fnumber+".txt")
 
-# make path in which to store outputs
-network_dir = '/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/MarabouLogs/network_'+fnumber
-if not os.path.exists(network_dir):
-    os.mkdir(network_dir)
+# load network
+frozen_graph, network, inputs = load_network_wrapper(fprefix, fnumber, fname)
 
-marabou_log_dir = os.path.join(network_dir, 'run_'+run_number+'_marabou.log')
-print(marabou_log_dir)
-if os.path.exists(marabou_log_dir): # don't overwrite old data!!!
-    raise FileExistsError
+# set up logging
+logname, marabou_log_dir, network_dir, run_number = set_up_logging(fnumber)
 
-output_op_name, inputs, outputs = read_inout_metadata(meta_data)
-
-network = Marabou.read_tf(frozen_graph, outputName=output_op_name)
-
-# redirect to file
-logname = os.path.join(network_dir,'run_'+run_number+'_peripheral.log')
-sys.stdout = open(logname, 'w')
-
+# some debugging
 inputVars = network.inputVars
 print("inputVars:", inputVars)
 outputVars = network.outputVars
 print("outputVars: ", outputVars)
 outputVarList = list(np.array(outputVars).flatten())
 
+# set bounds
 #d1, d2 = map_inputs(network, inputs) # for use with controllers parsed using parsing.py into ff networks
 
 d1, d2 = map_inputs_fromVarMap(varMapOpstoNames(network.varMap), inputs) # for use with other networks that have not been condensed
 
 # set bounds on outputs
-bounds = set_bounds(network, d1, d2, bounds_3_5, network_dir, run_number)
+# TODO: want there to be an error if number of steps in bounds don't match number of steps of network
+bounds = set_bounds(network, d1, d2, bounds_2_5, network_dir, run_number)
 
 # make sure all lower bounds are less than all upper bounds
 check_bounds(network.upperBounds, network.lowerBounds)
@@ -58,34 +45,21 @@ check_bounds(network.upperBounds, network.lowerBounds)
 # check upper and lower bounds of inputs
 print_io_bounds(network, inputVars, outputVars)
 
+# debugging
 equns3 = find_spec_equ(network.equList, outputVars[:nsteps]) #
 [print(e) for e in equns3]
 
 # run_script('testing_using_maraboupy.py')
 
-# call Marabou solver
-def solve_with_marabou(network, marabou_log_dir):
-    vals, stats, exit_code = network.solve(marabou_log_dir)
-    if len(vals)>0:
-        print("Input vals: ", [vals[iv] for iv in np.array(inputVars).flatten()])
-        print("Output vals: ", [vals[iv] for iv in np.array(outputVars).flatten()])
-    print("stats: ", stats)
-    return vals, stats, exit_code
-
 solve=True
 if solve:
     sys.stdout = true_stdout
-    print("solving...")
     vals, stats, exit_code = solve_with_marabou(network, marabou_log_dir)
     sys.stdout = open(logname, 'a')
     print("exit code: ", exit_code)
-    if exit_code == 1: # SAT
-        print(vals)
-        env = SimpleWrapper(gym.envs.make('MyPendulum-v0')) # , recordVideo=True)
-        sess = load_network(frozen_graph)
-        SATus = check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps)
-        print("SATus:", SATus)
-    sys.stdout = true_stdout
+    if exit_code == 1: # SAT    
+        SATus = check_SAT(frozen_graph, vals, bounds, nsteps)
+        sys.stdout = true_stdout
 """
 recall:
 enum ExitCode {
