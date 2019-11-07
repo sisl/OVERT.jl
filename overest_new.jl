@@ -39,7 +39,7 @@ function give_interval(d2f_zeros, a, b)
 end
 
 function bound(f, a, b, N; lowerbound=false, df=nothing, d2f=nothing,
-	d2f_zeros=nothing, convex=nothing, out=nothing)
+	d2f_zeros=nothing, convex=nothing, plot=true)
 
 	"""
 	This function upper or lower bounds function f(x).
@@ -55,7 +55,9 @@ function bound(f, a, b, N; lowerbound=false, df=nothing, d2f=nothing,
 	d2f:       second derivative of f, if available
 	d2f_zeros: zeros of the second derivative, if available
 	convex:    true for convex, false for concave, nothing for mixed.
-	out:       nothing for plotting, "points" for returning points xp, yp of the piecewise-linear function
+	plot:      to plot or not
+
+	returns:   points (xp, yp)
 	"""
 
 	"""
@@ -64,7 +66,7 @@ function bound(f, a, b, N; lowerbound=false, df=nothing, d2f=nothing,
 		bound(x->exp(x^2), 0, 2, 3, convex=true)
 		bound(sin, 0, π, 3, df = cos, lowerbound=true)
 		bound(sin, -π/2, π, 3, df = cos, d2f= x->-sin(x), d2f_zero=[0])
-		bound(x-> x^3-sin(x), 0, 2, 3, out=points)
+		bound(x-> x^3-sin(x), 0, 2, 3, plot=points)
 	"""
 
 	"""
@@ -82,7 +84,7 @@ function bound(f, a, b, N; lowerbound=false, df=nothing, d2f=nothing,
 	function plot_bound(f, a, b, xp, yp)
 		x = range(a, stop=b, length=200)
 		y = f.(x)
-		plot(x,  y, color="red", linewidth=2, label="f(x)")
+		plot!(x,  y, color="red", linewidth=2, label="f(x)")
 		plot!(xp, yp, color="blue", linewidth=2, label="bound(f(x))")
 	end
 
@@ -168,9 +170,23 @@ function bound(f, a, b, N; lowerbound=false, df=nothing, d2f=nothing,
         push!(xp, xx)
         push!(yp, yy)
     end
-    if isnothing(out)
+    if plot
 		plot_bound(f, a, b, xp, yp)
-	elseif out == "points"
+		return xp, yp
+	else
 		return xp, yp
 	end
+end
+
+function overapprox(f,a,b,N; df=nothing, d2f=nothing,
+	d2f_zeros=nothing, convex=nothing, plot=false)
+
+	LB = bound(f, a, b, N; lowerbound=true, df=df, d2f=d2f,
+	d2f_zeros=d2f_zeros, convex=convex, plot=plot)
+
+	UB = bound(f, a, b, N; lowerbound=false, df=df, d2f=d2f,
+	d2f_zeros=d2f_zeros, convex=convex, plot=plot)
+
+	return LB, UB
+
 end
