@@ -13,7 +13,9 @@ push!(JuliaInterpreter.compiled_modules, PyCall)
 pushfirst!(PyVector(pyimport("sys")."path"), "")
 pushfirst!(PyVector(pyimport("sys")."path"), "../gym")
 
-# begin actual program script
+#########################################################
+# begin actual program script ###########################
+#########################################################
 include("overest_new.jl")
 using Debugger
 
@@ -26,11 +28,11 @@ df = env.d_nonlinear_part
 d2f = env.dd_nonlinear_part
 a = -π
 b = π
-N = 6
+N = 3 # n relus >= 2*(# dif concavity sections)*N. for pendulum, >=24
 
-# compute upper bound
-(x_UB,y_UB) = bound(f, a, b, N; lowerbound=false, df=df, d2f=d2f)
+# plots by default
+# compute bounds
+LB, UB = overapprox(f, a, b, N; df=df, d2f=d2f)
 
-(x_LB,y_LB) = bound(f, a, b, N; lowerbound=true, df=df, d2f=d2f)
-
-# transform into ReLUs
+# transform into closed form ReLU expression
+to_network(upper_bound_pts)
