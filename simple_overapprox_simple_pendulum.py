@@ -21,7 +21,7 @@ class line():
             self.tfb = tf.constant([self.b])
             self.tfeq = lambda x: self.tfm*x + self.tfb
     def get_slope(self):
-        # get slop using two points
+        # get slope using two points
         x1,y1 = self.p1
         x2,y2 = self.p2
         return (y2-y1)/(x2-x1)
@@ -199,10 +199,16 @@ def testing():
         b.meta_combi_op = swap_out_for_relus(b.meta_combi_op)
 
     plt.plot(xdat, sindat+c2)
-
+    #
     plt.plot(xdat, LB.eval(xdat) + c2)
     plt.plot(xdat, UB.eval(xdat) + c2)
 
+    plt.figure()
+    plt.plot(xdat, sindat - LB.eval(xdat), label="sin - lb" )
+    plt.plot(xdat, UB.eval(xdat) -sindat, label="ub - sin")
+    plt.plot(xdat, UB.eval(xdat) - LB.eval(xdat), label="ub - lb")
+
+    plt.legend()
     plt.show()
 
     print("LB: ", LB.eval(1.0) + c2)
@@ -249,6 +255,33 @@ def testing():
     train_writer = tf.summary.FileWriter(LOGDIR, sess.graph)
     train_writer.add_graph(sess.graph)
     train_writer.close()
+
+def testing2():
+    # seeing how many assumptions were made and if it works for anything
+    # other than sine. looks like it doesn't
+    def fun(x):
+        if x > .2:
+            return np.sin(x) + np.log(x)
+        else:
+            return np.sin(x) + np.log(0.2)
+    xdat =  np.linspace(-np.pi, np.pi, 200)
+    c1= fun(0.2)
+    c2= np.log(0.2)
+    sindat = [fun(x) for x in xdat]
+
+    # build_sin_approx(fun, c1, convex_reg, concave_reg)
+    LB, UB = build_sin_approx(fun, c1, [-np.pi, 0.2], [0.2, np.pi])
+
+    plt.plot(xdat, sindat+c2)
+
+    plt.plot(xdat, LB.eval(xdat) + c2)
+    plt.plot(xdat, UB.eval(xdat) + c2)
+
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title(str(c1)+'*Sin(x) + '+str(c2))
+    plt.show()
+
 
 # then do the euler integration piece
 # testing()

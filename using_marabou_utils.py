@@ -237,17 +237,22 @@ def plot_bounded_dynamics(filename, fixed_vars, var_to_sample, outputs, fun):
     q = np.zeros((1000,1))
     for i in range(1000):
         x[i] = (np.random.rand()*(b-a) + a)
-        feed_dict[k+":0"] = x[i]
+        feed_dict[k+":0"] = np.array(x[i]).reshape(1,1)
+        import pdb;
+        pdb.set_trace()
         output_vals = sess.run(outputs, feed_dict = feed_dict)
+        ### WHY IS OUTPUT VALS JUST A LIST OF NONES!?!??!?!
         y[i,:] = np.array(output_vals).flatten().reshape(1,-1)
         q[i] = fun(z[i])
+
     # plotting
-    f = plt.figure()
+    plt.figure()
     for i in range(len(outputs)):
-        plt.plot(x, y[:,i])
-    plt.plot(z,q, label="original")    
+        plt.plot(x, y[:,i], '.')
+    plt.plot(z,q, label="original")
+    plt.legend()
     plt.show()
-    return f
+    return True
 
 def load_network(frozen_graph):
     # load network
@@ -302,7 +307,7 @@ def stepEnv(env, policy, nsteps, vals, render, verbose=True):
         print("end sim.")
     return obsList # thetas and thetadots
 
-def check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=True, verbose=True):
+def check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, steps_to_check=None, render=False, verbose=True):
     # check if SAT example is REAL or due to OVERAPPROX
     # gonna wanna import mypendulumenv
     # pull the controller out of the composed graph
@@ -315,13 +320,25 @@ def check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=True, v
     # compare values
     # compare theta values
 
+    if steps_to_check is None:
+        steps_to_check = nsteps
+
+    # record values for plotting
+    traj = np.ones((10, steps_to_check+1)) # rows: theta_sim, thetadot_sim, theta_sat, theta_dot_sat,
+                            # ... theta_min, theta_dot_min, theta_max, theta_dot_max
+                            # ... theta_dot_LB, theta_dot_UB
     if verbose:
         print("theta_0: ", vals[0]*180/np.pi)
         print("theta_dot_0: ", vals[1]*180/np.pi)
 
+        traj[0:2,0] = [vals[0], vals[1]]
+        traj[2:4, 0] = [vals[0], vals[1]]
+        traj[4:6,0] = [bounds.inputs_min["theta_0"], bounds.inputs_min["theta_dot_0"]]
+        traj[6:8, 0] = [bounds.inputs_max["theta_0"], bounds.inputs_max["theta_dot_0"]]
+
     sov = nsteps + 2 # start output var
     inbounds = True
-    for i in range(nsteps):
+    for i in range(steps_to_check):
         tkey = "theta_"+str(i+1)
         a = obsList[i][0] <= bounds.outputs_max[tkey]
         b = obsList[i][0] >= bounds.outputs_min[tkey]
@@ -329,9 +346,13 @@ def check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=True, v
         f =  vals[sov+i] >  bounds.outputs_min[tkey]
         if verbose:
             print(tkey, " min: ", bounds.outputs_min[tkey]*180/np.pi)
+            traj[4,i+1] = bounds.outputs_min[tkey]
             print(tkey, " max: ", bounds.outputs_max[tkey]*180/np.pi)
+            traj[6, i+1] = bounds.outputs_max[tkey]
             print(tkey," from sim: ", obsList[i][0]*180/np.pi) # theta1
+            traj[0, i+1] = obsList[i][0]
             print(tkey," from SAT: ", vals[sov+i]*180/np.pi)
+            traj[2, i+1] = vals[sov+i]
             if not (a and b):
                 print(tkey, " failure")
             if not (e and f):
@@ -344,12 +365,18 @@ def check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=True, v
         h = (vals[sov+2*nsteps+i] - bounds.outputs_min[tdkey]) > 1e-5
         if verbose:
             print(tdkey, " min: ", bounds.outputs_min[tdkey]*180/np.pi)
+            traj[5, i+1] = bounds.outputs_min[tdkey]
             print(tdkey, " max: ", bounds.outputs_max[tdkey]*180/np.pi)
+            traj[7, i+1] = bounds.outputs_max[tdkey]
             print(tdkey, "_LB: ", vals[sov+2*nsteps+i]*180/np.pi)
+            traj[8, i+1] = vals[sov+2*nsteps+i]
             print(tdkey, "_UB: ", vals[sov+3*nsteps+i]*180/np.pi)
+            traj[9, i+1] = vals[sov+3*nsteps+i]
             # recall: LB and UB are calculated from SAT example, not from sim trajectory. and may disagree after 1st timestep
             print(tdkey, " from sim: ", obsList[i][1]*180/np.pi) # thetadot1
+            traj[1, i+1] = obsList[i][1]
             print(tdkey, " from SAT: ", vals[sov+nsteps+i]*180/np.pi)
+            traj[3, i+1] = vals[sov+nsteps+i]
             if not (c and d):
                 print(tdkey, " failure")
             if not (g and h):
@@ -358,9 +385,58 @@ def check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, render=True, v
         inbounds = inbounds and a and b and c and d
 
     if inbounds:
-        return "OVERAPPROX"
+        return traj, "OVERAPPROX"
     else:
-        return "REAL"
+        return traj, "REAL"
+
+def plot_trajectory(traj, dir, run_n):
+    # rows: theta_sim, thetadot_sim, theta_sat, theta_dot_sat,
+    # ... theta_min, theta_dot_min, theta_max, theta_dot_max
+    # ... theta_dot_LB, theta_dot_UB
+    traj = traj*180/np.pi
+    # plt.figure()
+    # plt.plot(traj[0,:], traj[1,:], label="simulation")
+    # plt.plot(traj[2,:], traj[3,:], label="sat")
+    # plt.plot(traj[4,:], traj[5,:], 'r', label="bounds_min")
+    # plt.plot(traj[6,:], traj[7,:], 'r', label="bounds_max")
+    # plt.plot(traj[2,1:], traj[8,1:], 'b', label="theta_sat_theta_dot_LB")
+    # plt.plot(traj[2, 1:], traj[9, 1:], 'b', label="theta_sat_theta_dot_UB")
+    # plt.legend()
+    # plt.xlabel('theta')
+    # plt.ylabel("theta_dot")
+    # plt.title("SAt trajectory")
+    # plt.savefig(os.path.join(dir, "SAT_trajectory_" + str(run_n) +".pdf"))
+    # plt.show()
+    plt.figure()
+    plt.plot(traj[0,:], '.-', label="theta sim")
+    plt.plot(traj[2,:], '.-', label="theta_sat")
+    plt.plot(traj[4, :], '.-', label="bounds_min")
+    plt.plot(traj[6, :], '.-', label="bounds_max")
+    plt.ylabel("theta")
+    plt.xlabel("timesteps")
+    plt.legend()
+    plt.title("theta trajectories")
+    plt.savefig(os.path.join(dir, "SAT_trajectory_theta_" + str(run_n) + ".pdf"))
+    plt.show()
+    #
+    plt.figure()
+    plt.plot(traj[1, :], '.-', label="theta dot sim")
+    plt.plot(traj[3, :], '.-', label="theta dot sat")
+    plt.plot(traj[5, :], '.-', label="bounds_min")
+    plt.plot(traj[7, :], '.-', label="bounds_max")
+    plt.plot(range(1,len(traj[8,1:])+1),traj[8,1:], '.-', label="theta_dot_LB")
+    plt.plot(range(1,len(traj[9, 1:])+1),traj[9, 1:], '.-', label="theta_dot_UB")
+    plt.ylabel("theta dot")
+    plt.xlabel("timesteps")
+    plt.legend()
+    plt.title("theta dot trajectories")
+    plt.savefig(os.path.join(dir, "SAT_trajectory_theta_dot_" + str(run_n) + ".pdf"))
+    plt.show()
+
+
+
+
+
 
 # vary mass and see if we can find a real counter example
 def check_SAT_REAL_or_OVERAPPROX_varyM(sess, vals, env, bounds, nsteps, render=True, nsims=1000):
@@ -416,12 +492,12 @@ def set_up_logging(fnumber):
     print("log: ", logname)
     return logname, marabou_log_dir, network_dir, run_number
  
-def check_SAT(frozen_graph, vals, bounds, nsteps):
+def check_SAT(frozen_graph, vals, bounds, nsteps, step):
     env = SimpleWrapper(gym.envs.make('MyPendulum-v0')) # , recordVideo=True)
     sess = load_network(frozen_graph)
-    SATus = check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps)
+    traj, SATus = check_SAT_REAL_or_OVERAPPROX(sess, vals, env, bounds, nsteps, steps_to_check=step)
     print("SATus: ", SATus)
-    return SATus
+    return traj, SATus
 
 
 

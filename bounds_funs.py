@@ -137,26 +137,26 @@ def bounds_3_5():
     # theta dots
     bounds.inputs_min["theta_dot_0"] = -60*np.pi/180
     bounds.inputs_max["theta_dot_0"] = 60*np.pi/180
-    bounds.outputs_min["theta_dot_1"] = -120*np.pi/180
-    bounds.outputs_max["theta_dot_1"] = 120*np.pi/180
-    bounds.outputs_min["theta_dot_2"] = -60*np.pi/180
-    bounds.outputs_max["theta_dot_2"] = 60*np.pi/180
+    bounds.outputs_min["theta_dot_1"] = -180*np.pi/180
+    bounds.outputs_max["theta_dot_1"] = 180*np.pi/180
+    bounds.outputs_min["theta_dot_2"] = -180*np.pi/180
+    bounds.outputs_max["theta_dot_2"] = 180*np.pi/180
     bounds.outputs_min["theta_dot_3"] = -60*np.pi/180
     bounds.outputs_max["theta_dot_3"] = 60*np.pi/180
     #
     # thetas
-    bounds.inputs_min["theta_0"] = -5*np.pi/180
-    bounds.inputs_max["theta_0"] = 5*np.pi/180
+    bounds.inputs_min["theta_0"] = -10*np.pi/180
+    bounds.inputs_max["theta_0"] = 10*np.pi/180
     bounds.outputs_min["theta_1"] = \
             bounds.inputs_min["theta_0"] \
             + 0.1*bounds.inputs_min["theta_dot_0"]
     bounds.outputs_max["theta_1"] = \
             bounds.inputs_max["theta_0"] \
             + 0.1*bounds.inputs_max["theta_dot_0"]
-    bounds.outputs_min["theta_2"] = -12*np.pi/180
-    bounds.outputs_max["theta_2"] = 12*np.pi/180
-    bounds.outputs_min["theta_3"] = -5*np.pi/180
-    bounds.outputs_max["theta_3"] = 5*np.pi/180
+    bounds.outputs_min["theta_2"] = -20*np.pi/180
+    bounds.outputs_max["theta_2"] = 20*np.pi/180
+    bounds.outputs_min["theta_3"] = -10*np.pi/180
+    bounds.outputs_max["theta_3"] = 10*np.pi/180
     #
     return bounds
 
@@ -216,7 +216,7 @@ def bounds_4_5():
 def bounds_n(n, t0, td0):
     bounds = pendulum_bounds()
     # theta dots
-    tds = np.ones((n+1))*500
+    tds = np.ones((n+1))#*500
     tds[0] = td0
     tds[-1] = td0
     bounds.inputs_min["theta_dot_0"] = -tds[0]*np.pi/180
@@ -226,7 +226,7 @@ def bounds_n(n, t0, td0):
         bounds.outputs_max["theta_dot_"+str(i)] = tds[i]*np.pi/180
     #
     # thetas
-    ts = np.ones((n+1))*50
+    ts = np.ones((n+1))#*50
     ts[0] = t0
     ts[-1] = t0
     bounds.inputs_min["theta_0"] = -ts[0]*np.pi/180

@@ -21,14 +21,14 @@ from OverApprox.relu_approximations import relu_tanh, linearized_tanh
 
 def run_task(*_):
     
-    env = TfEnv(GymEnv("MyPendulum-v0", record_video=False))
+    env = TfEnv(GymEnv("MyPendulum-v0", record_video=True))
     #
-    policy = GaussianGRUPolicy( #GaussianMLP2Policy(
+    policy = GaussianMLP2Policy( #GaussianGRUPolicy( #
         name="policy",
         env_spec=env.spec,
         # The neural network policy should have two hidden layers, each with 32 hidden units.
-        #hidden_sizes= (4,4), #(128, 128, 128, 128, 128, 128),
-        hidden_dim=4,
+        hidden_sizes= (4,4), #(128, 128, 128, 128, 128, 128),
+        #hidden_dim=4,
         #layer_dim=4,
         hidden_nonlinearity=tf.nn.relu, #linearized_tanh
         # tf.nn.relu, # relu_tanh
@@ -44,7 +44,7 @@ def run_task(*_):
         baseline=baseline,
         batch_size=4000,
         max_path_length=env.horizon,
-        n_itr=1, #000,
+        n_itr=100, #000,
         discount=0.99,
         step_size=0.0075, # 0.01
         # Uncomment both lines (this and the plot parameter below) to enable plotting
@@ -59,9 +59,9 @@ run_experiment_lite(
     n_parallel=5,
     # Only keep the snapshot parameters for the last iteration
     snapshot_mode="last",
-    exp_name="relu_small_network_ppo_capped_action_simpler_dense_layer_xW_learn_std_smaller_learning_rate",
+    exp_name="testing",#relu_small_network_ppo_capped_action_simpler_dense_layer_xW_learn_std_smaller_learning_rate",
     # Specifies the seed for the experiment. If this is not provided, a random seed
     # will be used
     seed=0,
-    # plot=True,
+    plot=True,
 )

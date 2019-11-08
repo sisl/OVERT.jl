@@ -23,7 +23,7 @@ with tf.variable_scope("initial_values"):
     theta_0 = tf.placeholder(tf.float32, shape=(1,1), name="theta_0")
     theta_dot_0 = tf.placeholder(tf.float32, shape=(1,1), name="theta_dot_0")
 controller = Controller()
-ncontroller_act = 2
+ncontroller_act = 2 # number of controller activations along any one path through controller per... time applied?
 nsteps = 3
 dynamics = Dynamics()
 ## 

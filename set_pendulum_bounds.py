@@ -116,7 +116,7 @@ def set_k_bounds(network, input_long2short, input_long2var, bounds_fun, fdir, ru
     il2v = input_long2var
 
     # log specific bound values
-    bounds = bounds_fun()
+    bounds = bounds_fun() #3, 5, 60)
     bounds.log(fdir, run_n)
     # set input bounds
     for li in il2s.keys():

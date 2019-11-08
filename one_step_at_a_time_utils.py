@@ -31,7 +31,8 @@ def solve_by_timestep(frozen_graph, output_op_name, inputs, bounds_fun, network_
 		print("exit code: ", exit_code)
 		if exit_code == 1: # SAT
 			print("Found SAT: ", found_SAT, " at tstep ", step)
-			SATus = check_SAT(frozen_graph, vals, bounds, nsteps)
+			traj, SATus = check_SAT(frozen_graph, vals, bounds, nsteps, step)
+			plot_trajectory(traj, network_dir, run_n)
 			found_SAT = True
 		sys.stdout = true_stdout
 		#####################
