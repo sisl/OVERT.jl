@@ -6,6 +6,6 @@ include("autoline.jl")
 export overapprox,
        bound,
       closed_form_piecewise_linear,
-      to_relu_expression 
+      to_relu_expression
 
 end
