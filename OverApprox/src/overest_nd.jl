@@ -22,6 +22,7 @@ function to_pairs(B)
     return pairs
 end
 
+# todo: does this do the same thing as SymEngine.free_symbols or Tomer's autoline.get_symbols ?
 function find_variables(expr)
     """
     given an expression expr, this function finds all the variables.
@@ -79,11 +80,11 @@ function find_UB(func, a, b, N; lowerbound=false)
 
     """
     This function finds the piecewise linear upperbound (lowerbound) of
-        a given function func between internval [a,b] with N
+        a given function func in internval [a,b] with N
         sampling points over each concave/convex region.
         see the overest_new.jl for more details.
 
-    Returning values are points (UB), the min-max closed form (UB_sym)
+    Return values are points (UB), the min-max closed form (UB_sym)
     as well the lambda function form (UB_eval).
     """
 
@@ -94,23 +95,24 @@ function find_UB(func, a, b, N; lowerbound=false)
     return UB, UB_sym, UB_eval
 end
 
-function find_new_bound(UB)
+function get_range(B)
     """
-    given a set of points UB pertaining to the linear overapproximating function
-        this function finds the lower and upper bounds of the range.
+    given a set of points B representing a piecewise linear bound function
+        this function finds the range of the bound.
     """
 
-    y_pnts = [B[2] for B in UB]
-    min_UB = minimum(y_pnts)
-    max_UB = maximum(y_pnts)
-    return min_UB, max_UB
+    y_pnts = [point[2] for point in B]
+    min_B = minimum(y_pnts)
+    max_B = maximum(y_pnts)
+    return min_B, max_B
 end
 
+# todo: pretty sure we can use SymEngine.subs. maybe better tested? but subs is also overly complicated...
 function substitute!(expr::Expr, old, new)
 
     """
-    This function substitute an old value old with a
-         new value new in the expressin expr
+    This function substitutes the old value `old' with the
+         new value `new' in the expression expr
 
     Example: substitute!(:(x^2+1), :x, :(y+1)) = :((y+1)^2+1))
     """
@@ -160,7 +162,7 @@ function upperbound_expr(expr; a=1, b=5, N=2, lowerbound=false)
         number, we treat this as special function
 
     in order to do composition properly, we need to carry an interval for the range of
-    each overapproximating function. This is performed using find_new_bound(UB)
+    each overapproximating function. This is performed using get_range(UB)
 
     Warning: The algorithm only works when operations and functions
         have only two arguments. For example, it does not work
