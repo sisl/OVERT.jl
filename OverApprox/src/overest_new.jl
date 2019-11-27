@@ -234,7 +234,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 	end
 end
 
-function overapprox(f,a,b,N; conc_method="optimal", df=nothing, d2f=nothing,
+function overapprox(f,a,b,N; conc_method="continuous", df=nothing, d2f=nothing,
 	d2f_zeros=nothing, convex=nothing, plot=false)
 
 	LB = bound(f, a, b, N; conc_method=conc_method, lowerbound=true, df=df, d2f=d2f,

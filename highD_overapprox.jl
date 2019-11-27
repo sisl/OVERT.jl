@@ -61,7 +61,7 @@ for i = 1:length(funs)
         dmin = -π
         dmax = π
     end
-    LB, UB = Main.OverApprox.overapprox(f, dmin, dmax, 10; convex=convex, df = df, d2f = d2f, plot=false)
+    LB, UB = Main.OverApprox.overapprox(f, dmin, dmax, 10; convex=convex, df = df, d2f = d2f, plot=false, )
     LBpts = unique(sort(to_pairs(LB), by = x -> x[1]))
     UBpts =  unique(sort(to_pairs(UB), by = x -> x[1]))
     fLB = Main.OverApprox.closed_form_piecewise_linear(LBpts)
