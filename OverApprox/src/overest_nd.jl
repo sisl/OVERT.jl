@@ -9,8 +9,8 @@ special_func = [:exp, :log, :log10,
                 :asin, :acos, :atan,
                 :asinh, :acosh, :atanh]
 
-increasing_special_func = [:exp, :log, :log10
-                         :tan, :sinh, :tanh
+increasing_special_func = [:exp, :log, :log10,
+                         :tan, :sinh, :tanh,
                          :asin, :atan,
                          :asinh, :atanh, :acosh]
 
@@ -355,7 +355,7 @@ function upperbound_expr(expr; N=2, lowerbound=false, range_dict=nothing)
         UBfunc_composed, expr_range1 = upperbound_expr_compositions(func_eval, expr.args[2], N, range_dict, false, lowerbound)
         if func in increasing_special_func  # if increasing, only consider upperbound.
             return UBfunc_composed, expr_range1
-        else: # if not monotonic, consider both upper and lower bounds.
+        else # if not monotonic, consider both upper and lower bounds.
             LBfunc_composed, expr_range2 = upperbound_expr_compositions(func_eval, expr.args[2], N, range_dict,  true, lowerbound)
             expr_range = (min(expr_range1[1], expr_range2[1]),
                           max(expr_range1[2], expr_range2[2])) # this is pretty conservative
@@ -394,7 +394,7 @@ function upperbound_expr(expr; N=2, lowerbound=false, range_dict=nothing)
         return substitute!(UBexp_sym, :x, sum_logs), expr_range
     end
     if func == :/
-        log_eval = x -> log(abs(x))
+        log_eval = x -> log(x)
         UBlog1_composed, expr_range1 = upperbound_expr_compositions(log_eval, expr.args[2], N, range_dict, lowerbound, lowerbound)
         UBlog2_composed, expr_range2 = upperbound_expr_compositions(log_eval, expr.args[3], N, range_dict, lowerbound, lowerbound)
         sub_logs = Expr(:call, :-, UBlog1_composed, UBlog2_composed)
