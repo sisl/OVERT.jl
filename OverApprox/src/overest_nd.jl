@@ -89,10 +89,10 @@ function find_UB(func, a, b, N; lowerbound=false)
     """
 
     UB = bound(func, a, b, N; lowerbound=lowerbound)
-    UB = unique(sort(to_pairs(UB), by = x -> x[1]))
-    UB_sym = closed_form_piecewise_linear(UB)
+    UB_points = unique(sort(to_pairs(UB), by = x -> x[1]))
+    UB_sym = closed_form_piecewise_linear(UB_points)
     UB_eval = eval(:(x -> $UB_sym))
-    return UB, UB_sym, UB_eval
+    return UB_points, UB_sym, UB_eval
 end
 
 function get_range(B)
@@ -128,11 +128,11 @@ function substitute!(expr::Expr, old, new)
 end
 
 function upperbound_expr(expr; a=1, b=5, N=2, lowerbound=false)
-
+    # TODO: what is the return type? an expression?
     """
-    This function generates a min-max closed form expression for
+    This function generates a min-max closed form expression for the upper bound? of
         an expression expr.
-    expr can be of any dimensions, and can contain any algebraic operation
+    expr can be of any dimensions, and can contain algebraic operations
     as well as nonlinear functions.
     List of supported operations and functions is
     special_oper = [:+, :-, :/, :*, :^]
@@ -144,7 +144,7 @@ function upperbound_expr(expr; a=1, b=5, N=2, lowerbound=false)
     if expr is a Symbol, it is returned as is.
     if expr is an affine function, it is returned as is.
     if expr is a 1d function, it is passed into find_UB without
-        any additional composition hacking
+        any additional composition 
 
     if expr is of the form f(a), where f is one of the special
         functions listed above, and a is an Expr, we return
@@ -190,7 +190,7 @@ function upperbound_expr(expr; a=1, b=5, N=2, lowerbound=false)
     if length(expr.args) > 3
         throw(ArgumentError("""
         Operation $(expr.args[1]) has $(length(expr.args)-1) arguments.
-        Use parantheses to make divide this into multiple operations, each with two arguments,
+        Use parantheses to divide this into multiple operations, each with two arguments,
         For example, change (x+y+z)^2 to ((x+y)+z)^2.
                           """))
     end
@@ -200,14 +200,16 @@ function upperbound_expr(expr; a=1, b=5, N=2, lowerbound=false)
         return expr
     end
 
-
     # if a 1d function, just find UB and return
     all_vars = find_variables(expr)
     if length(all_vars) == 1
-        UBfunc_lambda = SymEngine.lambdify(expr, all_vars)
-        UBfunc, UBfunc_sym, UBfunc_eval = find_UB(UBfunc_lambda, a, b, N; lowerbound=lowerbound)
-        return substitute!(UBfunc_sym, :x, all_vars[1])
+        func2approx = SymEngine.lambdify(expr, all_vars)
+        UBpoints, UBfunc_sym, UBfunc_eval = find_UB(func2approx, a, b, N; lowerbound=lowerbound)
+        return substitute!(UBfunc_sym, :x, all_vars[1]) # TODO: this seems brittle to have find_UB always use x as the independent
+                                                        # variable.... what if x appears elsewhere? IDK maybe it's fine...
     end
+
+    # BOOKMARK
 
     # handle function composition
     func = expr.args[1]
