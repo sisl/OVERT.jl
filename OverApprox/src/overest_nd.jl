@@ -61,7 +61,17 @@ function is_affine(expr)
              is_affine(:(log(x)))    = false
              is_affine(:(x + x*z))    = false
     """
-    expr isa Expr ? nothing : (return true) # it is symbol or number
+    # it is symbol or number
+    if typeof(expr) == Symbol
+        return true
+    else
+        try 
+            eval(expr)
+            return true 
+        catch
+            nothing
+        end
+    end
 
     check_expr_args_length(expr)
     func = expr.args[1]
