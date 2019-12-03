@@ -16,8 +16,8 @@ increasing_special_func = [:exp, :log, :log10,
 
 function to_pairs(B)
     """
-    This function converts the output of overest in the form ready
-        for closed form generator.
+    This function converts the output of overest, a tuple of (x points, y points) in the form ready
+        for closed form generator: [(x1,y1), (x2, y2), ...]
     B is an array of points.
     """
     xp,yp = B
@@ -27,7 +27,7 @@ function to_pairs(B)
     return pairs
 end
 
-# todo: does this do the same thing as SymEngine.free_symbols or Tomer's autoline.get_symbols ?
+# todo: does this do the same thing as SymEngine, free_symbols or Tomer's autoline.get_symbols ?
 function find_variables(expr)
     """
     given an expression expr, this function finds all the variables.
@@ -59,7 +59,7 @@ function is_affine(expr)
     Example: is_affine(:(x+1))       = true
              is_affine(:(-x+(2y-z))) = true
              is_affine(:(log(x)))    = false
-             is_affine(:(x+ xz))     = false
+             is_affine(:(x + x*z))    = false
     """
     expr isa Expr ? nothing : (return true) # it is symbol or number
 
@@ -80,7 +80,9 @@ function is_affine(expr)
 
 
     is_affine(expr.args[2]) ? nothing : (return false)
-    is_affine(expr.args[3]) ? nothing : (return false)
+    if length(expr.args) > 2
+        is_affine(expr.args[3]) ? nothing : (return false)
+    end
 
     return true
 end
