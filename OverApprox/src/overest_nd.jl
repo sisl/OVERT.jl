@@ -105,7 +105,7 @@ function find_UB(func, a, b, N; lb=false, digits=nothing)
         sampling points over each concave/convex region.
         see the overest_new.jl for more details.
 
-    Return values are points (UB), the min-max closed form (UB_sym)
+    Return values are points (UB_points), the min-max closed form (UB_sym)
     as well the lambda function form (UB_eval).
     """
 
@@ -113,6 +113,7 @@ function find_UB(func, a, b, N; lb=false, digits=nothing)
     UB_points = unique(sort(to_pairs(UB), by = x -> x[1]))
     UB_sym = closed_form_piecewise_linear(UB_points)
     if !isnothing(digits)
+        # note this degrades numerical precision, use with care
         UB_sym = round_expr(UB_sym)
     end
     UB_eval = eval(:(x -> $UB_sym))
@@ -141,6 +142,8 @@ function check_expr_args_length(expr)
     end
 end
 
+# Think we could use stuff from https://github.com/JuliaIntervals/IntervalArithmetic.jl 
+# but whose to say if it's better tested? 
 function find_affine_range(expr, range_dict)
     """
     given a an affine expression expr, this function finds the
@@ -185,7 +188,8 @@ function find_affine_range(expr, range_dict)
     end
 end
 
-# todo: pretty sure we can use SymEngine.subs. maybe better tested? but subs is also overly complicated...
+# todo: pretty sure we can use SymEngine.subs. 
+# maybe better tested? but subs is also overly complicated...
 function substitute!(expr, old, new)
 
     """
@@ -205,7 +209,7 @@ function substitute!(expr, old, new)
     return expr
 end
 
-
+# Note: dangerous for precise arithmetric.
 function round_expr(expr; digits=2)
     """ round all numbers in expr to n=digits decimal places. """
     for i=1:length(expr.args)
@@ -233,6 +237,7 @@ function count_min_max(expr)
     return c
 end
 
+# BOOKMARK
 function upperbound_expr_compositions(func, arg, N, range_dict, lb_local, lb_global)
     """ this function computes the linear overapproximation of func(arg)
         lb_local=true finds a lowerbound for the inner function; i.e. arg
@@ -248,9 +253,10 @@ end
 function reduce_args_to_2!(expr)
 
     """
-    if expr has operations with more than two arguments, this function reduce the arguments to 2
+    if expr has operations with more than two arguments, this function reduces the arguments to 2
         Example: reduce_args_to_2!(:(x+y+z)) = (:(x+y)+z))
                  reduce_args_to_2!(:sin(x*y*z)) = (:(sin((x*y)*z))
+    Modifies expression in place and returns expr as well.
     """
     func = expr.args[1]
     args = expr.args[2:end]
@@ -266,6 +272,7 @@ function reduce_args_to_2!(expr)
             expr.args = expr.args[1:div(larg,2)+1]
         end
     end
+    return expr
 end
 
 function upperbound_expr(expr; N=2, lowerbound=false, range_dict=nothing)
