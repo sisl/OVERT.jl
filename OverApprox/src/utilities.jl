@@ -1,4 +1,17 @@
-# utilities 
+# utilities for overapprox_nd_relational.jl and overest_nd.jl
+
+# opeartions and functions that are supported in overest_nd.jl
+special_oper = [:+, :-, :/, :*, :^]
+special_func = [:exp, :log, :log10,
+                :sin, :cos, :tan,
+                :sinh, :cosh, :tanh,
+                :asin, :acos, :atan,
+                :asinh, :acosh, :atanh]
+
+increasing_special_func = [:exp, :log, :log10,
+                         :tan, :sinh, :tanh,
+                         :asin, :atan,
+                         :asinh, :atanh, :acosh]
 
 function to_pairs(B)
     """
@@ -83,7 +96,7 @@ function is_affine(expr)
     return true
 end
 
-function find_UB(func, a, b, N; lb=false, digits=nothing)
+function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing)
 
     """
     This function finds the piecewise linear upperbound (lowerbound) of
@@ -95,7 +108,7 @@ function find_UB(func, a, b, N; lb=false, digits=nothing)
     as well the lambda function form (UB_eval).
     """
 
-    UB = bound(func, a, b, N; lowerbound=lb, plot=true)
+    UB = bound(func, a, b, N; lowerbound=lb, plot=plot, existing_plot=existing_plot)
     UB_points = unique(sort(to_pairs(UB), by = x -> x[1]))
     UB_sym = closed_form_piecewise_linear(UB_points)
     # if !isnothing(digits)

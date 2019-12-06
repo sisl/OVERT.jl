@@ -2,20 +2,6 @@ include("autoline.jl")
 include("overest_new.jl")
 include("utilities.jl")
 
-# opeartions and functions that are supported in this module
-special_oper = [:+, :-, :/, :*, :^]
-special_func = [:exp, :log, :log10,
-                :sin, :cos, :tan,
-                :sinh, :cosh, :tanh,
-                :asin, :acos, :atan,
-                :asinh, :acosh, :atanh]
-
-increasing_special_func = [:exp, :log, :log10,
-                         :tan, :sinh, :tanh,
-                         :asin, :atan,
-                         :asinh, :atanh, :acosh]
-
-
 # Note: dangerous for precise arithmetric.
 function round_expr(expr; digits=2)
     """ round all numbers in expr to n=digits decimal places. """

@@ -2,6 +2,7 @@ include("autoline.jl")
 include("overest_new.jl")
 include("utilities.jl")
 using SymEngine
+using Revise
 
 function overapprox_nd(expr, range_dict; nvars=0, N=3)
     # returns: (output_variable::Symbol, range_of_output_variable::Tuple, [list of equalities], [list of inequalities])
@@ -14,7 +15,7 @@ function overapprox_nd(expr, range_dict; nvars=0, N=3)
         return (c, (c,c), nvars, [], [])
     elseif is_affine(expr)
         newvar, nvars = get_new_var(nvars)
-        return (newvar, find_affine_range(expr, range_dict), [:($newvar = $expr)], [])
+        return (newvar, find_affine_range(expr, range_dict), nvars, [:($newvar = $expr)], [])
     # recursive cases
     else # is a non-affine function
         if is_unary(expr)
@@ -29,7 +30,7 @@ function overapprox_nd(expr, range_dict; nvars=0, N=3)
             push!(ineq_list, (:($LBvar ≦ $OAvar)) )
             push!(ineq_list, (:($OAvar ≦ $UBvar)) )
             return (OAvar, OArange, nvars, eq_list, ineq_list)
-        else # is binary (assume all multiplication has been processed out)
+        else # is binary (assume all multiplication of variables has been processed out)
             # pull out the big guns
             @assert is_binary(expr)
             f = expr.args[1]
@@ -44,13 +45,27 @@ function overapprox_nd(expr, range_dict; nvars=0, N=3)
             # handle outer function f
             z, nvars = get_new_var(nvars)
             if f == :+
-                push!(eq_list, :(z = $x + $y))
+                push!(eq_list, :(z == $x + $y))
                 sum_range = (xrange[1] + yrange[1], xrange[2] + yrange[2])
                 return (z, sum_range, nvars, eq_list, ineq_list)
             elseif f == :-
-                push!(eq_list, :(z = $x - $y))
+                push!(eq_list, :(z == $x - $y))
                 diff_range = (xrange[1] - yrange[2],  xrange[2] - yrange[1])
                 return (z, diff_range, nvars, eq_list, ineq_list)
+            elseif f == :*
+                # multiplication of VARIABLES AND SCALARS ONLY
+                @assert (is_number(xexpr) | is_number(yexpr))
+                if is_number(xexpr)
+                    c = eval(x)
+                    push!(eq_list, :(z == $c * $y))
+                    prod_range = multiply_interval(yrange, c)
+                    return (z, prod_range, nvars, eq_list, ineq_list)
+                elseif is_number(yexpr)
+                    c = eval(y)
+                    push!(eq_list, :(z == $c * $x))
+                    prod_range = multiply_interval(xrange, c)
+                    return (z, prod_range, nvars, eq_list, ineq_list)
+                end
             else
                 error("unimplemented")
                 return (:0, (0,0), 0, [], []) # for type stability, maybe?
@@ -59,23 +74,29 @@ function overapprox_nd(expr, range_dict; nvars=0, N=3)
     end
 end
 
+function multiply_interval(range, constant)
+    S = [range[1]*constant, range[2]*constant]
+    return (min(S...), max(S...))
+end
+
 function apply_fx(f, a)
     substitute!(f, :x, a)
 end
 
-function bound_unary_function(f, x, xrange, N, eq_list, ineq_list, nvars)   
+function bound_unary_function(f, x, xrange, N, eq_list, ineq_list, nvars, plotflag=true)   
     ## create upper and lower bounds
     eval(:(fun = $f))
-    UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, xrange[1], xrange[2], N; lb=false)
+    p = plotflag ? plot(0,0) : nothing
+    UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, xrange[1], xrange[2], N; lb=false, plot=plotflag, existing_plot=p)
     fUBrange = find_1d_range(UBpoints)
-    LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, xrange[1], xrange[2], N; lb=true)
+    LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, xrange[1], xrange[2], N; lb=true, plot=plotflag, existing_plot=p)
     fLBrange = find_1d_range(LBpoints)
     ## create new vars for these expr, equate to exprs, and add them to equality list 
     # e.g. y = fUB(x), z = fLB(x)
     UBvar, nvars = get_new_var(nvars)
-    push!(eq_list, :($UBvar = $(apply_fx(UBfunc_sym, x))))
+    push!(eq_list, :($UBvar == $(apply_fx(UBfunc_sym, x))))
     LBvar, nvars = get_new_var(nvars)
-    push!(eq_list, :($LBvar = $(apply_fx(LBfunc_sym, x))))
+    push!(eq_list, :($LBvar == $(apply_fx(LBfunc_sym, x))))
     OArange = (min(fLBrange...,fUBrange...), max(fLBrange..., fUBrange...))
     return LBvar, UBvar, OArange, eq_list, ineq_list, nvars
 end
@@ -94,6 +115,10 @@ function is_number(expr::Expr)
         return false
     end
 end
+
+is_number(n::Int) = true
+is_number(n::Float64) = true
+is_number(n::Float32) = true
 
 function is_unary(expr::Expr)
     if length(expr.args) == 2

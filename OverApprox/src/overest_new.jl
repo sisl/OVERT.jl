@@ -16,15 +16,22 @@ RTOL = 0.01
 myapprox(x,y) = abs(x-y)<RTOL  # This is defined to identify small intervals
 
 # function to plot
-function plot_bound(f, a, b, xp, yp)
+function plot_bound(f, a, b, xp, yp; existing_plot=nothing)
 	"""
 	This function plots f and its overapproximator
 		defined by poins xp and yp
 	"""
 	x = range(a, stop=b, length=200)
 	y = f.(x)
-	plot!(x,  y, color="red", linewidth=2, label="f(x)")
-	plot!(xp, yp, color="blue", marker="o", linewidth=2, label="overest(f(x))")
+	if isnothing(existing_plot)
+		p = plot(x,  y, color="red", linewidth=2, label="f(x)")
+		plot!(p, xp, yp, color="blue", marker="o", linewidth=2, label="overest(f(x))")
+		display(p)
+	else
+		plot!(existing_plot, x,  y, color="red", linewidth=2, label="f(x)")
+		plot!(existing_plot, xp, yp, color="blue", marker="o", linewidth=2, label="overest(f(x))")
+		display(existing_plot)
+	end
 end
 
 
@@ -82,7 +89,7 @@ function bound_tangent(f, df, N, aa, bb, method)
 	method can be "continuous" or "optimal", depending on what algorithm is preferred.
 	"optimal" method produces the tightest overapproximator, but it might be discontinuous
 	at inflection points of f. Method "continuous" takes care of the continuity, but
-	it might be a little sub-optimal.
+	is sub-optimal.
 	"""
 
 	function obj_tangent_continuous!(F, z)
@@ -141,7 +148,7 @@ end
 
 
 function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
-	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=true)
+	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=true, existing_plot=nothing)
 
 	"""
 	This function over(under)-approximate function f(x).
@@ -226,7 +233,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
         push!(yp, yy)
     end
     if plot
-		plot_bound(f, a, b, xp, yp)
+		plot_bound(f, a, b, xp, yp; existing_plot=existing_plot)
 		return xp, yp
 	else
 		println("no plotting 4 u")
@@ -238,10 +245,10 @@ function overapprox(f,a,b,N; conc_method="continuous", df=nothing, d2f=nothing,
 	d2f_zeros=nothing, convex=nothing, plot=false)
 
 	LB = bound(f, a, b, N; conc_method=conc_method, lowerbound=true, df=df, d2f=d2f,
-	d2f_zeros=d2f_zeros, convex=convex, plot=plot)
+	d2f_zeros=d2f_zeros, convex=convex, plot=plot, reuse=false)
 
 	UB = bound(f, a, b, N; conc_method=conc_method, lowerbound=false, df=df, d2f=d2f,
-	d2f_zeros=d2f_zeros, convex=convex, plot=plot)
+	d2f_zeros=d2f_zeros, convex=convex, plot=plot, reuse=true)
 
 	return LB, UB
 
