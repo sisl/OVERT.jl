@@ -72,6 +72,7 @@ function is_affine(expr)
         end
     end
 
+    reduce_args_to_2(expr)
     check_expr_args_length(expr)
     func = expr.args[1]
     func ∈ [:+, :-, :*, :/] ? nothing : (return false)  # only these operations are allowed
@@ -153,6 +154,7 @@ function find_affine_range(expr, range_dict)
     expr isa Symbol ? (return range_dict[expr]) : nothing
     try (return eval(expr), eval(expr)) catch; nothing end # works if expr is a number
 
+    expr = reduce_args_to_2(expr)
     check_expr_args_length(expr)
     all_vars = find_variables(expr)
 
@@ -208,27 +210,90 @@ function substitute!(expr, old, new)
     return expr
 end
 
-function reduce_args_to_2!(expr)
+# function reduce_args_to_2!(expr)
 
-    """
-    if expr has operations with more than two arguments, this function reduces the arguments to 2
-        Example: reduce_args_to_2!(:(x+y+z)) = (:(x+y)+z))
-                 reduce_args_to_2!(:sin(x*y*z)) = (:(sin((x*y)*z))
-    Modifies expression in place and returns expr as well.
-    """
-    func = expr.args[1]
-    args = expr.args[2:end]
-    larg = length(args)
-    if larg > 2
-        for i=1:div(larg,2)
-           expr.args[i+1] = Expr(:call, func, args[2*i-1], args[2*i])
-        end
-        if isodd(larg)
-            expr.args[div(larg,2)+2] = expr.args[end]
-            expr.args = expr.args[1:div(larg,2)+2]
-        else
-            expr.args = expr.args[1:div(larg,2)+1]
-        end
+#     """
+#     if expr has operations with more than two arguments, this function reduces the arguments to 2
+#         Example: reduce_args_to_2!(:(x+y+z)) = (:(x+y)+z))
+#                  reduce_args_to_2!(:sin(x*y*z)) = (:(sin((x*y)*z))
+#     Modifies expression in place and returns expr as well.
+#     """
+#     func = expr.args[1]
+#     args = expr.args[2:end]
+#     larg = length(args)
+#     if larg > 2
+#         for i=1:div(larg,2)
+#            expr.args[i+1] = Expr(:call, func, args[2*i-1], args[2*i])
+#         end
+#         if isodd(larg)
+#             expr.args[div(larg,2)+2] = expr.args[end]
+#             expr.args = expr.args[1:div(larg,2)+2]
+#         else
+#             expr.args = expr.args[1:div(larg,2)+1]
+#         end
+#     end
+#     return expr
+# end
+
+∉(e, set) = !(e ∈ set) 
+
+function reduce_args_to_2(f::Symbol, arguments::Array)
+    #println(f, arguments)
+    if (length(arguments) <= 2) | (f ∉ [:+, :*])
+        e = Expr(:call)
+        e.args = [f, map(reduce_args_to_2, arguments)...]
+        return e
+    else # length(args) > 2 and f ∈ [:+, :*]
+        a = reduce_args_to_2(arguments[1])
+        fbc = reduce_args_to_2(f, arguments[2:end])
+        return :($f( $a, $fbc))
     end
-    return expr
+end
+
+reduce_args_to_2(x::Int) = x
+reduce_args_to_2(x::Float64) = x
+reduce_args_to_2(x::Float32) = x
+
+function reduce_args_to_2(x::Symbol)
+    #println(x)
+    return x
+end
+
+function reduce_args_to_2(expr::Expr)
+    #println(expr)
+    f = expr.args[1]
+    arguments = expr.args[2:end]
+    return reduce_args_to_2(f::Symbol, arguments::Array)
+end
+
+
+function is_number(expr)
+    try 
+        eval(expr)
+        return true
+    catch
+        return false
+    end
+end
+
+function is_unary(expr::Expr)
+    if length(expr.args) == 2
+        # one for function, one for single argument to function
+        return true
+    else
+        return false
+    end
+end
+
+is_binary(expr::Expr) = length(expr.args) == 3
+
+function multiply_interval(range, constant)
+    S = [range[1]*constant, range[2]*constant]
+    return (min(S...), max(S...))
+end
+
+function get_new_var(nvars)
+    nvars += 1
+    # @ is the symbol preceding A in ascii
+    return Symbol('@'+nvars), nvars
 end

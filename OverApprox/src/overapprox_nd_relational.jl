@@ -4,6 +4,8 @@ include("utilities.jl")
 using SymEngine
 using Revise
 
+# TODO: return whole range dict for use in SBT
+
 function overapprox_nd(expr, range_dict; nvars=0, N=3)
     # returns: (output_variable::Symbol, range_of_output_variable::Tuple, [list of equalities], [list of inequalities])
 
@@ -36,47 +38,90 @@ function overapprox_nd(expr, range_dict; nvars=0, N=3)
             f = expr.args[1]
             xexpr = expr.args[2]
             yexpr = expr.args[3]
-            # recurse on aguments
+            # recurse on aguments 
             x, xrange, nvars, eq_list_x, ineq_list_x = overapprox_nd(xexpr, range_dict, nvars=nvars)
             y, yrange, nvars, eq_list_y, ineq_list_y = overapprox_nd(yexpr, range_dict, nvars=nvars)
             # merge constraints
             eq_list = [eq_list_x..., eq_list_y...]
             ineq_list = [ineq_list_x..., ineq_list_y]
             # handle outer function f
-            z, nvars = get_new_var(nvars)
-            if f == :+
-                push!(eq_list, :(z == $x + $y))
-                sum_range = (xrange[1] + yrange[1], xrange[2] + yrange[2])
-                return (z, sum_range, nvars, eq_list, ineq_list)
-            elseif f == :-
-                push!(eq_list, :(z == $x - $y))
-                diff_range = (xrange[1] - yrange[2],  xrange[2] - yrange[1])
-                return (z, diff_range, nvars, eq_list, ineq_list)
-            elseif f == :*
-                # multiplication of VARIABLES AND SCALARS ONLY
-                @assert (is_number(xexpr) | is_number(yexpr))
-                if is_number(xexpr)
-                    c = eval(x)
-                    push!(eq_list, :(z == $c * $y))
-                    prod_range = multiply_interval(yrange, c)
-                    return (z, prod_range, nvars, eq_list, ineq_list)
-                elseif is_number(yexpr)
-                    c = eval(y)
-                    push!(eq_list, :(z == $c * $x))
-                    prod_range = multiply_interval(xrange, c)
-                    return (z, prod_range, nvars, eq_list, ineq_list)
-                end
-            else
-                error("unimplemented")
-                return (:0, (0,0), 0, [], []) # for type stability, maybe?
-            end
+            (z, zrange, nvars, eq_list, ineq_list) = bound_binary_functions(f, xexpr, xrange, x, yexpr, yrange, y, N, eq_list, ineq_list, nvars)
+            return (z, zrange, nvars, eq_list, ineq_list)
         end
     end
 end
 
-function multiply_interval(range, constant)
-    S = [range[1]*constant, range[2]*constant]
-    return (min(S...), max(S...))
+function bound_binary_functions(f, xexpr, xrange, x, yexpr, yrange, y, N, eq_list, ineq_list, nvars)
+    if f == :+
+        z, nvars = get_new_var(nvars)
+        push!(eq_list, :(z == $x + $y))
+        sum_range = (xrange[1] + yrange[1], xrange[2] + yrange[2])
+        return (z, sum_range, nvars, eq_list, ineq_list)
+    elseif f == :-
+        z, nvars = get_new_var(nvars)
+        push!(eq_list, :(z == $x - $y))
+        diff_range = (xrange[1] - yrange[2],  xrange[2] - yrange[1])
+        return (z, diff_range, nvars, eq_list, ineq_list)
+    elseif f == :*
+        if (is_number(xexpr) | is_number(yexpr))
+            # multiplication of VARIABLES AND SCALARS ONLY
+            z, nvars = get_new_var(nvars)
+            (z, prod_range, nvars, eq_list_prod, ineq_list_prod) = multiply_variable_and_scalar(xexpr, xrange, x, yexpr, yrange, y, z, nvars)
+            return (z, prod_range, nvars, [eq_list..., eq_list_prod...], [ineq_list..., ineq_list_prod...])
+        else # both args contain variables
+            # first expand multiplication expr
+            expanded_mul_expr, range_dict, eq_list_exp, nvars = expand_multiplication(x, y, Dict(x=>xrange, y=>yrange), nvars)
+            # and then bound that expression in a "stand alone" way (but pass # vars)
+            outputvar, outputrange, nvars, eq_list_oa, ineq_list_oa = overapprox_nd(expanded_mul_expr, range_dict; nvars=nvars, N=N)
+            # and then combine constraints (eqs and ineqs) and return them to continue on with recursion
+            return (outputvar, outputrange, nvars, [eq_list..., eq_list_exp..., eq_list_oa], [ineq_list..., ineq_list_oa...]) 
+        end
+    else
+        error("unimplemented")
+        return (:0, (0,0), 0, [], []) # for type stability, maybe?
+    end
+end
+
+function multiply_variable_and_scalar(xexpr, xrange, x, yexpr, yrange, y, z, nvars)
+    @assert (is_number(xexpr) | is_number(yexpr))
+    eq_list = []
+    ineq_list = []
+    if is_number(xexpr)
+        c = eval(x)
+        push!(eq_list, :(z == $c * $y))
+        prod_range = multiply_interval(yrange, c)
+        return (z, prod_range, nvars, eq_list, ineq_list)
+    elseif is_number(yexpr)
+        c = eval(y)
+        push!(eq_list, :(z == $c * $x))
+        prod_range = multiply_interval(xrange, c)
+        return (z, prod_range, nvars, eq_list, ineq_list)
+    end
+end
+
+function expand_multiplication(x, y, range_dict, nvars; δ=0.1)
+    """
+    Re write multiplication e.g. x*y using exp(log()) and affine expressions
+    e.g. x*y, x ∈ [a,b] ∧ y ∈ [c,d]
+         x2 = x - a + δ  , x2 ∈ [δ, b - a + δ] aka x2 > 0   (recall, b > a)
+            x = x2 + a - δ
+         y2 = y - c + δ , y2 ∈ [δ, d - c + δ] aka y2 > 0   (recall, d > c)
+            y = y2 + c - δ
+        x*y = (x2 + a - δ)*(y2 + c - δ) 
+            = x2*y2 + (a - δ)*y2 + (c - δ)*x2 + (a - δ)*(c - δ)
+            = exp(log(x2*y2)) + (a - δ)*y2 + (c - δ)*x2 + (a - δ)*(c - δ)
+            = exp(log(x2) + log(y2)) + (a - δ)*y2 + (c - δ)*x2 + (a - δ)*(c - δ)
+        In this final form, everything is decomposed into unary functions, +, and affine functions!
+    """ 
+    x2, nvars = get_new_var(nvars)
+    y2, nvars = get_new_var(nvars)
+    a,b = range_dict[x]
+    c,d = range_dict[y]
+    eq_list = [:($x2 = $x - $a + $δ), :($y2 = $y - $c + $δ) ]
+    range_dict[x2] = (δ, b - a + δ)
+    range_dict[y2] = (δ, d - c + δ)
+    expr = :( exp(log($x2) + log($y2)) + ($a - $δ)*$y2 + ($c - $δ)*$x2 + ($a - $δ)*($c - $δ) )
+    return expr, range_dict, eq_list, nvars
 end
 
 function apply_fx(f, a)
@@ -101,33 +146,5 @@ function bound_unary_function(f, x, xrange, N, eq_list, ineq_list, nvars, plotfl
     return LBvar, UBvar, OArange, eq_list, ineq_list, nvars
 end
 
-function get_new_var(nvars)
-    nvars += 1
-    # @ is the symbol preceding A in ascii
-    return Symbol('@'+nvars), nvars
-end
 
-function is_number(expr::Expr)
-    try 
-        eval(expr)
-        return true
-    catch
-        return false
-    end
-end
-
-is_number(n::Int) = true
-is_number(n::Float64) = true
-is_number(n::Float32) = true
-
-function is_unary(expr::Expr)
-    if length(expr.args) == 2
-        # one for function, one for single argument to function
-        return true
-    else
-        return false
-    end
-end
-
-is_binary(expr::Expr) = length(expr.args) == 3
     
