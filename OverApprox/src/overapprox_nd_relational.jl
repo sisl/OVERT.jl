@@ -7,14 +7,20 @@ using Revise
 # TODO: return whole range dict for use in SBT
 
 function overapprox_nd(expr, range_dict; nvars=0, N=3)
-    # returns: (output_variable::Symbol, range_of_output_variable::Tuple, [list of equalities], [list of inequalities])
+    # returns: (output_variable::Symbol, range_of_output_variable::Tuple, #variables, [list of equalities], [list of inequalities])
+
+    range_dict = floatize(range_dict)
+    expr = reduce_args_to_2(expr)
 
     # base cases
     if expr isa Symbol
+        # TODO: don't want created symbols, A,B,C... to overrun symbols that come with expression....
+        # considering re-naming values that come with the expression
         return (expr, range_dict[expr], nvars, [], [])
     elseif is_number(expr)
-        c = eval(expr)
-        return (c, (c,c), nvars, [], [])
+        newvar, nvars = get_new_var(nvars)
+        c  = eval(expr)
+        return (newvar, [c,c], nvars, [:($newvar = $expr)], [])
     elseif is_affine(expr)
         newvar, nvars = get_new_var(nvars)
         return (newvar, find_affine_range(expr, range_dict), nvars, [:($newvar = $expr)], [])
@@ -54,12 +60,12 @@ end
 function bound_binary_functions(f, xexpr, xrange, x, yexpr, yrange, y, N, eq_list, ineq_list, nvars)
     if f == :+
         z, nvars = get_new_var(nvars)
-        push!(eq_list, :(z == $x + $y))
+        push!(eq_list, :($z == $x + $y))
         sum_range = (xrange[1] + yrange[1], xrange[2] + yrange[2])
         return (z, sum_range, nvars, eq_list, ineq_list)
     elseif f == :-
         z, nvars = get_new_var(nvars)
-        push!(eq_list, :(z == $x - $y))
+        push!(eq_list, :($z == $x - $y))
         diff_range = (xrange[1] - yrange[2],  xrange[2] - yrange[1])
         return (z, diff_range, nvars, eq_list, ineq_list)
     elseif f == :*
@@ -78,7 +84,7 @@ function bound_binary_functions(f, xexpr, xrange, x, yexpr, yrange, y, N, eq_lis
         end
     else
         error("unimplemented")
-        return (:0, (0,0), 0, [], []) # for type stability, maybe?
+        return (:0, [0,0], 0, [], []) # for type stability, maybe?
     end
 end
 
@@ -87,13 +93,13 @@ function multiply_variable_and_scalar(xexpr, xrange, x, yexpr, yrange, y, z, nva
     eq_list = []
     ineq_list = []
     if is_number(xexpr)
-        c = eval(x)
-        push!(eq_list, :(z == $c * $y))
+        c = xexpr
+        push!(eq_list, :($z == $c * $y))
         prod_range = multiply_interval(yrange, c)
         return (z, prod_range, nvars, eq_list, ineq_list)
     elseif is_number(yexpr)
-        c = eval(y)
-        push!(eq_list, :(z == $c * $x))
+        c = yexpr
+        push!(eq_list, :($z == $c * $x))
         prod_range = multiply_interval(xrange, c)
         return (z, prod_range, nvars, eq_list, ineq_list)
     end
@@ -118,8 +124,8 @@ function expand_multiplication(x, y, range_dict, nvars; δ=0.1)
     a,b = range_dict[x]
     c,d = range_dict[y]
     eq_list = [:($x2 = $x - $a + $δ), :($y2 = $y - $c + $δ) ]
-    range_dict[x2] = (δ, b - a + δ)
-    range_dict[y2] = (δ, d - c + δ)
+    range_dict[x2] = [δ, b - a + δ]
+    range_dict[y2] = [δ, d - c + δ]
     expr = :( exp(log($x2) + log($y2)) + ($a - $δ)*$y2 + ($c - $δ)*$x2 + ($a - $δ)*($c - $δ) )
     return expr, range_dict, eq_list, nvars
 end
@@ -146,5 +152,11 @@ function bound_unary_function(f, x, xrange, N, eq_list, ineq_list, nvars, plotfl
     return LBvar, UBvar, OArange, eq_list, ineq_list, nvars
 end
 
-
-    
+function floatize(dict::Dict)
+    # values of dict must be convertible to float
+    newdict = Dict()
+    for k=keys(dict)
+        newdict[k] = float(dict[k])
+    end
+    return newdict
+end

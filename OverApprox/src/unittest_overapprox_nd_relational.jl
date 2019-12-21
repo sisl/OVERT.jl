@@ -40,6 +40,11 @@ function test_reduce_args_to_2()
 end
 @assert test_reduce_args_to_2()
 
+overapprox_nd(:(x*y), Dict(:x=>[1,2], :y=>[-10,-9]))
+
+overapprox_nd(:(sin(6) + sin(x)), Dict(:x=>[1,2]))
+
+
 # todo:
 # find good way to visualize overapprox and/or qualitatively validate overapprox
 # parsing of multiplication log-exp into additive thing

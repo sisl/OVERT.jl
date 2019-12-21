@@ -72,7 +72,6 @@ function is_affine(expr)
         end
     end
 
-    reduce_args_to_2(expr)
     check_expr_args_length(expr)
     func = expr.args[1]
     func ∈ [:+, :-, :*, :/] ? nothing : (return false)  # only these operations are allowed
@@ -154,7 +153,6 @@ function find_affine_range(expr, range_dict)
     expr isa Symbol ? (return range_dict[expr]) : nothing
     try (return eval(expr), eval(expr)) catch; nothing end # works if expr is a number
 
-    expr = reduce_args_to_2(expr)
     check_expr_args_length(expr)
     all_vars = find_variables(expr)
 
