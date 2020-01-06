@@ -287,7 +287,7 @@ is_binary(expr::Expr) = length(expr.args) == 3
 
 function multiply_interval(range, constant)
     S = [range[1]*constant, range[2]*constant]
-    return (min(S...), max(S...))
+    return [min(S...), max(S...)]
 end
 
 function get_new_var(nvars)

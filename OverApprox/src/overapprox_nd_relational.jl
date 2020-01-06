@@ -5,8 +5,9 @@ using SymEngine
 using Revise
 
 # TODO: return whole range dict for use in SBT
+# TODO: make more readable/modular
 
-function overapprox_nd(expr, range_dict; nvars=0, N=3)
+function overapprox_nd(expr, range_dict; nvars::Integer=0, N::Integer=3) # range_dict::Dict{Symbol, Array{<:Real, 1}}
     # returns: (output_variable::Symbol, range_of_output_variable::Tuple, #variables, [list of equalities], [list of inequalities])
 
     range_dict = floatize(range_dict)
@@ -18,12 +19,16 @@ function overapprox_nd(expr, range_dict; nvars=0, N=3)
         # considering re-naming values that come with the expression
         return (expr, range_dict[expr], nvars, [], [])
     elseif is_number(expr)
-        newvar, nvars = get_new_var(nvars)
+        # newvar, nvars = get_new_var(nvars)
+        # c  = eval(expr)
+        # return (newvar, [c,c], nvars, [:($newvar = $expr)], []) # for use with infinite precision solvers
         c  = eval(expr)
-        return (newvar, [c,c], nvars, [:($newvar = $expr)], [])
+        return (c, [c,c], nvars, [], []) # for easier parsing with marabou
     elseif is_affine(expr)
         newvar, nvars = get_new_var(nvars)
-        return (newvar, find_affine_range(expr, range_dict), nvars, [:($newvar = $expr)], [])
+        expr_range = [find_affine_range(expr, range_dict)...]
+        println("typeof(range) is ", typeof(expr_range))
+        return (newvar, expr_range, nvars, [:($newvar = $expr)], [])
     # recursive cases
     else # is a non-affine function
         if is_unary(expr)
@@ -49,7 +54,7 @@ function overapprox_nd(expr, range_dict; nvars=0, N=3)
             y, yrange, nvars, eq_list_y, ineq_list_y = overapprox_nd(yexpr, range_dict, nvars=nvars)
             # merge constraints
             eq_list = [eq_list_x..., eq_list_y...]
-            ineq_list = [ineq_list_x..., ineq_list_y]
+            ineq_list = [ineq_list_x..., ineq_list_y...]
             # handle outer function f
             (z, zrange, nvars, eq_list, ineq_list) = bound_binary_functions(f, xexpr, xrange, x, yexpr, yrange, y, N, eq_list, ineq_list, nvars)
             return (z, zrange, nvars, eq_list, ineq_list)
@@ -80,7 +85,7 @@ function bound_binary_functions(f, xexpr, xrange, x, yexpr, yrange, y, N, eq_lis
             # and then bound that expression in a "stand alone" way (but pass # vars)
             outputvar, outputrange, nvars, eq_list_oa, ineq_list_oa = overapprox_nd(expanded_mul_expr, range_dict; nvars=nvars, N=N)
             # and then combine constraints (eqs and ineqs) and return them to continue on with recursion
-            return (outputvar, outputrange, nvars, [eq_list..., eq_list_exp..., eq_list_oa], [ineq_list..., ineq_list_oa...]) 
+            return (outputvar, outputrange, nvars, [eq_list..., eq_list_exp..., eq_list_oa...], [ineq_list..., ineq_list_oa...]) 
         end
     else
         error("unimplemented")
@@ -93,13 +98,13 @@ function multiply_variable_and_scalar(xexpr, xrange, x, yexpr, yrange, y, z, nva
     eq_list = []
     ineq_list = []
     if is_number(xexpr)
-        c = xexpr
-        push!(eq_list, :($z == $c * $y))
+        c = eval(xexpr)
+        push!(eq_list, :($z == $y * $c))
         prod_range = multiply_interval(yrange, c)
         return (z, prod_range, nvars, eq_list, ineq_list)
     elseif is_number(yexpr)
-        c = yexpr
-        push!(eq_list, :($z == $c * $x))
+        c = eval(yexpr)
+        push!(eq_list, :($z == $x * $c))
         prod_range = multiply_interval(xrange, c)
         return (z, prod_range, nvars, eq_list, ineq_list)
     end
@@ -139,20 +144,20 @@ function bound_unary_function(f, x, xrange, N, eq_list, ineq_list, nvars, plotfl
     eval(:(fun = $f))
     p = plotflag ? plot(0,0) : nothing
     UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, xrange[1], xrange[2], N; lb=false, plot=plotflag, existing_plot=p)
-    fUBrange = find_1d_range(UBpoints)
+    fUBrange = [find_1d_range(UBpoints)...]
     LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, xrange[1], xrange[2], N; lb=true, plot=plotflag, existing_plot=p)
-    fLBrange = find_1d_range(LBpoints)
+    fLBrange = [find_1d_range(LBpoints)...]
     ## create new vars for these expr, equate to exprs, and add them to equality list 
     # e.g. y = fUB(x), z = fLB(x)
     UBvar, nvars = get_new_var(nvars)
     push!(eq_list, :($UBvar == $(apply_fx(UBfunc_sym, x))))
     LBvar, nvars = get_new_var(nvars)
     push!(eq_list, :($LBvar == $(apply_fx(LBfunc_sym, x))))
-    OArange = (min(fLBrange...,fUBrange...), max(fLBrange..., fUBrange...))
+    OArange = [min(fLBrange...,fUBrange...), max(fLBrange..., fUBrange...)]
     return LBvar, UBvar, OArange, eq_list, ineq_list, nvars
 end
 
-function floatize(dict::Dict)
+function floatize(dict)
     # values of dict must be convertible to float
     newdict = Dict()
     for k=keys(dict)
