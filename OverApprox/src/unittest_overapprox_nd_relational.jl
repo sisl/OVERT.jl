@@ -46,7 +46,7 @@ overapprox_nd(:(sin(6) + sin(x)), Dict(:x=>[1,2]))
 
 overapprox_nd(:(sin(6)*sin(x)), Dict(:x=>[1,2]))
 
-overapprox_nd(:(sin(6)*sin(x)*sin(y)), Dict(:x=>[1,2], :y=>[1,2]))
+overapprox_nd(:(sin(6)*sin(x)*sin(y)), Dict(:x=>[1,2], :y=>[1,2])::Dict{Symbol,Array{Int64,1}})
 
 # todo:
 # find good way to visualize overapprox and/or qualitatively validate overapprox
