@@ -7,6 +7,9 @@ using Revise
 # TODO: return whole range dict for use in SBT
 # TODO: make more readable/modular
 
+"""
+Overapproximate an n-dimensional function using a relational abstraction. 
+"""
 function overapprox_nd(expr, range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real}; nvars::Integer=0, N::Integer=3) # range_dict::Dict{Symbol, Array{<:Real, 1}}
     # returns: (output_variable::Symbol, range_of_output_variable::Tuple, #variables, [list of equalities], [list of inequalities])
 
@@ -15,8 +18,6 @@ function overapprox_nd(expr, range_dict::Dict{Symbol, Array{T, 1}} where {T <: R
 
     # base cases
     if expr isa Symbol
-        # TODO: don't want created symbols, A,B,C... to overrun symbols that come with expression....
-        # considering re-naming values that come with the expression
         return (expr, range_dict[expr], nvars, [], [])
     elseif is_number(expr)
         # newvar, nvars = get_new_var(nvars)
@@ -163,5 +164,5 @@ function floatize(dict::Dict{Symbol, Array{T, 1}} where {T <: Real})
     for k=keys(dict)
         newdict[k] = float(dict[k])
     end
-    return newdict
+    return newdict::Dict{Symbol, Array{T, 1}} where {T <: Real}
 end
