@@ -293,5 +293,5 @@ end
 function get_new_var(nvars)
     nvars += 1
     # @ is the symbol preceding A in ascii
-    return Symbol('@'+nvars), nvars
+    return Symbol('v'*('@'+nvars)), nvars
 end

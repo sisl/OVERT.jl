@@ -7,7 +7,7 @@ using Revise
 # TODO: return whole range dict for use in SBT
 # TODO: make more readable/modular
 
-function overapprox_nd(expr, range_dict; nvars::Integer=0, N::Integer=3) # range_dict::Dict{Symbol, Array{<:Real, 1}}
+function overapprox_nd(expr, range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real}; nvars::Integer=0, N::Integer=3) # range_dict::Dict{Symbol, Array{<:Real, 1}}
     # returns: (output_variable::Symbol, range_of_output_variable::Tuple, #variables, [list of equalities], [list of inequalities])
 
     range_dict = floatize(range_dict)
@@ -157,9 +157,9 @@ function bound_unary_function(f, x, xrange, N, eq_list, ineq_list, nvars, plotfl
     return LBvar, UBvar, OArange, eq_list, ineq_list, nvars
 end
 
-function floatize(dict)
+function floatize(dict::Dict{Symbol, Array{T, 1}} where {T <: Real})
     # values of dict must be convertible to float
-    newdict = Dict()
+    newdict = Dict{Symbol,Array{Float64,1}}()
     for k=keys(dict)
         newdict[k] = float(dict[k])
     end
