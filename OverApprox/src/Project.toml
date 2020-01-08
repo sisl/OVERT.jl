@@ -1,0 +1,9 @@
+name = "OverApprox"
+uuid = "e974159a-4f29-5328-8f95-f4c64f03902f"
+
+[deps]
+Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+SymEngine = "123dc426-2d89-5057-bbad-38513e3affd8"
