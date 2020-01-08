@@ -11,9 +11,9 @@ def pass_to_dreal(expr, expr_bound, dict_range, upperbound=True, eps=1E-4):
                              dict_range[var][0] <= var,
                              dict_range[var][1] >= var)
     if upperbound:
-        cond = And(cond, expr_bound - expr <= -eps)
+        cond = And(cond, expr_bound - expr - eps <= 0)
     else:
-        cond = And(cond, expr - expr_bound <= -eps)
+        cond = And(cond, expr - expr_bound - eps <= 0)
     sat = CheckSatisfiability(cond, eps)
     return cond, sat
 
