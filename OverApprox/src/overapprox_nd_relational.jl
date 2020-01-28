@@ -1,25 +1,9 @@
 include("autoline.jl")
 include("overest_new.jl")
 include("utilities.jl")
+include("OA_relational_util.jl")
 using SymEngine
 using Revise
-
-# TODO: return whole range dict for use in SBT
-# TODO: make more readable/modular
-
-struct OverApproximation
-    output::Symbol
-    output_range::Array{T, 1} where {T <: Real}
-    ranges::Dict{Symbol, Array{T, 1}} where {T <: Real}
-    nvars::Integer
-    consts::Array{Symbol, 1}
-    approx_eq::Array{Expr, 1}
-    approx_ineq::Array{Expr, 1}
-    fun_eq::Dict{Symbol, Expr}
-    N::Integer # number of points in a bound in a [0,1] interval
-    # default constructor
-    OverApproximation() = OverApproximation(:(null_output), Array{Float64, 1}(), Dict{Symbol, Array{Float64,1}}(), 0, Array{Symbol, 1}(), Array{Expr, 1}(), Array{Expr, 1}(), Dict{Symbol, Expr}(), 3)
-end
 
 """
 Overapproximate an n-dimensional function using a relational abstraction. 
@@ -42,14 +26,14 @@ function overapprox_nd(expr,
     # base cases
     if expr isa Symbol
         bound.output = expr
-        bound.output_range = bound.ranges[expr] # TODO: make sure all fields of bound are filled out properly
+        bound.output_range = bound.ranges[expr] 
         return bound
     elseif is_number(expr)
         bound.output = add_var(bound)
         c  = eval(expr)
         bound.output_range = [c,c]
         # use :($newvar = $expr) # for use with infinite precision solvers
-        push!(bound.approx_eq, :($bound.output == $c))
+        push!(bound.approx_eq, :($(bound.output) == $c))
         bound.fun_eq[bound.output] = c
         bound.ranges[bound.output] = bound.output_range
         push!(bound.consts, bound.output)
@@ -57,7 +41,7 @@ function overapprox_nd(expr,
     elseif is_affine(expr)
         bound.output = add_var(bound)
         bound.output_range = [find_affine_range(expr, bound.ranges)...]
-        push!(bound.approx_eq, :($bound.output = $expr))
+        push!(bound.approx_eq, :($(bound.output) = $expr))
         bound.fun_eq[bound.output] = expr
         bound.ranges[bound.output] = bound.output_range
         #println("typeof(range) is ", typeof(expr_range))
@@ -96,7 +80,7 @@ function bound_binary_functions(f, x, y, bound)
         push!(bound.approx_eq, :($z == $x + $y))
         bound.fun_eq[z] = :($x + $y)
         bound.output = z
-        sum_range = (bound.ranges[x][1] + bound.ranges[y][1], bound.ranges[x][2] + bound.ranges[y][2])
+        sum_range = [bound.ranges[x][1] + bound.ranges[y][1], bound.ranges[x][2] + bound.ranges[y][2]]
         bound.output_range = sum_range
         bound.ranges[z] = sum_range
         return bound
@@ -105,7 +89,7 @@ function bound_binary_functions(f, x, y, bound)
         push!(bound.approx_eq, :($z == $x - $y))
         bound.fun_eq[z] = :($x - $y)
         bound.output = z
-        diff_range = (bound.ranges[x][1] - bound.ranges[y][2],  bound.ranges[x][2] - bound.ranges[y][1])
+        diff_range = [bound.ranges[x][1] - bound.ranges[y][2],  bound.ranges[x][2] - bound.ranges[y][1]]
         bound.output_range = diff_range
         bound.ranges[z] = diff_range
         return bound
@@ -205,7 +189,7 @@ function bound_unary_function(f, x_bound; plotflag=true)
     OAvar = add_var(bound)
     push!(bound.approx_ineq, (:($LBvar ≦ $OAvar)) )
     push!(bound.approx_ineq, (:($OAvar ≦ $UBvar)) )
-    bound.fun_eq[OAvar] = :($(f)($x_bound.output))
+    bound.fun_eq[OAvar] = :($(f)($(x_bound.output)))
     bound.ranges[OAvar] = OArange
     bound.output = OAvar
     bound.output_range = OArange
