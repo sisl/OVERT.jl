@@ -264,6 +264,12 @@ function reduce_args_to_2(expr::Expr)
     return reduce_args_to_2(f::Symbol, arguments::Array)
 end
 
+function is_number(bound::OverApproximation, var::Symbol)
+    if (var in bound.consts)
+        return true
+    end 
+end
+
 
 function is_number(expr)
     try 
@@ -290,8 +296,8 @@ function multiply_interval(range, constant)
     return [min(S...), max(S...)]
 end
 
-function get_new_var(nvars)
-    nvars += 1
+function add_var(bound)
+    bound.nvars += 1
     # @ is the symbol preceding A in ascii
-    return Symbol('v'*('@'+nvars)), nvars
+    return Symbol('v'*('@'+bound.nvars))
 end
