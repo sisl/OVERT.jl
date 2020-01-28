@@ -96,7 +96,16 @@ function is_affine(expr)
     return true
 end
 
-function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing)
+function add_ϵ(points, ϵ)
+    `Add ϵ to the y values of all points in a container`
+    new_points = []
+    for p in points
+        push!(new_points, (p[1], p[2] + ϵ))
+    end
+    return new_points
+end 
+
+function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing, ϵ=0)
 
     """
     This function finds the piecewise linear upperbound (lowerbound) of
@@ -110,6 +119,11 @@ function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_p
 
     UB = bound(func, a, b, N; lowerbound=lb, plot=plot, existing_plot=existing_plot)
     UB_points = unique(sort(to_pairs(UB), by = x -> x[1]))
+    #println("points: ", UB_points)
+    if abs(ϵ) > 0
+        UB_points = add_ϵ(UB_points, ϵ) # return new points shifted by epsilon up or down
+    end
+    #println("points: ", UB_points)
     UB_sym = closed_form_piecewise_linear(UB_points)
     # if !isnothing(digits)
     #     # note this degrades numerical precision, use with care

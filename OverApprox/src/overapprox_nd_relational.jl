@@ -10,11 +10,13 @@ Overapproximate an n-dimensional function using a relational abstraction.
 """
 function overapprox_nd(expr, 
                        range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real}; 
-                       N::Integer=3)
+                       N::Integer=3,
+                       ϵ::Real=1e-2)
     bound = OverApproximation()
     range_dict = floatize(range_dict)
     bound.ranges = range_dict
     bound.N = N
+    bound.ϵ = ϵ
     return overapprox_nd(expr, bound)
 end
 
@@ -171,9 +173,9 @@ function bound_unary_function(f, x_bound; plotflag=true)
     ## create upper and lower bounds of function f(x)
     eval(:(fun = $f))
     p = plotflag ? plot(0,0) : nothing
-    UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, x_bound.output_range[1], x_bound.output_range[2], x_bound.N; lb=false, plot=plotflag, existing_plot=p)
+    UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, x_bound.output_range[1], x_bound.output_range[2], x_bound.N; lb=false, plot=plotflag, existing_plot=p, ϵ= x_bound.ϵ)
     fUBrange = [find_1d_range(UBpoints)...]
-    LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, x_bound.output_range[1], x_bound.output_range[2], x_bound.N; lb=true, plot=plotflag, existing_plot=p)
+    LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, x_bound.output_range[1], x_bound.output_range[2], x_bound.N; lb=true, plot=plotflag, existing_plot=p, ϵ= -x_bound.ϵ) 
     fLBrange = [find_1d_range(LBpoints)...]
     ## create new vars for these expr, equate to exprs, and add them to equality list 
     # e.g. y = fUB(x), z = fLB(x)

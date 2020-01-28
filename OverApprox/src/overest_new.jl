@@ -146,6 +146,13 @@ function bound_tangent(f, df, N, aa, bb, method)
 	end
 end
 
+`
+# function bound(fexpr, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
+# 	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=true, existing_plot=nothing)
+#
+# plan: Interface to the bound function that accepts symbolic functions, not executable ones, so 
+that symbolic differentiation can be used.
+`
 
 function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
 	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=true, existing_plot=nothing)
@@ -153,12 +160,12 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 	"""
 	This function over(under)-approximate function f(x).
 
-	f:         the function to be over(under)-approximated
+	f:         the function to be bounded
 	[a,b]:     domain of f
 	N:         N-1 is the number of linear segments within each sub-interval.
 	           sub-intervals are regions where second derivative does not change sign.
 	conc_method: determines the concave algorithm. can take "continuous" or "optimal".
-	lowerbound:  true if you want a lowerbound
+	lowerbound:  true if you want a lower bound
 	df:        derivative of f, if available
 	d2f:       second derivative of f, if available
 	d2f_zeros: zeros of the second derivative, if available
