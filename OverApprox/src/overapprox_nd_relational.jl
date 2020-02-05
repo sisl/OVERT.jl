@@ -98,6 +98,7 @@ function bound_binary_functions(f, x, y, bound)
     elseif f == :*
         if (is_number(bound, x) | is_number(bound, y))
             # multiplication of VARIABLES AND SCALARS ONLY
+            # TODO: Actually, I think this is redundant and would be captured by "is_affine"
             bound.output  = add_var(bound)
             bound = multiply_variable_and_scalar(x, y, bound)
             return bound

@@ -288,12 +288,18 @@ function is_number(expr)
 end
 
 function is_unary(expr::Expr)
-    if length(expr.args) == 2
-        # one for function, one for single argument to function
-        return true
-    else
-        return false
-    end
+    # one for function, one for single argument to function
+    return length(expr.args) == 2
+end
+
+function is_effectively_unary(expr::Expr)
+    # has 3 args, but first is function and one of next 2 is a constant
+    f = expr.args[1]
+    x = expr.args[2]
+    y = expr.args[2]
+    #TODO: finish
+    # if x is_number(expr) hten.... elseif y is_number(expr) then...
+    return false # placeholder
 end
 
 is_binary(expr::Expr) = length(expr.args) == 3
