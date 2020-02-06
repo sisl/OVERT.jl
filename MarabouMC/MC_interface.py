@@ -117,8 +117,16 @@ class MarabouWrapper():
         # initialize "clean" query?
         pass
 
+    def clear(self):
+        # init new marabou query
+        pass
+
     def assert(self, constraints):
-        # possibly call convert?
+        # store constraints in some sort of internal representation
+        pass
+
+    def assert_init(self, set, states):
+        # assert states /in InitSet set
         pass
 
     def convert(self, constraints):
@@ -128,6 +136,7 @@ class MarabouWrapper():
         pass
 
     def check_sat():
+        # call convert to convert internal representation of timed contraints to marabou vars + ineqs
         pass
 
 # property
@@ -137,6 +146,7 @@ class Property():
     """
     def __init__(self):
         pass
+
     def complement(self):
         # return complement of desired property
         pass
@@ -144,7 +154,7 @@ class Property():
 class Unroller():
     def __init__(self):
         pass
-        self.cache = None # dictionary from original to timed version (may bee helpful)
+        self.cache = None # dictionary from original to timed version (may be helpful)
 
     def at_time_constraint(self, c: Constraint, tstep):
         """
@@ -165,13 +175,12 @@ class Unroller():
         pass
         # implement later
 
-# model checker function
-def modelchecker():
-    """
-    Should be able to run a model checking algo on a specific transition system 
-    tuple <X, I(x), T(x,x')> and a property
-    """
-    pass
+
+# model checker functions
+"""
+Should be able to run a model checking algo on a specific transition system 
+tuple <X, I(x), T(x,x')> and a property
+"""
 
 # BMC , a model checking algo
 class BMC():
@@ -191,12 +200,16 @@ class BMC():
         """
         Check that property p holds at time t. Does not assume holds at time 1:t-1
         """
+        solver.clear() # new query
+        # assert that state begins in init set
+        solver.assert_init(self.transition_sys.initial, self.transition_sys.states)
+
         # unroll transition relation for time 0 to t
         for j in range(t):
             solver.assert(self.unroller.at_time_relation(self.transition_sys.transition_relation, j))
         
         # assert complement(property) at time t
-        solver.assert(self.unrolleer.at_time_relation(self.prop.complement(), t)
+        solver.assert(self.unroller.at_time_relation(self.prop.complement(), t))
 
         return solver.check_sat()
 
