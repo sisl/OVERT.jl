@@ -1,34 +1,18 @@
-from enum import Enum
-import tensorflow as tf
+#from enum import Enum
+#import tensorflow as tf
 # from maraboupy import *
-
-class ConstraintType(Enum):
-    EQUALITY = 0
-    LESS_EQ = 1
-    LESS = 2
-    GREATER_EQ = 3
-    GREATER = 4
+from MC_constraints import Constraint, ConstraintType
 
 class Result(Enum):
     UNSAT = 0
     SAT = 1
     UNKNOWN = 2
-
-class Constraint:
-    def __init__(self, eqtype: ConstraintType):
-        """
-        sum_i(monomial_i) ConstraintType scalar
-        e.g. 5x + 3y <= 0
-        """
-        self.type = eqtype
-        self.monomials = [] # list of tuples of (coeff, var)
-        self.scalar = 0
     
 class TransitionRelation:
     def __init__(self):
         states = []
         next_states = []
-        constraints = []
+        constraints = [] # list of Constraints
 
 class Controller:
     def __init__(self, network=None):
@@ -80,11 +64,10 @@ class TFControlledTransitionRelation(ControlledTranstionRelation):
         self.epsilon = epsilon
         self.controller = controller_obj
         self.dynamics = dynamics_obj
-
-    def convert_dynamics(self):
+    
+    def abstract(self, epsilon, CEx):
         """
-        Convert dynamics constraints from nonlinear to linearized using OVERT and epsilon
-        TODO: maybe move elsewhere? to unroller maybe?
+        Convert dynamics constraints from nonlinear to linearized using OVERT and epsilon.
         """
         pass
 
@@ -100,13 +83,24 @@ class TransitionSystem:
     #     # return variable x' and then 
     #     return substitute(self.states[state], state)
 
+class MyTransitionSystem(TransitionSystem):
+    def __init__(self):
+        super.__init__(self)
+    
+    def abstract(self, epsilon, CEx):
+        self.transition_relation.abstract(epsilon, CEx)
 
 def substitute(c: Constraint, mapping): 
     """
     substitute(x+y<0, [x => x@1, y => y@1])
     Used in unroller.
     """
-    pass
+    new_constraint = Constraint(c.type)
+    new_constraint.scalar = c.scalar
+    new_constraint.monomials = c.monomials
+    for mono in new_constraint.monomials:
+        mono[1] = mapping[mono[1]]
+    return new_constraint
     
 # solver
 class MarabouWrapper():
@@ -240,7 +234,18 @@ class BMC():
                 print("Property does not hold at time ", i)
                 return Result.SAT 
         return Result.UNSAT ## TODO: make sure this is correct
-            
+
+def CEGAR(algo, max_iters, epsilon):
+    """
+    Counter Example Guided Abstraction Refinement.
+    algo object with transi
+    """    
+    # while property has not been verified and the maximum number of iterations
+    # has not yet been exceeded, refine and try again
+    #       algo.transition_system.abstract(epsilon, CEx)
+    # if property does not hold, return CEx
+    # else if it does hold, return :HOLDS
+    pass
 
 
     

@@ -48,11 +48,11 @@ class MatrixConstraint:
     Akin to a Constraint, but for constraints of the form Ax <= b.
     @pre @post If dim(A) = (m,n), dim(x) = n , dim(b) = m 
     """
-    def __init__(self, eqtype: ConstraintType):
+    def __init__(self, eqtype: ConstraintType, A=np.array([[]]), x = np.array([]), b = np.array([])):
         self.type = eqtype
-        self.A = [[]]
-        self.x = []
-        self.b = []
+        self.A = A
+        self.x = x
+        self.b = b
     
     def __repr__(self):
         """
