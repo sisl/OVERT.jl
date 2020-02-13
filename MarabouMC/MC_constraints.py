@@ -1,5 +1,6 @@
 # Base types for MC interface
 # from enum import Enum
+import numpy as np
 
 class ConstraintType: #(Enum):
     # EQUALITY = 0
@@ -42,4 +43,59 @@ class Constraint:
         out += str(self.scalar)
         return out
 
+class MatrixConstraint:
+    """
+    Akin to a Constraint, but for constraints of the form Ax <= b.
+    @pre @post If dim(A) = (m,n), dim(x) = n , dim(b) = m 
+    """
+    def __init__(self, eqtype: ConstraintType):
+        self.type = eqtype
+        self.A = [[]]
+        self.x = []
+        self.b = []
+    
+    def __repr__(self):
+        """
+        Pretty printing Ax R b
+        """
+        out = ""
+        # print A matrix
+        out += np.array(self.A).__repr__()
+        # print x
+        out = out.split('\n')
+        out[0] += " ["
+        for i in range(min(len(self.x), len(out))):
+            if i == 0:
+                out[i]+= self.x[i]
+            elif i == len(out)-1:
+                out[i]+= ' '+self.x[i]
+            else:
+                out[i]+= '  '+self.x[i]
+        i+=1
+        while i < len(out): ## if len(out) > len(x)
+            out[i] += '  '
+            i+=1
+        while i < len(self.x): ## if len(x) > len(out)
+            out.append((len(out[-1])-1)*' ' + self.x[i])
+            i+=1
+        out[len(self.x)-1] += "]"
+        # print relation
+        mrow = int(np.floor((len(out) -1)/2))
+        out[mrow] += "  " + self.type.__repr__() + "  "
+        out = [out[i]+"      " if not i==mrow else out[i] for i in range(len(out)) ]
+        # print constant/scalar
+        out[0] += "["
+        for j in range(len(self.b)):
+            if not j==0:
+                out[j] += " "+str(self.b[j])
+            else:
+                out[j] += str(self.b[j])
+        out[len(self.b) - 1] += "]"
+        return '\n'.join(out)
+
+        
+
+
+
+# also need to make relu constraint?
 
