@@ -93,9 +93,13 @@ class MatrixConstraint:
         out[len(self.b) - 1] += "]"
         return '\n'.join(out)
 
-        
-
-
-
-# also need to make relu constraint?
+class Relu():
+    """
+    varout = relu(varin)
+    """
+    def __init__(self, varin, varout):
+        self.varin = varin
+        self.varout = varout
+    def __repr__(self):
+        return str(self.varout) + " = relu(" + str(self.varin) + ")\n"
 
