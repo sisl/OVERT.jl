@@ -164,15 +164,14 @@ class TFConstraint:
         # need to add constraints for these ops
         if op.node_def.op == 'MatMul':
             self.matMulConstraint(op)
-        # bookmark 
         elif op.node_def.op == 'Mul':
             input_ops = [i.op for i in op.inputs]
             if self.isVariable(input_ops[0]) or self.isVariable(input_ops[1]): 
-                self.mulEquations(op)
+                self.mulConstraint(op)
             else:
                 return
         elif op.node_def.op == 'BiasAdd':
-            self.biasAddEquations(op)
+            self.biasAddConstraint(op)
         elif op.node_def.op == 'Add':
             self.addEquations(op)
         elif op.node_def.op == 'Sub':
@@ -313,54 +312,65 @@ class TFConstraint:
         outputValues = self.getValues(op) 
         aTranspose = op.node_def.attr['transpose_a'].b
         bTranspose = op.node_def.attr['transpose_b'].b
-        A = inputValues[0]
-        B = inputValues[1]
+        a = inputValues[0]
+        b = inputValues[1]
         if aTranspose:
-            A = np.transpose(A)
+            a = np.transpose(a)
         if bTranspose:
-            B = np.transpose(B)
-        assert (A.shape[0], B.shape[1]) == outputValues.shape
-        assert A.shape[1] == B.shape[0]
-        m, n = outputValues.shape
-        p = A.shape[1]
-        # A \in mxp , B \in  pxn
+            b = np.transpose(b)
+        assert (a.shape[0], b.shape[1]) == outputValues.shape
+        assert a.shape[1] == b.shape[0]
         ### END getting inputs ###
 
         ### Generate actual constraints ###
+        # Wx = y
+        # [W, -I] [x; y] = 0
+        # W \in mxn
+        # I \in mxm
+        # x \in nx1
+        # y \in mx1    
         if convention == "xW":
-            x = A
-            W = B
-            # take transpose of W and store: from xW = b  to  W^T x^T = b^T
-            c = MatrixConstraint(ConstraintType('EQUALITY'), A=W.transpose(), x=x.transpose(), b=b.transpose())
+            x = a
+            W = b
+            # take transpose of W and store: from xW = y to W^T x^T = y^T to [W.T, -I] [x^T; y^T] = 0
+            A = np.hstack((W.T, -np.eye(W.shape[1])))
+            constraint_x = np.vstack((x.T, outputValues.T))
+            constraint_b = np.zeros((W.shape[1], 1))
+            c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=constraint_x, b=constraint_b)
             self.lin_constraints.append(c)
         elif convention == "Wx":
-            W = A
-            x = B
-            c = MatrixConstraint(ConstraintType('EQUALITY'), A=W, x=x, b=b)
+            W = a
+            x = b
+            # Wx = y -> [W, -I] [x; y] = 0
+            A = np.hstack((W, -np.eye(W.shape[0])))
+            constraint_x = np.vstack((x, outputValues))
+            constraint_b = np.zeros((W.shape[0], 1))
+            c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=constraint_x, b=constraint_b)
             self.lin_constraints.append(c)
         else:
             print("Whatchyu doin bro??")
             raise NotImplementedError
 
-    def mulEquations(self, op):
+    def mulConstraint(self, op):
         """
         Function to generate equations corresponding to elementwise matrix multiplication 
         Arguments:
             op: (tf.op) representing elementwise multiplication operation
+        TODO: this is unecessarily verbose
         """
         ### Get variables and constants of inputs ###
         input_ops = [i.op for i in op.inputs]
-        prevValues = [self.getValues(i) for i in input_ops]
-        curValues = self.getValues(op)
+        inputValues = [self.getValues(i) for i in input_ops]
+        outputValues = self.getValues(op)
         assert not (self.isVariable(input_ops[0]) and self.isVariable(input_ops[1]))
         if self.isVariable(input_ops[0]):
             #convention = "xW"
-            x = prevValues[0]
-            W = prevValues[1]
+            x = inputValues[0]
+            W = inputValues[1]
         elif self.isVariable(input_ops[1]):
             #convention = "Wx"
-            W = prevValues[0]
-            x = prevValues[1]
+            W = inputValues[0]
+            x = inputValues[1]
         else:
             print("Multiplying two constants not supported")
             import pdb; pdb.set_trace()
@@ -371,20 +381,21 @@ class TFConstraint:
             # broadcast
             W = np.tile(W, len(x)//len(W))
         assert x.shape == W.shape
-        curValues = curValues.reshape(-1)
-        assert x.shape == curValues.shape
+        y = outputValues.reshape(-1)
+        assert x.shape == y.shape
         ### END getting inputs ###
 
         ### Generate actual equations ###
-        for i in range(len(curValues)):
-            e = []
-            e = MarabouUtils.Equation()
-            e.addAddend(W[i], x[i])
-            e.addAddend(-1, curValues[i])
-            e.setScalar(0.0)
-            self.addEquation(e)
+        # w^T x = y
+        # [w^T -I] [x; y] = 0
+        #  1xn 1x1 
+        A = np.hstack((W.T, -np.eye(1)))
+        x_constraint = np.vstack((x, y))
+        b_constraint = np.zeros((1,1));
+        c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=x_constraint, b=b_constraint)
+        self.lin_constraints.append(c)
 
-    def biasAddEquations(self, op):
+    def biasAddConstraint(self, op):
         """
         Function to generate equations corresponding to bias addition
         Arguments:
@@ -393,53 +404,26 @@ class TFConstraint:
         ### Get variables and constants of inputs ###
         input_ops = [i.op for i in op.inputs]
         assert len(input_ops) == 2
-        prevValues = [self.getValues(i) for i in input_ops]
-        curValues = self.getValues(op)
-        prevVars = prevValues[0].reshape(-1)
-        prevConsts = prevValues[1].reshape(-1)
+        inputValues = [self.getValues(i) for i in input_ops]
+        outputValues = self.getValues(op)
+        inputVars = inputValues[0].reshape(-1)
+        inputConsts = inputValues[1].reshape(-1)
         # broadcasting
-        prevConsts = np.tile(prevConsts, len(prevVars)//len(prevConsts))
-        curVars = curValues.reshape(-1)
-        assert len(prevVars)==len(curVars) and len(curVars)==len(prevConsts)
+        inputConsts = np.tile(inputConsts, len(inputVars)//len(inputConsts))
+        outputVars = outputValues.reshape(-1)
+        assert len(inputVars)==len(outputVars) and len(outputVars)==len(inputConsts)
         ### END getting inputs ###
 
-        ### Do not generate equations, as these can be eliminated ###
-        for i in range(len(prevVars)):
-            # prevVars = curVars - prevConst
-            self.biasAddRelations += [(prevVars[i], curVars[i], -prevConsts[i])]
+        # x + b = y  --> x - y = -b
+        # [I -I] [x; y] = -b
+        # (nx2n)x(2nx1) = (nx1)
+        n = inputVars.shape[0]
+        A = np.hstack((np.eye(n), -np.eye(n)));
+        x = np.vstack((inputVars, outputVars))
+        c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=x, b= -inputConsts)
+        self.lin_constraints.append(c)
 
-    def processBiasAddRelations(self):
-        """
-        Either add an equation representing a bias add,
-        Or eliminate one of the two variables in every other relation
-        """
-        biasAddUpdates = dict()
-        participations = [rel[0] for rel in self.biasAddRelations] + \
-                            [rel[1] for rel in self.biasAddRelations]
-        for (x, xprime, c) in self.biasAddRelations:
-            # x = xprime + c
-            # replace x only if it does not occur anywhere else in the system
-            if self.lowerBoundExists(x) or self.upperBoundExists(x) or \
-                    self.participatesInPLConstraint(x) or \
-                    len([p for p in participations if p == x]) > 1:
-                e = MarabouUtils.Equation()
-                e.addAddend(1.0, x)
-                e.addAddend(-1.0, xprime)
-                e.setScalar(c)
-                self.addEquation(e)
-            else:
-                biasAddUpdates[x] = (xprime, c)
-                self.setLowerBound(x, 0.0)
-                self.setUpperBound(x, 0.0)
-
-        for equ in self.equList:
-            participating = equ.getParticipatingVariables()
-            for x in participating:
-                if x in biasAddUpdates: # if a variable to remove is part of this equation
-                    xprime, c = biasAddUpdates[x]
-                    equ.replaceVariable(x, xprime, c)
-
-    def addEquations(self, op):
+    def additionConstraint(self, op):
         """
         Function to generate equations corresponding to addition
         Arguments:
@@ -451,104 +435,18 @@ class TFConstraint:
         input2 = input_ops[1]
         assert self.isVariable(input1)
         if self.isVariable(input2):
-            curVars = self.getValues(op).reshape(-1)
-            prevVars1 = self.getValues(input1).reshape(-1)
-            prevVars2 = self.getValues(input2).reshape(-1)
-            assert len(prevVars1) == len(prevVars2)
-            assert len(curVars) == len(prevVars1)
-            for i in range(len(curVars)):
-                e = MarabouUtils.Equation()
-                e.addAddend(1, prevVars1[i])
-                e.addAddend(1, prevVars2[i])
-                e.addAddend(-1, curVars[i])
-                e.setScalar(0.0)
-                self.addEquation(e)
+            outputVars = self.getValues(op).reshape(-1, 1)
+            input1Vars = self.getValues(input1).reshape(-1, 1)
+            input2Vars = self.getValues(input2).reshape(-1, 1)
+            assert len(input1Vars) == len(input2Vars)
+            assert len(outputVars) == len(input1Vars)
+            # x + y = z   -->   [I, I, -I] [x; y; z] = 0
+            A = np.hstack((np.eye(len(input1Vars)), np.eye(len(input2Vars)), -np.eye(len(outputVars))))
+            x_constraint = np.vstack((input1Vars, input2Vars, outputVars))
+            b_constraint = np.zeros((len(outputVars), 1))
+            c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=x_constraint, b=b_constraint)
         else:
-            self.biasAddEquations(op)
-
-    def subEquations(self, op): 
-        """
-        Function to generate equations corresponding to subtraction
-        Arguments:
-            op: (tf.op) representing sub operation
-        """
-        print("using sub equations")
-        input_ops = [i.op for i in op.inputs]
-        assert len(input_ops) == 2
-        input1 = input_ops[0]
-        input2 = input_ops[1]
-        assert self.isVariable(input1)
-        if self.isVariable(input2):
-            curVars = self.getValues(op).reshape(-1)
-            prevVars1 = self.getValues(input1).reshape(-1)
-            prevVars2 = self.getValues(input2).reshape(-1)
-            assert len(prevVars1) == len(prevVars2)
-            assert len(curVars) == len(prevVars1)
-            for i in range(len(curVars)):
-                e = MarabouUtils.Equation()
-                e.addAddend(1, prevVars1[i])
-                e.addAddend(-1, prevVars2[i])
-                e.addAddend(-1, curVars[i])
-                e.setScalar(0.0)
-                self.addEquation(e)
-        else:
-            self.biasAddEquations(op)
-
-
-    def conv2DEquations(self, op):
-        """
-        Function to generate equations corresponding to 2D convolution operation
-        Arguments:
-            op: (tf.op) representing conv2D operation
-        """
-
-        ### Get variables and constants of inputs ###
-        input_ops = [i.op for i in op.inputs]
-        prevValues = [self.getValues(i) for i in input_ops]
-        curValues = self.getValues(op)
-        padding = op.node_def.attr['padding'].s.decode()
-        strides = list(op.node_def.attr['strides'].list.i)
-        prevValues, prevConsts = prevValues[0], prevValues[1]
-        _, out_height, out_width, out_channels = curValues.shape
-        _, in_height,  in_width,  in_channels  = prevValues.shape
-        filter_height, filter_width, filter_channels, num_filters = prevConsts.shape
-        assert filter_channels == in_channels
-        assert out_channels == num_filters
-        # Use padding to determine top and left offsets
-        # See https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/quantized_conv_ops.cc#L51
-        if padding=='SAME':
-            pad_top  = ((out_height - 1) * strides[1] + filter_height - in_height) // 2
-            pad_left = ((out_width - 1) * strides[2] + filter_width - in_width) // 2
-        elif padding=='VALID':
-            pad_top  = ((out_height - 1) * strides[1] + filter_height - in_height + 1) // 2
-            pad_left = ((out_width - 1) * strides[2] + filter_width - in_width + 1) // 2
-        else:
-            raise NotImplementedError
-        ### END getting inputs ###
-
-        ### Generate actual equations ###
-        # There is one equation for every output variable
-        for i in range(out_height):
-            for j in range(out_width):
-                for k in range(out_channels): # Out_channel corresponds to filter number
-                    e = MarabouUtils.Equation()
-                    # The equation convolves the filter with the specified input region
-                    # Iterate over the filter
-                    for di in range(filter_height):
-                        for dj in range(filter_width):
-                            for dk in range(filter_channels):
-
-                                h_ind = int(strides[1]*i+di - pad_top)
-                                w_ind = int(strides[2]*j+dj - pad_left)
-                                if h_ind < in_height and h_ind>=0 and w_ind < in_width and w_ind >=0:
-                                    var = prevValues[0][h_ind][w_ind][dk]
-                                    c = prevConsts[di][dj][dk][k]
-                                    e.addAddend(c, var)
-
-                    # Add output variable
-                    e.addAddend(-1, curValues[0][i][j][k])
-                    e.setScalar(0.0)
-                    self.addEquation(e)
+            self.biasAddConstraint(op)
 
     def reluEquations(self, op):
         """
@@ -571,56 +469,6 @@ class TFConstraint:
             self.addRelu(prev[i], cur[i])
         for f in cur:
             self.setLowerBound(f, 0.0)
-
-    def maxpoolEquations(self, op):
-        """
-        Function to generate maxpooling equations
-        Arguments:
-            op: (tf.op) representing maxpool operation
-        """
-        ### Get variables and constants of inputs ###
-        input_ops = [i.op for i in op.inputs]
-        prevValues = [self.getValues(i) for i in input_ops]
-        curValues = self.getValues(op)
-        validPadding = op.node_def.attr['padding'].s == b'VALID'
-        if not validPadding:
-            raise NotImplementedError
-        prevValues = prevValues[0]
-        strides = list(op.node_def.attr['strides'].list.i)
-        ksize = list(op.node_def.attr['ksize'].list.i)
-        for i in range(curValues.shape[1]):
-            for j in range(curValues.shape[2]):
-                for k in range(curValues.shape[3]):
-                    maxVars = set()
-                    for di in range(strides[1]*i, strides[1]*i + ksize[1]):
-                        for dj in range(strides[2]*j, strides[2]*j + ksize[2]):
-                            if di < prevValues.shape[1] and dj < prevValues.shape[2]:
-                                maxVars.add(prevValues[0][di][dj][k])
-                    self.addMaxConstraint(maxVars, curValues[0][i][j][k])
-
-    def maxEquations(self, op):
-        """
-        Function to generate max equations
-        # TODO: 
-        # extend to handle max between a constant and a variable
-        # nominal right now: just handle between two variables
-        """
-        input_ops = [i.op for i in op.inputs]
-        prevValues = [self.getValues(i) for i in input_ops]
-        curValues = self.getValues(op)
-        assert len(prevValues) == 2
-        if not (self.isVariable(input_ops[0]) and self.isVariable(input_ops[1])):
-            import pdb; pdb.set_trace()
-        # max btw two variables
-        prevValues = np.array(prevValues).flatten()
-        curValues = np.array(curValues).flatten()
-        maxVars = set()
-        if (type(prevValues[0]) is np.ndarray) or (type(prevValues[0]) is np.ndarray):
-            import pdb; pdb.set_trace()
-        maxVars.add(prevValues[0])
-        maxVars.add(prevValues[1])
-        self.addMaxConstraint(maxVars, curValues[0])
-
 
     def evaluateWithoutMarabou(self, inputValues):
         """
