@@ -55,43 +55,50 @@ class MatrixConstraint:
         self.b = b
     
     def __repr__(self):
-        """
-        Pretty printing Ax R b
-        """
-        out = ""
-        # print A matrix
-        out += np.array(self.A).__repr__()
-        # print x
-        out = out.split('\n')
-        out[0] += " ["
-        for i in range(min(len(self.x), len(out))):
-            if i == 0:
-                out[i]+= self.x[i]
-            elif i == len(out)-1:
-                out[i]+= ' '+self.x[i]
-            else:
-                out[i]+= '  '+self.x[i]
-        i+=1
-        while i < len(out): ## if len(out) > len(x)
-            out[i] += '  '
-            i+=1
-        while i < len(self.x): ## if len(x) > len(out)
-            out.append((len(out[-1])-1)*' ' + self.x[i])
-            i+=1
-        out[len(self.x)-1] += "]"
-        # print relation
-        mrow = int(np.floor((len(out) -1)/2))
-        out[mrow] += "  " + self.type.__repr__() + "  "
-        out = [out[i]+"      " if not i==mrow else out[i] for i in range(len(out)) ]
-        # print constant/scalar
-        out[0] += "["
-        for j in range(len(self.b)):
-            if not j==0:
-                out[j] += " "+str(self.b[j])
-            else:
-                out[j] += str(self.b[j])
-        out[len(self.b) - 1] += "]"
-        return '\n'.join(out)
+        s = "<Constraint: Ax" + self.type.__repr__() + "b>\n"
+        s += "  {A: " + np.array(self.A).__repr__() + "\n" 
+        s += "  x: " + np.array(self.x, dtype=object).__repr__() +"\n"
+        s += "  b: " + np.array(self.b).__repr__() + "}\n"
+        return s
+    
+    # def __repr__(self):
+    #     """
+    #     Pretty printing Ax R b
+    #     """
+    #     out = ""
+    #     # print A matrix
+    #     out += np.array(self.A).__repr__()
+    #     # print x
+    #     out = out.split('\n')
+    #     out[0] += " ["
+    #     for i in range(min(len(self.x), len(out))):
+    #         if i == 0:
+    #             out[i]+= self.x[i]
+    #         elif i == len(out)-1:
+    #             out[i]+= ' '+self.x[i]
+    #         else:
+    #             out[i]+= '  '+self.x[i]
+    #     i+=1
+    #     while i < len(out): ## if len(out) > len(x)
+    #         out[i] += '  '
+    #         i+=1
+    #     while i < len(self.x): ## if len(x) > len(out)
+    #         out.append((len(out[-1])-1)*' ' + self.x[i])
+    #         i+=1
+    #     out[len(self.x)-1] += "]"
+    #     # print relation
+    #     mrow = int(np.floor((len(out) -1)/2))
+    #     out[mrow] += "  " + self.type.__repr__() + "  "
+    #     out = [out[i]+"      " if not i==mrow else out[i] for i in range(len(out)) ]
+    #     # print constant/scalar
+    #     out[0] += "["
+    #     for j in range(len(self.b)):
+    #         if not j==0:
+    #             out[j] += " "+str(self.b[j])
+    #         else:
+    #             out[j] += str(self.b[j])
+    #     out[len(self.b) - 1] += "]"
+    #     return '\n'.join(out)
 
 class ReluConstraint():
     """
@@ -101,5 +108,5 @@ class ReluConstraint():
         self.varin = varin
         self.varout = varout
     def __repr__(self):
-        return str(self.varout) + " = relu(" + str(self.varin) + ")\n"
+        return "<Constraint: " + str(self.varout) + " = relu(" + str(self.varin) + ") >\n"
 

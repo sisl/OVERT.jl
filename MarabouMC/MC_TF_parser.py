@@ -1,4 +1,4 @@
-# TF parser for model checker interface to marabou
+# TF parser 1.x for model checker interface to marabou
 # a class that loads a TF pb and produces a set of constraints that represent the network
 
 # Based on MarabouNetworkTF.py and MarabouNetwork.py
@@ -26,9 +26,7 @@ class TFConstraint:
 
         Note: you can always use adds and matmuls to turn multiple output ops into a single output op
         """
-        self.lin_constraints = []
-        self.relus = []
-        self.max = []
+        self.constraints = []
         # aux: 
         self.inputVars = []
         self.outputVars = []
@@ -38,6 +36,7 @@ class TFConstraint:
         self.varMap = dict() # maps ops -> vars
         self.shapeMap = dict() # maps ?? -> ??
         self.readFromPb(filename, inputNames, outputName)
+        self.relus = [c for c in self.constraints if isinstance(c, ReluConstraint)]
     
     def getNewVariable(self):
         self.numVars += 1
@@ -48,7 +47,7 @@ class TFConstraint:
         """
         Reset values to represent empty network
         """
-        self.lin_constraints = []
+        self.constraints = []
         self.relus = []
         self.max = []
         # aux: 
@@ -140,7 +139,7 @@ class TFConstraint:
         Arguments:
             op: (tf.op) representing operation until which we want to generate network equations
         """
-        if op in list(self.varMap.keys()):
+        if (op in self.varMap.keys()) and (op not in [*self.inputOps, self.outputOp]):
             return
         if op in self.inputOps:
             self.foundnInputFlags += 1
@@ -173,17 +172,17 @@ class TFConstraint:
         elif op.node_def.op == 'BiasAdd':
             self.biasAddConstraint(op)
         elif op.node_def.op == 'Add':
-            self.addEquations(op)
-        elif op.node_def.op == 'Sub':
-            self.subEquations(op)
-        elif op.node_def.op == 'Conv2D':
-            self.conv2DEquations(op)
+            self.additionConstraint(op)
+        # elif op.node_def.op == 'Sub':
+        #     self.subEquations(op)
+        # elif op.node_def.op == 'Conv2D':
+        #     self.conv2DEquations(op)
         elif op.node_def.op == 'Relu':
-            self.reluEquations(op)
-        elif op.node_def.op == 'Maximum':
-            self.maxEquations(op)
-        elif op.node_def.op == 'MaxPool':
-            self.maxpoolEquations(op)
+            self.reluConstraint(op)
+        # elif op.node_def.op == 'Maximum':
+        #     self.maxEquations(op)
+        # elif op.node_def.op == 'MaxPool':
+        #     self.maxpoolEquations(op)
         else:
             print("Operation ", str(op.node_def.op), " not implemented")
             raise NotImplementedError
@@ -337,7 +336,7 @@ class TFConstraint:
             constraint_x = np.vstack((x.T, outputValues.T))
             constraint_b = np.zeros((W.shape[1], 1))
             c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=constraint_x, b=constraint_b)
-            self.lin_constraints.append(c)
+            self.constraints.append(c)
         elif convention == "Wx":
             W = a
             x = b
@@ -346,7 +345,7 @@ class TFConstraint:
             constraint_x = np.vstack((x, outputValues))
             constraint_b = np.zeros((W.shape[0], 1))
             c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=constraint_x, b=constraint_b)
-            self.lin_constraints.append(c)
+            self.constraints.append(c)
         else:
             print("Whatchyu doin bro??")
             raise NotImplementedError
@@ -393,7 +392,7 @@ class TFConstraint:
         x_constraint = np.vstack((x, y))
         b_constraint = np.zeros((1,1));
         c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=x_constraint, b=b_constraint)
-        self.lin_constraints.append(c)
+        self.constraints.append(c)
 
     def biasAddConstraint(self, op):
         """
@@ -406,11 +405,11 @@ class TFConstraint:
         assert len(input_ops) == 2
         inputValues = [self.getValues(i) for i in input_ops]
         outputValues = self.getValues(op)
-        inputVars = inputValues[0].reshape(-1)
-        inputConsts = inputValues[1].reshape(-1)
+        inputVars = inputValues[0].reshape(-1,1)
+        inputConsts = inputValues[1].reshape(-1,1)
         # broadcasting
         inputConsts = np.tile(inputConsts, len(inputVars)//len(inputConsts))
-        outputVars = outputValues.reshape(-1)
+        outputVars = outputValues.reshape(-1,1)
         assert len(inputVars)==len(outputVars) and len(outputVars)==len(inputConsts)
         ### END getting inputs ###
 
@@ -421,7 +420,7 @@ class TFConstraint:
         A = np.hstack((np.eye(n), -np.eye(n)));
         x = np.vstack((inputVars, outputVars))
         c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=x, b= -inputConsts)
-        self.lin_constraints.append(c)
+        self.constraints.append(c)
 
     def additionConstraint(self, op):
         """
@@ -445,12 +444,12 @@ class TFConstraint:
             x_constraint = np.vstack((input1Vars, input2Vars, outputVars))
             b_constraint = np.zeros((len(outputVars), 1))
             c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=x_constraint, b=b_constraint)
-            self.lin_constraints.append(c)
+            self.constraints.append(c)
         else:
             self.biasAddConstraint(op)
 
     # bookmark
-    def reluEquations(self, op):
+    def reluConstraint(self, op):
         """
         Function to generate equations corresponding to pointwise Relu
         Arguments:
@@ -466,7 +465,7 @@ class TFConstraint:
 
         ### Generate actual constraint ###
         c = ReluConstraint(varin=inputValues, varout=outputValues)
-        self.lin_constraints.append(c)
+        self.constraints.append(c)
 
     def evaluateWithoutMarabou(self, inputValues):
         """
