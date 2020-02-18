@@ -25,9 +25,20 @@ filename = write_graphdef(sess, output)
 
 # read graphdef
 tfconstraints = TFConstraint(filename, inputNames=[x.op.name], outputName=output.op.name)
-import pdb; pdb.set_trace()
-print("hi")
 
 # test that output of tf network satisfies constraints of TFConstraint
 # pick random inputs, run with tf graph, get outputs
-# 
+inputx = np.random.rand(5,1)
+# eval with constraints
+cfeed = dict(zip(tfconstraints.inputVars[0].flatten().tolist(), inputx.flatten().tolist()))
+solutions = tfconstraints.eval_constraints(cfeed)
+#print(solutions)
+output_sols = np.array([solutions[ov[0]] for ov in tfconstraints.outputVars], dtype='float64')
+print(output_sols)
+
+# eval with tf
+tfsol = sess.run(output, feed_dict={x: inputx}).flatten()
+print(tfsol)
+
+# assert that they are the same!
+assert(all(np.isclose(output_sols, tfsol)))
