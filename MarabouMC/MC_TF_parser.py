@@ -10,7 +10,7 @@ from tensorflow.python.framework import tensor_util
 #os.environ['TF_CPP_MIN_LOG_LEVEL']= '2'
 #os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-from MC_constraints import ConstraintType, Constraint, MatrixConstraint, Relu
+from MC_constraints import ConstraintType, Constraint, MatrixConstraint, ReluConstraint
 
 import tensorflow as tf
 
@@ -445,9 +445,11 @@ class TFConstraint:
             x_constraint = np.vstack((input1Vars, input2Vars, outputVars))
             b_constraint = np.zeros((len(outputVars), 1))
             c = MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=x_constraint, b=b_constraint)
+            self.lin_constraints.append(c)
         else:
             self.biasAddConstraint(op)
 
+    # bookmark
     def reluEquations(self, op):
         """
         Function to generate equations corresponding to pointwise Relu
@@ -457,18 +459,14 @@ class TFConstraint:
 
         ### Get variables and constants of inputs ###
         input_ops = [i.op for i in op.inputs]
-        prevValues = [self.getValues(i) for i in input_ops]
-        curValues = self.getValues(op)
-        prev = prevValues[0].reshape(-1)
-        cur = curValues.reshape(-1)
-        assert len(prev) == len(cur)
+        inputValues = self.getValues(input_ops[0]).reshape(-1)
+        outputValues = self.getValues(op).reshape(-1)
+        assert len(inputValues) == len(outputValues)
         ### END getting inputs ###
 
-        ### Generate actual equations ###
-        for i in range(len(prev)):
-            self.addRelu(prev[i], cur[i])
-        for f in cur:
-            self.setLowerBound(f, 0.0)
+        ### Generate actual constraint ###
+        c = ReluConstraint(varin=inputValues, varout=outputValues)
+        self.lin_constraints.append(c)
 
     def evaluateWithoutMarabou(self, inputValues):
         """
