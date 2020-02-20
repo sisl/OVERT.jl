@@ -2,6 +2,8 @@
 #import tensorflow as tf
 # from maraboupy import *
 from MC_constraints import Constraint, ConstraintType
+from MC_TF_parser import TFConstraint
+from Constraint_utils import matrix_equality_constraint, equality_constraint
 
 class Result(Enum):
     UNSAT = 0
@@ -15,61 +17,105 @@ class TransitionRelation:
         constraints = [] # list of Constraints
 
 class Controller:
-    def __init__(self, network=None):
-        self.network = network
-        self.equations = []
+    def __init__(self):
+        self.constraints = []
 
 class TFController(Controller):
-    def __init__(self, network=None):
+    def __init__(self, tf_sess=None, network_file="", inputNames=[], outputName=""):
         super.__init__(self)
-        self.load()
-
-    def load(self):
         """
-        load equations by parsing network file
+        load constraints by parsing network file
         """
-        pass
+        self.tfconstraintobj = TFConstraint(filename=network_file, sess=tf_sess, inpuNames=inputNames, outputName=outputName)
+        self.constraints = self.tfconstraintobj.constraints
+        self.state_inputs = self.tfconstraintobj.inputVars
+        self.control_outputs = self.tfconstraintobj.outputVars
+        self.relus = self.tfconstraintobj.relus
 
 class Dynamics:
     def __init__(self, input_file=None):
         self.input_file = input_file
-        self.equations = [] # equations over the states and next states
+        self.states = []
+        self.control_inputs = []
+        self.constraints = [] # constraints over the states and next states
         self.load()
 
     def load(self):
         """
-        load equations by parsing dynamics file
+        load constraints by parsing dynamics file
         """
         pass
 
-class ControlledTranstionRelation(TransitionRelation):
-    def __init__(self, controller_file=None, dynamics_file=None, epsilon=1-6):
+class OVERTDynamics(Dynamics):
+    def __init__(self, input_file=None):
         super(self).__init__()
-        self.controller_file = controller_file
-        self.dynamics_file = dynamics_file
-        self.epsilon = epsilon
+        self.abstract_constraints = [] # constraints over the states and next states, linearized
 
-class TFControlledTransitionRelation(ControlledTranstionRelation):
-    def __init__(self, controller_file="", dynamics_file="", epsilon=1-6):
-        super(self).__init__()
-        self.controller = TFController(network=controller_file)
-        self.dynamics = Dynamics(input_file=dynamics_file)
-    
-    def __init__(self, controller_obj, dynamics_obj, epsilon=1e-6):
-        """
-        Alternate constructor that takes objs instead of filenames.
-        """
-        self.controller_file = ""
-        self.dynamics_file = ""
-        self.epsilon = epsilon
-        self.controller = controller_obj
-        self.dynamics = dynamics_obj
-    
-    def abstract(self, epsilon, CEx):
+    def abstract(self, epsilon=1-e1):
         """
         Convert dynamics constraints from nonlinear to linearized using OVERT and epsilon.
         """
         pass
+        # fill self.abstract_constraints
+
+class ControlledTranstionRelation(TransitionRelation):
+    def __init__(self, controller_file=None, dynamics_file=None, epsilon=1-6):
+        super(self).__init__() # states, next states, constraints containers
+        self.controller_file = controller_file
+        self.dynamics_file = dynamics_file
+        self.epsilon = epsilon
+
+class TFControlledOVERTTransitionRelation(ControlledTranstionRelation):
+    
+    def __init__(self, controller_file="", controller_obj=None, dynamics_file="", dynamics_obj=None, epsilon=1e-6):
+        """
+        Constructor takes objs XOR filenames.
+        """
+        super(self).__init__()
+        if controller_file is "":
+            assert(controller_obj is not None)
+            self.controller = controller_obj
+        else:
+            assert(controller_obj is None)
+            self.controller = TFController(network=controller_file)
+        if dynamics_file is "":
+            assert(dynamics_obj is not None)
+            self.dynamics = dynamics_obj
+        else:
+            assert(dynamics_obj is None)
+            self.dynamics = OVERTDynamics(input_file=dynamics_file)
+        # load controller constraints, states from dynamics, and abstract dynamics at some default epsilon
+        # controller constraints loaded by default
+        self.states = dynamics.states # TODO: Is this correct? Or should state refer to every introduced variable?
+        self.next_states = [x+"'" for x in dynamics.states] # [x,y,z] -> [x', y', z']
+        self.abstract(epsilon)
+    
+    def abstract(self, epsilon, CEx=None):
+        """
+        Abstract dynamics.
+        """
+        self.dynamics.abstract(epsilon)
+        self.set_constraints()
+
+    def set_constraints(self):
+        """
+        Fill self.constraints list with appropriate, up-to-date constraints
+        """
+        self.constraints = self.dynamics.abstract_constraints + self.controller.constraints
+        self.match_io()
+    
+    def match_io(self):
+        """
+        precondition: controller and dynamics exist and are valid.
+        Matches inputs and outputs of controller and dynamics.
+        Adds equality constraint(s).
+        """ 
+        # match controller output to dynamics input. 
+        # match "next states" to dynamics outputs?
+        # match dynamics.states to controller inputs?
+        # currently, dynamics.states are taken as the dynamics inputs, so no need to marry them
+        # call matrix_equality_constraint
+
 
 class TransitionSystem:
     def __init__(self, states=Dict(), initial_set=set(), transition_relation=TransitionRelation()):
@@ -84,7 +130,7 @@ class TransitionSystem:
     #     return substitute(self.states[state], state)
 
 class MyTransitionSystem(TransitionSystem):
-    def __init__(self):
+    def __init__(self, states=Dict(), initial_set=set(), transition_relation=TransitionRelation()):
         super.__init__(self)
     
     def abstract(self, epsilon, CEx):

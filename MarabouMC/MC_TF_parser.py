@@ -38,7 +38,7 @@ class TFConstraint:
         self.outputOp = None
         self.numVars = 0
         self.varMap = dict() # maps ops -> vars
-        self.shapeMap = dict() # maps ?? -> ??
+        self.shapeMap = dict() # maps ops -> tensor shapes
         if sess is None:
             self.readFromPb(filename)
         else:
