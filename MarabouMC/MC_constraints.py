@@ -21,14 +21,21 @@ class ConstraintType: #(Enum):
     def __repr__(self): 
         return self.type2str[self._type]
 
+class Monomial:
+    def __init__(self, coeff, var):
+        assert(isinstance(coeff, int) or isinstance(coeff, float))
+        assert(isinstance(var, str))
+        self.coeff = coeff
+        self.var = var
+
 class Constraint:
-    def __init__(self, eqtype: ConstraintType):
+    def __init__(self, eqtype: ConstraintType, monomials=[], scalar = 0):
         """
         sum_i(monomial_i) ConstraintType scalar
         e.g. 5x + 3y <= 0
         """
         self.type = eqtype
-        self.monomials = [] # list of tuples of (coeff, var)
+        self.monomials = monomials 
         self.scalar = 0
     
     def __repr__(self):
@@ -48,7 +55,7 @@ class MatrixConstraint:
     Akin to a Constraint, but for constraints of the form Ax <= b.
     @pre @post If dim(A) = (m,n), dim(x) = n , dim(b) = m 
     """
-    def __init__(self, eqtype: ConstraintType, A=np.array([[]]), x = np.array([]), b = np.array([])):
+    def __init__(self, eqtype: ConstraintType, A=np.array([[]]), x = np.array([[]]), b = np.array([[]])):
         self.type = eqtype
         self.A = A
         self.x = x
@@ -110,3 +117,8 @@ class ReluConstraint():
     def __repr__(self):
         return "<Constraint: " + str(self.varout) + " = relu(" + str(self.varin) + ") >\n"
 
+def matrix_to_scalar(c : MatrixConstraint):
+    """
+    Takes a MatrixConstraint and returns a list of Constraint 
+    """
+    pass
