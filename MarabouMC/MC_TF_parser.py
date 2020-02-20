@@ -17,17 +17,19 @@ from MC_constraints import ConstraintType, Constraint, MatrixConstraint, ReluCon
 import tensorflow as tf
 
 class TFConstraint:
-    def __init__(self, filename, inputNames=None, outputName=None):
+    def __init__(self, filename="", sess=None, inputNames=None, outputName=None):
         """
         Constructs a TFConstraint object from a frozen Tensorflow protobuf
 
         Args:
             filename: (string) path to the frozen graph .pb file.
+            sess: active session with associated graph that we want to parse.
             inputNames: [(string)] optional, names of operations corresponding to inputs.
             outputName: (string) optional, names of operation corresponding to output.
 
         Note: you can always use adds and matmuls to turn multiple output ops into a single output op
         """
+        # initializations
         self.constraints = []
         # aux: 
         self.inputVars = []
@@ -37,7 +39,15 @@ class TFConstraint:
         self.numVars = 0
         self.varMap = dict() # maps ops -> vars
         self.shapeMap = dict() # maps ?? -> ??
-        self.readFromPb(filename, inputNames, outputName)
+        if sess is None:
+            self.readFromPb(filename)
+        else:
+            self.sess = sess # should have associated graph in session
+            # TODO: If tf.Variables haven't been converted to tf.Constants, will this cause
+            # any problems?
+        ##################### The Important Bit ###################################
+        self.parse(inputNames, outputName) 
+        ###########################################################################
         self.relus = [c for c in self.constraints if isinstance(c, ReluConstraint)]
     
     def getNewVariable(self):
@@ -90,14 +100,11 @@ class TFConstraint:
         self.outputOp = op
         self.outputVars = self.opToVarArray(self.outputOp)
         
-    def readFromPb(self, filename, inputNames, outputName):
+    def readFromPb(self, filename):
         """
-        Constructs object from a frozen Tensorflow protobuf 
-
+        Sets self.sess from a frozen Tensorflow protobuf 
         Args:
-            filename: (string) path to the frozen graph .pb file.
-            inputNames: [(string)] optional, name of operation corresponding to input.
-            outputNames: [(string)] optional, name of operation corresponding to output.
+            filename: (string) path to the frozen graph .pb file.  
         """
          ### Read protobuf file and begin session ### after "freezing"
         with tf.gfile.GFile(filename, "rb") as f:
@@ -108,6 +115,11 @@ class TFConstraint:
         self.sess = tf.Session(graph=graph)
         ### END reading protobuf ###
 
+    def parse(self, inputNames, outputName):
+        """
+        inputNames: [(string)] optional, name of operation corresponding to input.
+        outputNames: [(string)] optional, name of operation corresponding to output.
+        """
         # find and set input and output operations
         inputOps, OutputOp = self.find_inputs_outputs(inputNames, outputName)
         self.setInputOps(inputOps)
@@ -450,7 +462,6 @@ class TFConstraint:
         else:
             self.biasAddConstraint(op)
 
-    # bookmark
     def reluConstraint(self, op):
         """
         Function to generate equations corresponding to pointwise Relu
