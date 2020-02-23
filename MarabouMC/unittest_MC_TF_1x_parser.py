@@ -15,9 +15,9 @@ import colored_traceback.always
 # create network
 sess = tf.Session()
 with sess.as_default():
-    x = tf.placeholder(shape=(5,1), dtype='float64')
-    W = np.random.rand(3,5)
-    b = np.random.rand(3,1)
+    x = tf.placeholder(shape=(2,1), dtype='float64')
+    W = np.random.rand(1,2)
+    b = np.random.rand(1,1)
     output = tf.nn.relu(tf.matmul(W,x) + b)
 
 # write graph
@@ -28,7 +28,7 @@ tfconstraints = TFConstraint(filename, inputNames=[x.op.name], outputName=output
 
 # test that output of tf network satisfies constraints of TFConstraint
 # pick random inputs, run with tf graph, get outputs
-inputx = np.random.rand(5,1)
+inputx = np.random.rand(2,1)
 # eval with constraints
 cfeed = dict(zip(tfconstraints.inputVars[0].flatten().tolist(), inputx.flatten().tolist()))
 solutions = tfconstraints.eval_constraints(cfeed)
@@ -42,3 +42,4 @@ print(tfsol)
 
 # assert that they are the same!
 assert(all(np.isclose(output_sols, tfsol)))
+

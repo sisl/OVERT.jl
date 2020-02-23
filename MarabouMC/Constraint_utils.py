@@ -4,10 +4,10 @@ import numpy as np
 from MC_constraints import ConstraintType, Constraint, MatrixConstraint, Monomial, matrix_to_scalar
 
 def matrix_equality_constraint(varsin, varsout):
-    """"
+    """
     preconditions: 
     varsin, varsout are vertical vectors (nx1), of type 2D np array or similar
-    """"
+    """
     # x = y (want in form Az = b)
     # z := [x; y]
     # A = [I, -I]

@@ -57,9 +57,9 @@ class MatrixConstraint:
     """
     def __init__(self, eqtype: ConstraintType, A=np.array([[]]), x = np.array([[]]), b = np.array([[]])):
         self.type = eqtype
-        self.A = A
-        self.x = x
-        self.b = b
+        self.A = A # contains real numbers
+        self.x = x # contains variables
+        self.b = b # contains real numbers
     
     def __repr__(self):
         s = "<Constraint: Ax" + self.type.__repr__() + "b>\n"

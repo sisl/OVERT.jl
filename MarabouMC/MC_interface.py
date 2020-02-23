@@ -1,9 +1,11 @@
-#from enum import Enum
+from enum import Enum
 #import tensorflow as tf
 # from maraboupy import *
-from MC_constraints import Constraint, ConstraintType
+from MC_constraints import Constraint, ConstraintType, MatrixConstraint
 from MC_TF_parser import TFConstraint
 from Constraint_utils import matrix_equality_constraint, equality_constraint
+from copy import deepcopy
+import numpy as np
 
 class Result(Enum):
     UNSAT = 0
@@ -22,13 +24,13 @@ class Controller:
 
 class TFController(Controller):
     def __init__(self, tf_sess=None, network_file="", inputNames=[], outputName=""):
-        super.__init__(self)
+        super().__init__()
         """
         load constraints by parsing network file
         """
-        self.tfconstraintobj = TFConstraint(filename=network_file, sess=tf_sess, inpuNames=inputNames, outputName=outputName)
+        self.tfconstraintobj = TFConstraint(filename=network_file, sess=tf_sess, inputNames=inputNames, outputName=outputName)
         self.constraints = self.tfconstraintobj.constraints
-        self.state_inputs = self.tfconstraintobj.inputVars
+        self.state_inputs = np.array(self.tfconstraintobj.inputVars).flatten().reshape(-1,1)
         self.control_outputs = self.tfconstraintobj.outputVars
         self.relus = self.tfconstraintobj.relus
 
@@ -37,15 +39,15 @@ class Dynamics:
         self.fun = fun # python function representing the dynamics
         self.states = states
         self.control_inputs = controls
-        self.next_states = [x+"'" for x in states] # [x,y,z] -> [x', y', z']
+        self.next_states = np.array([x+"'" for x in states]).reshape(self.states.shape) # [x,y,z] -> [x', y', z']
         self.constraints = [] # constraints over the states and next states
 
 class OVERTDynamics(Dynamics):
-    def __init__(self, input_file=None):
-        super(self).__init__()
+    def __init__(self, fun, states, controls):
+        super().__init__(fun, states, controls)
         self.abstract_constraints = [] # constraints over the states and next states, linearized
 
-    def abstract(self, initial_set, epsilon=1-e1):
+    def abstract(self, initial_set, epsilon=1e-1):
         """
         Convert dynamics constraints from nonlinear to linearized using OVERT and epsilon.
         """
@@ -54,10 +56,10 @@ class OVERTDynamics(Dynamics):
         # add constraints matching self.next_states and what comes out of abstraction generator
 
 class ControlledTranstionRelation(TransitionRelation):
-    def __init__(self, controller_file=None, dynamics_file=None, epsilon=1-6):
-        super(self).__init__() # states, next states, constraints containers
+    def __init__(self, controller_file=None, dynamics_obj=None, epsilon=1-6):
+        super().__init__() # states, next states, constraints containers
         self.controller_file = controller_file
-        self.dynamics_file = dynamics_file
+        self.dynamics_obj = dynamics_obj
         self.epsilon = epsilon
 
 class TFControlledOVERTTransitionRelation(ControlledTranstionRelation):
@@ -66,7 +68,7 @@ class TFControlledOVERTTransitionRelation(ControlledTranstionRelation):
         """
         Constructor takes objs XOR filenames.
         """
-        super(self).__init__()
+        super().__init__(controller_file=controller_file, dynamics_obj=dynamics_obj, epsilon=epsilon)
         self.dynamics = dynamics_obj
         if controller_file is "":
             assert(controller_obj is not None)
@@ -76,12 +78,13 @@ class TFControlledOVERTTransitionRelation(ControlledTranstionRelation):
             self.controller = TFController(network=controller_file)
         # load controller constraints, states from dynamics, and abstract dynamics at some default epsilon
         # controller constraints loaded by default
-        self.states = dynamics.states 
-        self.next_states = dynamics.next_states
+        self.states = self.dynamics.states 
+        self.next_states = self.dynamics.next_states
         # if self.dynamics.abstract_constraints: # if not empty
         #     self.set_constraints()
         # else: # empty
         #     self.abstract(epsilon)
+        self.set_constraints() # TODO: comment out. just for testing.
     
     def abstract(self, initial_set, epsilon, CEx=None):
         """
@@ -106,7 +109,7 @@ class TFControlledOVERTTransitionRelation(ControlledTranstionRelation):
         # match dynamics.states to controller inputs?
         c1 = matrix_equality_constraint(self.dynamics.states, self.controller.state_inputs)
         # match controller output to dynamics control input. 
-        c2 = matrix_equality_constraint(self.controller.control_output, self.dynamics.control_inputs)
+        c2 = matrix_equality_constraint(self.controller.control_outputs, self.dynamics.control_inputs)
         self.constraints.extend([c1,c2])
 
 
@@ -124,82 +127,83 @@ class TransitionSystem:
 
 class MyTransitionSystem(TransitionSystem):
     def __init__(self, states=[], initial_set={}, transition_relation=TransitionRelation()):
-        super.__init__(self)
+        super().__init__(states=states, initial_set=initial_set, transition_relation=transition_relation)
     
     def abstract(self, epsilon, CEx=None):
         self.transition_relation.abstract(self.initial_set, epsilon, CEx=CEx)
 
-def substitute(c: Constraint, mapping): 
+# inspired by cosa2 model checker
+def substitute_c(c: Constraint, mapping): 
     """
     substitute(x+y<0, [x => x@1, y => y@1])
     Used in unroller.
+    Return a NEW object. Do not modify input arg.
     """
-    new_constraint = Constraint(c.type)
-    new_constraint.scalar = c.scalar
-    new_constraint.monomials = c.monomials
-    for mono in new_constraint.monomials:
+    new_c = deepcopy(c)
+    for mono in new_c.monomials:
         mono[1] = mapping[mono[1]]
-    return new_constraint
-    
-# solver
-class MarabouWrapper():
+    return new_c
+
+def substitute_Mc(c: MatrixConstraint, mapping): 
     """
-    A class which converts to the maraboupy interface.
+    substitute(x+y<0, [x => x@1, y => y@1])
+    Used in unroller.
+    Return a NEW object. Do not modify input arg.
     """
-    def __init__(self):
-        # initialize "clean" query?
-        pass
-
-    def clear(self):
-        # init new marabou query
-        pass
-
-    def assert(self, constraints):
-        # store constraints in some sort of internal representation
-        pass
-
-    def assert_init(self, set, states):
-        # assert states /in InitSet set
-        pass
-
-    def convert(self, constraints):
-        """
-        Takes in a set of constraints and converts them to a format that Maraboupy understands.
-        """
-        pass
-
-    def check_sat():
-        # call convert to convert internal representation of timed contraints to marabou vars + ineqs
-        pass
+    new_c = deepcopy(c)
+    xshape = new_c.x.shape
+    new_c.x = np.array([mapping[v] for v in new_c.x.flatten()]).reshape(xshape)
+    return new_c
 
 # property
 class Property():
     """
     Property that you want to hold.
     """
-    def __init__(self):
+    def __init__(self, arg):
         pass
 
     def complement(self):
         # return complement of desired property
         pass
 
+def isprimed(var):
+    # if variable has ' in namestring, it is "primed"
+    return ("'" in var)
+
+# inspired by cosa2 model checker
 class Unroller():
     def __init__(self):
         pass
         self.cache = None # dictionary from original to timed version (may be helpful)
 
-    def at_time_constraint(self, c: Constraint, tstep):
+    def at_time_constraint(self, c, tstep):
         """
         at_time(x+y'<0, 2)
             return x@2 + y@3 < 0
         The timestep passed corresponds to the _unprimed_ variable.
+        c is a Constraint or MatrixConstraint
         """
-        pass
+        if isinstance(c, MatrixConstraint):
+            vars_in_c = c.x.flatten()
+            timed_vars = [v+"@"+str(t) if not isprimed(v) else v+"@"+str(t+1) for v in vars_in_c]
+            return substitute_Mc(c, dict(zip(vars_in_c, timed_vars)))
+        elif isinstance(c, Constraint):
+            vars_in_c = [m[1] for m in c.monomials]
+            timed_vars = [v+"@"+str(t) if not isprimed(v) else v+"@"+str(t+1) for v in vars_in_c]
+            return substitute_c(c, dict(zip(vars_in_c, timed_vars)))
+        else:
+            raise NotImplementedError
 
     def at_time_relation(self, TR: TransitionRelation, tstep):
         # for every constraint in the transition relation, call at_time and do subsitution
-        pass
+        timed_constraints = []
+        for c in TR.constraints: 
+            timed_constraints.append(at_time_constraint(c, tstep))
+        return timed_constraints
+    
+    def at_time_property(self, property, tstep):
+        return [] # 
 
     def untime(self):
         """
@@ -215,11 +219,12 @@ Should be able to run a model checking algo on a specific transition system
 tuple <X, I(x), T(x,x')> and a property
 """
 
+# inspired by cosa2 model checker
 # BMC , a model checking algo
 class BMC():
     def __init__(self, ts, prop_file: str, solver=None):
         self.transition_sys = ts 
-        self.prop = prop_file 
+        self.prop = Property(prop_file) 
         self.solver = solver
         self.unroller = Unroller()
 
@@ -233,18 +238,18 @@ class BMC():
         """
         Check that property p holds at time t. Does not assume holds at time 1:t-1
         """
-        solver.clear() # new query
+        self.solver.clear() # new query
         # assert that state begins in init set
-        solver.assert_init(self.transition_sys.initial, self.transition_sys.states)
+        self.solver.assert_init(self.transition_sys.initial_set, self.transition_sys.states)
 
         # unroll transition relation for time 0 to t
         for j in range(t):
-            solver.assert(self.unroller.at_time_relation(self.transition_sys.transition_relation, j))
+            self.solver.assert_constraint(self.unroller.at_time_relation(self.transition_sys.transition_relation, j))
         
         # assert complement(property) at time t
-        solver.assert(self.unroller.at_time_relation(self.prop.complement(), t))
+        self.solver.assert_constraint(self.unroller.at_time_property(self.prop.complement(), t))
 
-        return solver.check_sat()
+        return self.solver.check_sat()
 
     def check_invariant_until(self, time):
         """

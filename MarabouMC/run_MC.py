@@ -1,10 +1,10 @@
 # script using MC
 from MC_interface import *
-from dynamical_systems import f1
+from dynamical_systems.dynamical_systems import f1
 import numpy as np
 
 controller_file = "mystring.pb"
-property_file = "mystring3.txt"
+property_file = "my_prop1.txt"
 # dynamics in python function f1
 
 my_dynamics = OVERTDynamics(f1, ["x", "theta"], ["u"])
