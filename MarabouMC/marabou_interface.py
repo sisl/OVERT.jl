@@ -50,9 +50,12 @@ class MarabouWrapper():
         for row in range(constraint.A.shape[0]):
             coefficients = constraint.A[row, :]
             scalar = constraint.b[row]
-            self.add_marabou_eq(coefficients, marabou_vars, scalar, constraint.type)
+            self.add_marabou_eq(coefficients, marabou_vars, constraint.type, scalar)
     
-    def add_marabou_eq(coeffs, variables, scalar, eq_type):
+    def assert_relu_constraint(self, relu):
+        MarabouCore.addReluConstraint(ipq, relu.varin, relu.varout)
+    
+    def add_marabou_eq(coeffs, variables, eq_type, scalar):
         assert(len(coeffs) == len(variables))
         eq = MarabouCore.Equation(self.eq_type_map[eq_type])
         for i in range(len(coeffs)):
@@ -73,18 +76,17 @@ class MarabouWrapper():
             self.ipq.setNumberOfVariables(self.ipq.getNumberOfVariables() + 1)
         return self.variable_map[v]
 
-    def assert_init(self, set, states):
-        # assert states /in InitSet set
-        # also used for marking inputs to marabou
-        # TODO: how flexibly should set be represented?
-        pass
-
-    def convert(self, constraints):
+    def assert_init(self, init_set, states):
+        """ assert states /in InitSet set
+        for now, assume set is a box set over inputs
+        of the form: {"x": (0, 5), "theta": (-np.pi/4, np.pi/4)}
         """
-        Takes in a set of constraints and converts them to a format that Maraboupy understands.
-        # something like "getMarabouQuery" in MarabouNetwork.py in maraboupy
-        """
-        pass
+        for k in init_set.keys():
+            input_var = self.get_new_var(k)
+            lower_bound = init_set[k][0]
+            upper_bound = init_set[k][1] 
+            self.ipq.setLowerBound(input_var, lower_bound)
+            self.ipq.setUpperBound(input_var, upper_bound)
 
     def setup_SBT(self):
         # set up the symbolic bound tightener

@@ -171,6 +171,8 @@ def substitute_Mc(c: MatrixConstraint, mapping):
 class Property():
     """
     Property that you want to hold.
+    For now, box set over state variables.
+    Future: linear constraints on outputs OR box set.
     """
     def __init__(self, arg):
         pass
