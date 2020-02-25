@@ -1,6 +1,7 @@
 from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint
 import numpy as np
 from maraboupy import MarabouCore
+from MC_interface import Result
 
 # solver
 class MarabouWrapper():
@@ -19,6 +20,7 @@ class MarabouWrapper():
         self.ipq = MarabouCore.InputQuery()
         self.ipq.setNumberOfVariables(0)
         self.variable_map = {} # maps string names -> integers
+        self.input_vars = []
 
     def assert_constraints(self, constraints):
         # add constraints to Marabou IPQ object
@@ -83,6 +85,7 @@ class MarabouWrapper():
         """
         for k in init_set.keys():
             input_var = self.get_new_var(k)
+            self.input_vars.append(input_var)
             lower_bound = init_set[k][0]
             upper_bound = init_set[k][1] 
             self.ipq.setLowerBound(input_var, lower_bound)
@@ -92,7 +95,30 @@ class MarabouWrapper():
         # set up the symbolic bound tightener
         pass
 
-    def check_sat(self):
-        # call convert to convert internal representation of timed contraints to marabou vars + ineqs
-        # something like "solve" in MarabouNetwork.py in maraboupy
-        pass
+    # inspired by MarabouNetwork.py::solve in Marabou/maraboupy
+    def check_sat(self, output_filename="", timeout=0, vars_of_interest=[]):
+        vals, stats = MarabouCore.solve(self.ipq, output_filename, timeout)
+        if verbose:
+            self.print_results(vals, stats, vars_of_interest=vars_of_interest)
+        if stats.hasTimedOut():
+            return Result.TIMEOUT, vals, stats
+        elif len(vals) == 0:
+            return Result.UNSAT, vals, stats
+        else: # len(vals) /== 0
+            return Result.SAT, vals, stats
+    
+    # directly inspired by MarabouNetwork.py::solve in Marabou/maraboupy
+    def print_results(self, vals, stats, vars_of_interest=[]):
+        if stats.hasTimedOut():
+                print("TO")
+        elif len(vals)==0:
+            print("UNSAT")
+        else:
+            print("SAT")
+            for i in range(len(self.input_vars)):
+                    print("input ", self.input_vars[i], " = " vals[self.inputVars[i])
+            # for i in range(self.outputVars.size):
+            #     print("output {} = {}".format(i, vals[self.outputVars.item(i)]))
+            # TODO: add printing for output vars and some subset of vars you care about (vars_of_interest)
+
+        

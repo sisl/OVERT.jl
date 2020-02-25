@@ -11,6 +11,8 @@ class Result(Enum):
     UNSAT = 0
     SAT = 1
     UNKNOWN = 2
+    ERROR = 3
+    TIMEOUT = 4
     
 class TransitionRelation:
     def __init__(self):
@@ -263,7 +265,7 @@ class BMC():
         # assert complement(property) at time t
         self.solver.assert_constraints(self.unroller.at_time_property(self.prop.complement(), t))
 
-        return self.solver.check_sat()
+        return self.solver.check_sat() # result, values, stats
 
     def check_invariant_until(self, time):
         """
@@ -271,9 +273,10 @@ class BMC():
         """
         # For now "incremental" sort of. 
         for i in range(time):
-            if not self.step_invariant(i): # checks that property holds at i
-                print("Property does not hold at time ", i)
-                return Result.SAT 
+            result, values, stats = self.step_invariant(i): # checks that property holds at i
+            if not (result == Result.UNSAT)
+                print("Property may not hold at time ", i)
+                return result
         return Result.UNSAT ## TODO: make sure this is correct
     
     def step_invariant_assume(self, t):
