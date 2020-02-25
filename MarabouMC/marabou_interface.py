@@ -76,6 +76,7 @@ class MarabouWrapper():
     def assert_init(self, set, states):
         # assert states /in InitSet set
         # also used for marking inputs to marabou
+        # TODO: how flexibly should set be represented?
         pass
 
     def convert(self, constraints):

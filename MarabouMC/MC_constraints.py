@@ -18,6 +18,15 @@ class ConstraintType: #(Enum):
     def __init__(self, type_):
         assert(type_ in self.type2str.keys())
         self._type = type_
+
+    # note: __eq__ and __hash__ are required for making a dictionary where
+    # the keys are of type ConstraintType
+    def __eq__(self, other):
+        return self._type == other._type
+
+    def __hash__(self):
+        return hash(self._type)
+
     def __repr__(self): 
         return self.type2str[self._type]
 

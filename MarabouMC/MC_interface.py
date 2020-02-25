@@ -126,6 +126,18 @@ class TransitionSystem:
     #     return substitute(self.states[state], state)
 
 class MyTransitionSystem(TransitionSystem):
+    """
+    For now, the interface is as follows:
+    states              - list of stringnames of states e.g. ["x", "theta"]
+    initial_set         - dictionary mapping stringnames of states to 'boxes' e.g. {"x": (0, 5), "theta": (-np.pi/4, np.pi/4)}
+    transition_relation - object derived from TransitionRelation class that defines how e.g. x' and theta' are derived
+                            from x and theta
+
+    Future goal:
+    - support input boxes as well as plyhedron constraints for inputs. e.g. if given a polyhedon for input set, apply that
+    as a constraint over inputs but then find smallest bounding box around that polyhedron and use this bounding box for
+    overappoximation algo
+    """
     def __init__(self, states=[], initial_set={}, transition_relation=TransitionRelation()):
         super().__init__(states=states, initial_set=initial_set, transition_relation=transition_relation)
     
@@ -244,10 +256,10 @@ class BMC():
 
         # unroll transition relation for time 0 to t
         for j in range(t):
-            self.solver.assert_constraint(self.unroller.at_time_relation(self.transition_sys.transition_relation, j))
+            self.solver.assert_constraints(self.unroller.at_time_relation(self.transition_sys.transition_relation, j))
         
         # assert complement(property) at time t
-        self.solver.assert_constraint(self.unroller.at_time_property(self.prop.complement(), t))
+        self.solver.assert_constraints(self.unroller.at_time_property(self.prop.complement(), t))
 
         return self.solver.check_sat()
 
