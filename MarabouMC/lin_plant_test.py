@@ -6,10 +6,11 @@ from MC_interface import BMC, TransitionRelation, TransitionSystem, ConstraintPr
 from marabou_interface import MarabouWrapper
 import colored_traceback.always
 
-tr = TransitionRelation()
 # States
+tr = TransitionRelation()
 tr.states = ["x", "y"]
 tr.next_states = [s+"'" for s in tr.states]
+
 # Constraints
 # x' = x + y   ->   x + y - x' = 0
 c1 = Constraint(ConstraintType('EQUALITY'))
@@ -20,8 +21,10 @@ c1.monomials = [Monomial(1, "x"), Monomial(1,"y"), Monomial(-1,"x'")]
 c2 = Constraint(ConstraintType('EQUALITY'))
 c2.monomials = [Monomial(1,"y"), Monomial(-1, "y'")]
 tr.constraints = [c1, c2] #[c1,c2,c3] #
+
 # initial set
 init_set = {"x": (1.1,2), "y": (-1,1)}
+
 # build the transition system as a (S, I(S), TR) tuple
 ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
 
