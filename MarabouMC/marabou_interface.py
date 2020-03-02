@@ -21,6 +21,7 @@ class MarabouWrapper():
         self.ipq.setNumberOfVariables(0)
         self.variable_map = {} # maps string names -> integers
         self.input_vars = []
+        self.constraints = [] # log of things that have been asserted, for debug/double check
 
     def assert_constraints(self, constraints):
         # add constraints to Marabou IPQ object
@@ -28,6 +29,7 @@ class MarabouWrapper():
             self.assert_one_constraint(c)
 
     def assert_one_constraint(self, constraint):
+        self.constraints.append(constraint)
         if isinstance(constraint, MatrixConstraint):
             self.assert_matrix_constraint(constraint)
         elif isinstance(constraint, Constraint):
@@ -74,14 +76,14 @@ class MarabouWrapper():
         MC variable string name.
         """
         if not (v in self.variable_map.keys()):
-            self.variable_map[v] = self.ipq.getNumberOfVariables() + 1
+            self.variable_map[v] = self.ipq.getNumberOfVariables()
             self.ipq.setNumberOfVariables(self.ipq.getNumberOfVariables() + 1)
         return self.variable_map[v]
 
-    def assert_init(self, init_set, states):
-        """ assert states /in InitSet set
+    def assert_init(self, init_set):
+        """ assert states \in InitSet set
         for now, assume set is a box set over inputs
-        of the form: {"x": (0, 5), "theta": (-np.pi/4, np.pi/4)}
+        of the form: {"x@0": (0, 5), "theta@0": (-np.pi/4, np.pi/4)}
         """
         for k in init_set.keys():
             input_var = self.get_new_var(k)
@@ -90,13 +92,23 @@ class MarabouWrapper():
             upper_bound = init_set[k][1] 
             self.ipq.setLowerBound(input_var, lower_bound)
             self.ipq.setUpperBound(input_var, upper_bound)
+    
+    def get_bounds(self):
+        lb = {}
+        ub = {}
+        for v in range(self.ipq.getNumberOfVariables()):
+            lb[v] = self.ipq.getLowerBound(v)
+            ub[v] = self.ipq.getUpperBound(v)
+
+        return lb, ub
 
     def setup_SBT(self):
         # set up the symbolic bound tightener
         pass
 
     # inspired by MarabouNetwork.py::solve in Marabou/maraboupy
-    def check_sat(self, output_filename="", timeout=0, vars_of_interest=[]):
+    def check_sat(self, output_filename="", timeout=0, vars_of_interest=[], verbose=True):
+        # todo: redirect output to cwd/maraboulogs/
         vals, stats = MarabouCore.solve(self.ipq, output_filename, timeout)
         if verbose:
             self.print_results(vals, stats, vars_of_interest=vars_of_interest)
@@ -115,8 +127,11 @@ class MarabouWrapper():
             print("UNSAT")
         else:
             print("SAT")
-            for i in range(len(self.input_vars)):
-                    print("input ", self.input_vars[i], " = " vals[self.inputVars[i])
+            #
+            inverted_var_map = {value: key for key, value in self.variable_map.items()}
+            print("values: ", {(inverted_var_map[k],v) for k,v in vals.items()})
+            # for i in range(len(self.input_vars)):
+            #     print("input ", self.input_vars[i], " = ", vals[self.inputVars[i]])
             # for i in range(self.outputVars.size):
             #     print("output {} = {}".format(i, vals[self.outputVars.item(i)]))
             # TODO: add printing for output vars and some subset of vars you care about (vars_of_interest)

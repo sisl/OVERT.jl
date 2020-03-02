@@ -51,10 +51,10 @@ class Constraint:
         out = ""
         if len(self.monomials) > 0:
             first_m = self.monomials[0]
-            out += str(first_m[0]) + "*" + str(first_m[1])
+            out += str(first_m.coeff) + "*" + str(first_m.var)
         for i in range(1,len(self.monomials)):
             m = self.monomials[i]
-            out += " + " + str(m[0]) + "*" + str(m[1])
+            out += " + " + str(m.coeff) + "*" + str(m.var)
         out += " " + self.type.__repr__() + " "
         out += str(self.scalar)
         return out

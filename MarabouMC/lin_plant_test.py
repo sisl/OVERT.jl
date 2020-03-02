@@ -2,8 +2,9 @@
 
 import numpy as np
 from MC_constraints import Constraint, ConstraintType, Monomial
-from MC_interface import BMC, TransitionRelation, ConstraintProperty
+from MC_interface import BMC, TransitionRelation, TransitionSystem, ConstraintProperty
 from marabou_interface import MarabouWrapper
+import colored_traceback.always
 
 tr = TransitionRelation()
 # States
@@ -11,7 +12,7 @@ tr.states = ["x", "y"]
 tr.next_states = [s+"'" for s in tr.states]
 # Constraints
 # x' = x + y   ->   x + y - x' = 0
-c1 = Constraint(ConstrantType('EQUALITY'))
+c1 = Constraint(ConstraintType('EQUALITY'))
 c1.monomials = [Monomial(1, "x"), Monomial(1,"y"), Monomial(-1,"x'")]
 # y' = y  ->  y - y' = 0
 c2 = Constraint(ConstraintType('EQUALITY'))
@@ -32,7 +33,7 @@ p.monomials = [Monomial(1, "x")]
 prop = ConstraintProperty([p])
 
 # algo
-algo = BMC(ts = transition_system, prop = ConstraintProperty, solver=solver)
+algo = BMC(ts = ts, prop = prop, solver=solver)
 algo.check_invariant_until(3)
 
 

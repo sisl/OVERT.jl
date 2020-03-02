@@ -156,7 +156,7 @@ def substitute_c(c: Constraint, mapping):
     """
     new_c = deepcopy(c)
     for mono in new_c.monomials:
-        mono[1] = mapping[mono[1]]
+        mono.var = mapping[mono.var]
     return new_c
 
 def substitute_Mc(c: MatrixConstraint, mapping): 
@@ -220,7 +220,7 @@ class Unroller():
         pass
         self.cache = None # dictionary from original to timed version (may be helpful)
 
-    def at_time_constraint(self, c, tstep):
+    def at_time_constraint(self, c, t):
         """
         at_time(x+y'<0, 2)
             return x@2 + y@3 < 0
@@ -229,11 +229,11 @@ class Unroller():
         """
         if isinstance(c, MatrixConstraint):
             vars_in_c = c.x.flatten()
-            timed_vars = [v+"@"+str(t) if not isprimed(v) else v+"@"+str(t+1) for v in vars_in_c]
+            timed_vars = [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in vars_in_c]
             return substitute_Mc(c, dict(zip(vars_in_c, timed_vars)))
         elif isinstance(c, Constraint):
-            vars_in_c = [m[1] for m in c.monomials]
-            timed_vars = [v+"@"+str(t) if not isprimed(v) else v+"@"+str(t+1) for v in vars_in_c]
+            vars_in_c = [m.var for m in c.monomials]
+            timed_vars = [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in vars_in_c]
             return substitute_c(c, dict(zip(vars_in_c, timed_vars)))
         else:
             raise NotImplementedError
@@ -242,15 +242,22 @@ class Unroller():
         # for every constraint in the transition relation, call at_time and do subsitution
         timed_constraints = []
         for c in TR.constraints: 
-            timed_constraints.append(at_time_constraint(c, tstep))
+            timed_constraints.append(self.at_time_constraint(c, tstep))
         return timed_constraints
     
     def at_time_property(self, prop, tstep):
         # ALWAYS ASSERT THE COMPLEMENT OF THE PROPERTY!!!
         timed = []
         for ccomp in prop.constraint_complements:
-            timed.append(at_time_constraint(ccomp, tstep))
+            timed.append(self.at_time_constraint(ccomp, tstep))
         return timed
+
+    def at_time_init(self, init_set):
+        ## for now, assume boxes. Single dict.
+        timed_init_set = {}
+        for k in init_set.keys():
+            timed_init_set[k+"@0"] = init_set[k]
+        return timed_init_set
 
     def untime(self):
         """
@@ -269,7 +276,7 @@ tuple <X, I(x), T(x,x')> and a property
 # inspired by cosa2 model checker
 # BMC , a model checking algo
 class BMC():
-    def __init__(self, ts, prop_file = "": str, prop=None, solver=None):
+    def __init__(self, ts, prop_file = "", prop=None, solver=None):
         self.transition_sys = ts 
         if prop:
             self.prop = prop
@@ -290,7 +297,7 @@ class BMC():
         """
         self.solver.clear() # new query
         # assert that state begins in init set
-        self.solver.assert_init(self.transition_sys.initial_set, self.transition_sys.states)
+        self.solver.assert_init(self.unroller.at_time_init(self.transition_sys.initial_set))
 
         # unroll transition relation for time 0 to t
         for j in range(t):
@@ -308,8 +315,8 @@ class BMC():
         """
         # For now "incremental" sort of. 
         for i in range(time):
-            result, values, stats = self.step_invariant(i): # checks that property holds at i
-            if not (result == Result.UNSAT)
+            result, values, stats = self.step_invariant(i) # checks that property holds at i
+            if not (result == Result.UNSAT):
                 print("Property may not hold at time ", i)
                 return result
         return Result.UNSAT ## TODO: make sure this is correct
