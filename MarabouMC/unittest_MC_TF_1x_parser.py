@@ -23,11 +23,10 @@ with sess.as_default():
     output = tf.nn.relu(tf.matmul(W,x) + b)
     sess.run(tf.global_variables_initializer()) # actually sets Variable values to values specified
 
-# write graph
-filename = write_graphdef(sess, output)
-
 # read graphdef
 if write_to_file:
+    # write graph
+    filename = write_graphdef(sess, output)
     tfconstraints = TFConstraint(filename, inputNames=[x.op.name], outputName=output.op.name)
 else:
     # smoosh all Variables to Constants, put into new graph
