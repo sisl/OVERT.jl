@@ -1,7 +1,7 @@
 from enum import Enum
 #import tensorflow as tf
 # from maraboupy import *
-from MC_constraints import Constraint, ConstraintType, MatrixConstraint
+from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint
 from MC_TF_parser import TFConstraint
 from Constraint_utils import matrix_equality_constraint, equality_constraint
 from copy import deepcopy
@@ -119,6 +119,7 @@ class TransitionSystem:
     def __init__(self, states=[], initial_set={}, transition_relation=TransitionRelation()):
         self.states = states 
         self.initial_set = initial_set # set of inequalities over states
+        # e.g. init_set = {"x": (0, 5), "theta": (-np.pi/4, np.pi/4)}
         self.transition_relation = transition_relation # object of class TransitionRelation
 
     # def simple_next(self, state):
@@ -183,6 +184,32 @@ class Property():
         # return complement of desired property
         pass
 
+# property
+class ConstraintProperty():
+    """
+    Property that you want to hold. A list of constraints in CNF.
+    """
+    def __init__(self, c):
+        self.constraints = c
+
+    def complement(self):
+        # return complement of desired property
+        # for now, only support single constraint
+        assert(len(self.constraints) == 1)
+        c = self.constraints[0]
+        if c.type == ConstraintType('GREATER'):
+            ccomp = Constraint(ConstraintType('LESS_EQ'))
+            ccomp.monomials = c.monomials
+        else:
+            ccomp = None
+            raise NotImplementedError
+        self.constraint_complements = [ccomp]
+        # for future, a code sketch:
+        # complements = []
+        # for c in self.constraints:
+        #     complement.append(self.negate(c)) 
+        # then disjunct all the complements using MaxConstraint
+
 def isprimed(var):
     # if variable has ' in namestring, it is "primed"
     return ("'" in var)
@@ -218,8 +245,12 @@ class Unroller():
             timed_constraints.append(at_time_constraint(c, tstep))
         return timed_constraints
     
-    def at_time_property(self, property, tstep):
-        return [] # 
+    def at_time_property(self, prop, tstep):
+        # ALWAYS ASSERT THE COMPLEMENT OF THE PROPERTY!!!
+        timed = []
+        for ccomp in prop.constraint_complements:
+            timed.append(at_time_constraint(ccomp, tstep))
+        return timed
 
     def untime(self):
         """
@@ -238,9 +269,12 @@ tuple <X, I(x), T(x,x')> and a property
 # inspired by cosa2 model checker
 # BMC , a model checking algo
 class BMC():
-    def __init__(self, ts, prop_file: str, solver=None):
+    def __init__(self, ts, prop_file = "": str, prop=None, solver=None):
         self.transition_sys = ts 
-        self.prop = Property(prop_file) 
+        if prop:
+            self.prop = prop
+        else:
+            self.prop = Property(prop_file) 
         self.solver = solver
         self.unroller = Unroller()
 
@@ -263,7 +297,8 @@ class BMC():
             self.solver.assert_constraints(self.unroller.at_time_relation(self.transition_sys.transition_relation, j))
         
         # assert complement(property) at time t
-        self.solver.assert_constraints(self.unroller.at_time_property(self.prop.complement(), t))
+        self.prop.complement()
+        self.solver.assert_constraints(self.unroller.at_time_property(self.prop, t))
 
         return self.solver.check_sat() # result, values, stats
 

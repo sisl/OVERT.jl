@@ -38,12 +38,12 @@ class Monomial:
         self.var = var
 
 class Constraint:
-    def __init__(self, eqtype: ConstraintType, monomials=[], scalar = 0):
+    def __init__(self, ctype: ConstraintType, monomials=[], scalar = 0):
         """
         sum_i(monomial_i) ConstraintType scalar
         e.g. 5x + 3y <= 0
         """
-        self.type = eqtype
+        self.type = ctype
         self.monomials = monomials 
         self.scalar = 0
     

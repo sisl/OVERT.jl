@@ -25,7 +25,9 @@ overapprox_nd(:(log(2)*x), Dict(:x=>[0,1]))
 
 overapprox_nd(:(2*log(x)), Dict(:x=>[1,2]))
 
-overapprox_nd(:(exp(2*sin(x) + y) - log(6)*z), Dict{Symbol, Array{Float64,1}}(:x=>[0,1], :z=>[0,π], :y=>[-π,π]) )
+expr = :(exp(2*sin(x) + y) - log(6)*z)
+init_set = Dict{Symbol, Array{Float64,1}}(:x=>[0,1], :z=>[0,π], :y=>[-π,π])
+oa = overapprox_nd(expr, init_set)
 
 #
 b1 = OverApproximation()
