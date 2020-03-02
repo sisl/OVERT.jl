@@ -170,6 +170,18 @@ def substitute_Mc(c: MatrixConstraint, mapping):
     new_c.x = np.array([mapping[v] for v in new_c.x.flatten()]).reshape(xshape)
     return new_c
 
+def substitute_relu(c: ReluConstraint, mapping):
+    """
+    substitute(y = relu(x), [x => x@1, y => y@1])
+    Used in unroller.
+    Return a NEW object. Do not modify input arg.
+    """
+    new_c = deepcopy(c)
+    new_c.varin = mapping[c.varin]
+    new_c.varout = mapping[c.varout]
+    return new_c
+    
+
 # property
 class Property():
     """
@@ -194,12 +206,13 @@ class ConstraintProperty():
 
     def complement(self):
         # return complement of desired property
-        # for now, only support single constraint
+        # for now, only support single simple constraint
         assert(len(self.constraints) == 1)
         c = self.constraints[0]
         if c.type == ConstraintType('GREATER'):
             ccomp = Constraint(ConstraintType('LESS_EQ'))
             ccomp.monomials = c.monomials
+            ccomp.scalar = c.scalar
         else:
             ccomp = None
             raise NotImplementedError
@@ -235,6 +248,10 @@ class Unroller():
             vars_in_c = [m.var for m in c.monomials]
             timed_vars = [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in vars_in_c]
             return substitute_c(c, dict(zip(vars_in_c, timed_vars)))
+        elif isinstance(c, ReluConstraint):
+            vars_in_c = [c.varin, c.varout]
+            timed_vars = [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in vars_in_c]
+            return substitute_relu(c, dict(zip(vars_in_c, timed_vars)))
         else:
             raise NotImplementedError
 
@@ -340,8 +357,7 @@ class BMC():
 
 def CEGAR(algo, max_iters, epsilon):
     """
-    Counter Example Guided Abstraction Refinement.
-    algo object with transi
+    (Counter Example Guided) Abstraction Refinement.
     """    
     # while property has not been verified and the maximum number of iterations
     # has not yet been exceeded, refine and try again

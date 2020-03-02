@@ -57,7 +57,7 @@ class MarabouWrapper():
             self.add_marabou_eq(coefficients, marabou_vars, constraint.type, scalar)
     
     def assert_relu_constraint(self, relu):
-        MarabouCore.addReluConstraint(ipq, relu.varin, relu.varout)
+        MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout))
     
     def add_marabou_eq(coeffs, variables, eq_type, scalar):
         assert(len(coeffs) == len(variables))
