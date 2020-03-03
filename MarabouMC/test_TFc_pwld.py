@@ -61,7 +61,7 @@ prop = ConstraintProperty([p])
 algo = BMC(ts = ts, prop = prop, solver=solver)
 algo.check_invariant_until(3)
 
-# random runs
+# random runs to give intuition to MC result
 for i in range(10):
     x = np.random.rand()*(2 - 1.1) + 1.1
     print("x@0=", x)
