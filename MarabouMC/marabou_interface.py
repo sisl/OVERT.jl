@@ -59,7 +59,7 @@ class MarabouWrapper():
     def assert_relu_constraint(self, relu):
         MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout))
     
-    def add_marabou_eq(coeffs, variables, eq_type, scalar):
+    def add_marabou_eq(self, coeffs, variables, eq_type, scalar):
         assert(len(coeffs) == len(variables))
         eq = MarabouCore.Equation(self.eq_type_map[eq_type])
         for i in range(len(coeffs)):
@@ -81,7 +81,7 @@ class MarabouWrapper():
         return self.variable_map[v]
 
     def assert_init(self, init_set):
-        """ assert states \in InitSet set
+        """ assert states in InitSet set
         for now, assume set is a box set over inputs
         of the form: {"x@0": (0, 5), "theta@0": (-np.pi/4, np.pi/4)}
         """

@@ -464,21 +464,22 @@ class TFConstraint:
 
     def reluConstraint(self, op):
         """
-        Function to generate equations corresponding to pointwise Relu
+        Function to generate constraints corresponding to pointwise Relu
         Arguments:
             op: (tf.op) representing Relu operation
         """
 
         ### Get variables and constants of inputs ###
         input_ops = [i.op for i in op.inputs]
-        inputValues = self.getValues(input_ops[0]).reshape(-1)
-        outputValues = self.getValues(op).reshape(-1)
+        inputValues = np.array(self.getValues(input_ops[0]), dtype='object').flatten()
+        outputValues = np.array(self.getValues(op), dtype='object').flatten()
         assert len(inputValues) == len(outputValues)
         ### END getting inputs ###
 
         ### Generate actual constraint ###
-        c = ReluConstraint(varin=inputValues, varout=outputValues)
-        self.constraints.append(c)
+        for inp, outp in zip(inputValues, outputValues):
+            c = ReluConstraint(varin=inp, varout=outp)
+            self.constraints.append(c)
 
 
     def eval_constraints(self, solution_dict = {}):

@@ -74,7 +74,7 @@ class Unroller():
             timed_vars = [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in vars_in_c]
             return substitute_c(c, dict(zip(vars_in_c, timed_vars)))
         elif isinstance(c, ReluConstraint):
-            vars_in_c = [c.varin, c.varout]
+            vars_in_c = np.array([c.varin, c.varout]).flatten()
             timed_vars = [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in vars_in_c]
             return substitute_relu(c, dict(zip(vars_in_c, timed_vars)))
         else:

@@ -1,5 +1,6 @@
 # transition system component classes
 from MC_TF_parser import TFConstraint
+from Constraint_utils import matrix_equality_constraint
 import numpy as np
 
 class TransitionRelation:
@@ -27,9 +28,9 @@ class TFController(Controller):
 class Dynamics:
     def __init__(self, fun, states, controls):
         self.fun = fun # python function representing the dynamics
-        self.states = states
-        self.control_inputs = controls
-        self.next_states = np.array([x+"'" for x in states]).reshape(self.states.shape) # [x,y,z] -> [x', y', z']
+        self.states = np.array(states).reshape(-1,1)
+        self.control_inputs = np.array(controls).reshape(-1,1)
+        self.next_states = np.array([x+"'" for x in states.flatten()]).reshape(self.states.shape) # [x,y,z] -> [x', y', z']
         self.constraints = [] # constraints over the states and next states
 
 class OVERTDynamics(Dynamics):
@@ -89,7 +90,7 @@ class TFControlledTransitionRelation(ControlledTranstionRelation):
             controller = controller_obj
         else:
             assert(controller_obj is None)
-            controller = TFController(network=controller_file)
+            controller = TFController(network_file=controller_file)
         super().__init__(controller_file=controller_file, controller_obj=controller, dynamics_obj=dynamics_obj, epsilon=epsilon)
             
 
@@ -100,7 +101,7 @@ class TFControlledOVERTTransitionRelation(TFControlledTransitionRelation):
         Constructor takes objs XOR filenames.
         """
         # inherited constructor should call self.set_constraints()
-        super().__init__(controller_file=controller_file, controller_obj=controller, dynamics_obj=dynamics_obj, epsilon=epsilon)
+        super().__init__(controller_file=controller_file, controller_obj=controller_obj, dynamics_obj=dynamics_obj, epsilon=epsilon)
     
     def abstract(self, initial_set, epsilon, CEx=None):
         """
