@@ -7,7 +7,7 @@
 
 import tensorflow as tf # 1.x
 import numpy as np
-from write_graphdef import write_graphdef
+from tf_utils import write_graphdef, smoosh_to_const
 from MC_TF_parser import TFConstraint
 import os
 import colored_traceback.always
@@ -30,10 +30,7 @@ if write_to_file:
     tfconstraints = TFConstraint(filename, inputNames=[x.op.name], outputName=output.op.name)
 else:
     # smoosh all Variables to Constants, put into new graph
-    new_graph_def = tf.compat.v1.graph_util.convert_variables_to_constants(sess, sess.graph.as_graph_def(), [output.op.name])
-    new_graph = tf.Graph()
-    with new_graph.as_default():
-        tf.import_graph_def(new_graph_def, name="")
+    new_graph = smoosh_to_const(sess, outout.op.name)
     tfconstraints = TFConstraint(sess=tf.Session(graph=new_graph), inputNames=[x.op.name], outputName=output.op.name)
 
 # test that output of tf network satisfies constraints of TFConstraint

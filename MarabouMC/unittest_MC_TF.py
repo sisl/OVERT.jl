@@ -4,7 +4,6 @@
 ## Chelsea Sidrane
 ################################
 
-
 import tensorflow as tf # 1.x
 import numpy as np
 from write_graphdef import write_graphdef

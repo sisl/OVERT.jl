@@ -2,7 +2,9 @@
 
 import numpy as np
 from MC_constraints import Constraint, ConstraintType, Monomial, ReluConstraint
-from MC_interface import BMC, TransitionRelation, TransitionSystem, ConstraintProperty
+from transition_systems import TransitionRelation, TransitionSystem
+from properties import ConstraintProperty
+from MC_interface import BMC
 from marabou_interface import MarabouWrapper
 import colored_traceback.always
 
@@ -12,20 +14,19 @@ tr.states = ["x", "y"]
 tr.next_states = [s+"'" for s in tr.states]
 
 # Constraints
-# x' = x + y   ->   x + y - x' = 0
+# x' = relu(x + y)   ->   x + y - z = 0 , x' = relu(z)
 c1 = Constraint(ConstraintType('EQUALITY'))
-c1.monomials = [Monomial(1, "x"), Monomial(1,"y"), Monomial(-1,"x'")]
-#c1.monomials = [Monomial(1, "x"), Monomial(1,"y"), Monomial(-1,"z")]
-#c3 = ReluConstraint(varin="z", varout="x'")
+c1.monomials = [Monomial(1, "x"), Monomial(1,"y"), Monomial(-1,"z")]
+c3 = ReluConstraint(varin="z", varout="x'")
 # y' = y  ->  y - y' = 0
 c2 = Constraint(ConstraintType('EQUALITY'))
 c2.monomials = [Monomial(1,"y"), Monomial(-1, "y'")]
-tr.constraints = [c1, c2] #[c1,c2,c3] #
+tr.constraints = [c1,c2,c3] 
 
 # initial set
 init_set = {"x": (1.1,2), "y": (-1,1)}
 
-# build the transition system as a (S, I(S), TR) tuple
+# build the transition system as an (S, I(S), TR) tuple
 ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
 
 # solver
@@ -35,7 +36,7 @@ solver = MarabouWrapper()
 p = Constraint(ConstraintType('GREATER'))
 # x > c (complement will be x <= c)
 p.monomials = [Monomial(1, "x")]
-p.scalar = 0 #-1. #
+p.scalar = -1. # 0 #
 prop = ConstraintProperty([p])
 
 # algo

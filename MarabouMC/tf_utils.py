@@ -21,3 +21,10 @@ def write_graphdef(sess, output):
         print("%d ops in the final graph." % len(output_graph_def.node))
 
     return output_graph_filename
+
+def smoosh_to_const(sess, output_op_name):
+    new_graph_def = tf.compat.v1.graph_util.convert_variables_to_constants(sess, sess.graph.as_graph_def(), [output_op_name])
+    new_graph = tf.Graph()
+    with new_graph.as_default():
+        tf.import_graph_def(new_graph_def, name="")
+    return new_graph
