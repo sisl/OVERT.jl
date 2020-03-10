@@ -66,6 +66,7 @@ class MatrixConstraint:
     @pre If dim(A) = (m,n), dim(x) = n , dim(b) = m 
     """
     def __init__(self, eqtype: ConstraintType, A=np.array([[]]), x = np.array([[]]), b = np.array([[]])):
+        # add assertions for the precondition
         self.type = eqtype
         self.A = A # contains real numbers
         self.x = x # contains variables. # when parsed from tf, will be numpy arrays.
