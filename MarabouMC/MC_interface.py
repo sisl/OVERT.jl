@@ -3,6 +3,7 @@ from enum import Enum
 # from maraboupy import *
 from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint
 from Constraint_utils import matrix_equality_constraint, equality_constraint
+from properties import Property, ConstraintProperty
 from transition_systems import TransitionRelation
 from copy import deepcopy
 import numpy as np

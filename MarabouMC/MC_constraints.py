@@ -60,7 +60,10 @@ class Constraint(AbstractConstraint):
         e.g. 5x + 3y <= 0
         """
         super().__init__()
-        self.type = ctype
+        if isinstance(ctype, str):
+            self.type = ConstraintType(ctype)
+        elif isinstance(ctype, ConstraintType):
+            self.type = ctype
         self.monomials = monomials 
         self.scalar = scalar
     
@@ -153,12 +156,12 @@ class MaxConstraint():
     """
     varout = max(var1in, var2in)
     """
-    def __init__(self, var1in, var2in, varout):
-        self.var1in = var1in
-        self.var2in = var2in
+    def __init__(self, varsin, varout):
+        self.var1in = varsin[0]
+        self.var2in = varsin[1]
         self.varout = varout
     def __repr__(self):
-        return "<Constraint: " + str(self.varout) + " = max(" + str(self.var1in) + " , " + str(self.var2in) + ") >\n"   
+        return str(self.varout) + " = max(" + str(self.var1in) + " , " + str(self.var2in) + ")"   
 
 def matrix_to_scalar(c : MatrixConstraint):
     """
