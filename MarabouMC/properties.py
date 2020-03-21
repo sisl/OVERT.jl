@@ -36,7 +36,7 @@ class ConstraintProperty():
         elif c.type == ConstraintType('LESS'):
             ccomp = Constraint(ConstraintType('GREATER_EQ'))
         elif c.type == ConstraintType('GREATER_EQ'):
-            ccomp = Constraint(ConstraintType('LESS_EQ'))
+            ccomp = Constraint(ConstraintType('LESS'))
         elif c.type == ConstraintType('LESS_EQ'):
             ccomp = Constraint(ConstraintType('GREATER'))
         else:

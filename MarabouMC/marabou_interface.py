@@ -40,11 +40,10 @@ class MarabouWrapper():
             raise NotImplementedError
     
     def assert_simple_constraint(self, constraint):
-        eq = MarabouCore.Equation(self.eq_type_map[constraint.type])
-        for m in constraint.monomials:
-            eq.addAddend(m.coeff, self.get_new_var(m.var))
-        eq.setScalar(constraint.scalar)
-        self.ipq.addEquation(eq)
+        coeffs = [m.coeff for m in constraint.monomials]
+        constraint_vars = [m.var for m in constraint.monomials]
+        marabou_vars = self.get_new_vars(constraint_vars)
+        self.add_marabou_eq(coeffs, marabou_vars, constraint.type, constraint.scalar)
     
     def assert_matrix_constraint(self, constraint):
         # form: Ax R b
@@ -60,6 +59,10 @@ class MarabouWrapper():
         MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout))
     
     def add_marabou_eq(self, coeffs, variables, eq_type, scalar):
+        if eq_type in [ConstraintType('LESS'), ConstraintType('GREATER')]:
+            raise NotImplementedError
+            # TODO: apply epsilon conversion by adding a slack variable = epsilon
+            # to convert from a strict inequality to a non-strict one
         assert(len(coeffs) == len(variables))
         eq = MarabouCore.Equation(self.eq_type_map[eq_type])
         for i in range(len(coeffs)):
