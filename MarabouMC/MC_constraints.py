@@ -1,6 +1,7 @@
 # Base types for MC interface
 # from enum import Enum
 import numpy as np
+import copy
 
 class ConstraintType: #(Enum):
     # EQUALITY = 0
@@ -37,6 +38,9 @@ class Monomial:
         assert(isinstance(var, str))
         self.coeff = coeff
         self.var = var
+    def __neg__(self):
+        """Unary negation"""
+        return Monomial(-self.coeff, self.var)
 
 class AbstractConstraint:
     def __init__(self):
@@ -65,6 +69,30 @@ class Constraint(AbstractConstraint):
         ccomp.monomials = self.monomials
         ccomp.scalar = self.scalar
         return ccomp
+
+    def get_geq(self):
+        """
+        Return a equivalent version of this constraint with >=
+        as the relational operator.
+        """
+        geq_c = Constraint(ConstraintType('GREATER_EQ'))
+        if self.type == ConstraintType('LESS_EQ'):
+            # flip all coeff signs and scalar sign and change to >=
+            geq_c.monomials = [-m for m in self.monomials]
+            geq_c.scalar = -self.scalar
+        elif self.type == ConstraintType('GREATER_EQ'):
+            geq_c = copy.deepcopy(self)
+        else: # asking for conversion from strict ineq to non-strict ineq
+            # if complement, we want to go from e.g.
+                # 5x + 6y < 6 
+                # to 5x + 6y <= 6.001
+            # if regular assertion (not inverted) we want to go from e.g.
+                # 5x + 6y < 6
+                # to 5x + 6y <= 5.999
+            raise NotImplementedError
+        
+        return geq_c
+
     
     def __repr__(self):
         out = ""
