@@ -6,7 +6,7 @@
 
 import tensorflow as tf # 1.x
 import numpy as np
-from write_graphdef import write_graphdef
+from tf_utils import write_graphdef
 from MC_TF_parser import TFConstraint
 import os
 import colored_traceback.always
@@ -44,7 +44,8 @@ assert(all(np.isclose(output_sols, tfsol)))
 
 # do MC! ######################################################################################
 from dynamical_systems.dynamical_systems import f1
-from MC_interface import OVERTDynamics, TFControlledOVERTTransitionRelation, MyTransitionSystem, BMC, TFController
+from transition_systems import OVERTDynamics, TFControlledOVERTTransitionRelation, MyTransitionSystem, TFController
+from MC_interface import BMC
 from marabou_interface import MarabouWrapper
 
 my_dynamics = OVERTDynamics(f1, np.array([["x"], ["theta"]], dtype=object), np.array([["u"]], dtype=object))

@@ -30,7 +30,7 @@ if write_to_file:
     tfconstraints = TFConstraint(filename, inputNames=[x.op.name], outputName=output.op.name)
 else:
     # smoosh all Variables to Constants, put into new graph
-    new_graph = smoosh_to_const(sess, outout.op.name)
+    new_graph = smoosh_to_const(sess, output.op.name)
     tfconstraints = TFConstraint(sess=tf.Session(graph=new_graph), inputNames=[x.op.name], outputName=output.op.name)
 
 # test that output of tf network satisfies constraints of TFConstraint

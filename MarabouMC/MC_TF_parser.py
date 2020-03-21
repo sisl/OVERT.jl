@@ -509,8 +509,11 @@ class TFConstraint:
                     solution_dict[c.x[i][0]] = sol_list[i]
             else:
                 # if isa ReluConstraint
-                for i in range(len(c.varout)):
-                    solution_dict[c.varout[i]] = max(0, solution_dict[c.varin[i]])
+                if isinstance(c.varout, str): # if relates single variables
+                    solution_dict[c.varout] = max(0, solution_dict[c.varin])
+                else: # if relates containers of variables
+                    for i in range(len(c.varout)):
+                        solution_dict[c.varout[i]] = max(0, solution_dict[c.varin[i]])
 
         return solution_dict
 

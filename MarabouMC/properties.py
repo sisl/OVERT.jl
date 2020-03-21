@@ -14,7 +14,7 @@ class Property():
 
     def complement(self):
         # return complement of desired property
-        pass
+        raise NotImplementedError
 
 # property
 class ConstraintProperty():
