@@ -32,7 +32,7 @@ class ConstraintType: #(Enum):
 
 class Monomial:
     def __init__(self, coeff, var):
-        assert(isinstance(coeff, int) or isinstance(coeff, float))
+        assert(np.isreal(coeff)) 
         assert(isinstance(var, str))
         self.coeff = coeff
         self.var = var
@@ -45,7 +45,26 @@ class Constraint:
         """
         self.type = ctype
         self.monomials = monomials 
-        self.scalar = 0
+        self.scalar = scalar
+    
+    def complement(self):
+        # return complement of constraint
+        if self.type == ConstraintType('GREATER'):
+            ccomp = Constraint(ConstraintType('LESS_EQ'))
+        elif self.type == ConstraintType('LESS'):
+            ccomp = Constraint(ConstraintType('GREATER_EQ'))
+        elif self.type == ConstraintType('GREATER_EQ'):
+            print("Warning: Can solver handle strict inequalities?")
+            ccomp = Constraint(ConstraintType('LESS'))
+        elif self.type == ConstraintType('LESS_EQ'):
+            print("Warning: Can solver handle strict inequalities?")
+            ccomp = Constraint(ConstraintType('GREATER'))
+        else:
+            ccomp = None
+            raise NotImplementedError
+        ccomp.monomials = self.monomials
+        ccomp.scalar = self.scalar
+        return ccomp
     
     def __repr__(self):
         out = ""
@@ -89,8 +108,30 @@ class ReluConstraint():
     def __repr__(self):
         return "<Constraint: " + str(self.varout) + " = relu(" + str(self.varin) + ") >\n"
 
+class MaxConstraint():
+    """
+    varout = max(var1in, var2in)
+    """
+    def __init__(self, var1in, var2in, varout):
+        self.var1in = var1in
+        self.var2in = var2in
+        self.varout = varout
+    def __repr__(self):
+        return "<Constraint: " + str(self.varout) + " = max(" + str(self.var1in) + " , " + str(self.var2in) + ") >\n"   
+
 def matrix_to_scalar(c : MatrixConstraint):
     """
-    Takes a MatrixConstraint and returns a list of Constraint 
+    Takes a MatrixConstraint and returns a list of Constraint s
     """
-    pass
+    # form: Ax R b
+    # for every row in A, add a Marabou 'equation'
+    scalar_constraints = []
+    for row in range(c.A.shape[0]):
+        coefficients = c.A[row, :]
+        scalar = c.b[row]
+        # construct monomials list 
+        monomials = [Monomial(c,v) for c,v in zip(coefficients, c.x)]
+        scalar_constraints.append(Constraint(c.type, monomials=monomials, scalar=scalar))
+    return scalar_constraints
+
+
