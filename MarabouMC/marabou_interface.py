@@ -63,6 +63,8 @@ class MarabouWrapper():
             raise NotImplementedError
             # TODO: apply epsilon conversion by adding a slack variable = epsilon
             # to convert from a strict inequality to a non-strict one
+        elif eq_type == ConstraintType('NOT_EQUAL'):
+            raise NotImplementedError
         assert(len(coeffs) == len(variables))
         eq = MarabouCore.Equation(self.eq_type_map[eq_type])
         for i in range(len(coeffs)):

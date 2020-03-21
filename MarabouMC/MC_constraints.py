@@ -9,7 +9,8 @@ class ConstraintType: #(Enum):
     # GREATER_EQ = 3
     # GREATER = 4
     type2str = {
-        'EQUALITY': "=",
+        'EQUALITY': "==",
+        'NOT_EQUAL': "not==",
         'LESS_EQ': "<=",
         'LESS' : "<",
         'GREATER_EQ' : ">=",
@@ -37,31 +38,30 @@ class Monomial:
         self.coeff = coeff
         self.var = var
 
-class Constraint:
+class AbstractConstraint:
+    def __init__(self):
+        self.type_complement = {
+            ConstraintType('GREATER'): ConstraintType('LESS_EQ'),
+            ConstraintType('LESS_EQ'): ConstraintType('GREATER'),
+            ConstraintType('LESS'): ConstraintType('GREATER_EQ'),
+            ConstraintType('GREATER_EQ'): ConstraintType('LESS'),
+            ConstraintType('EQUALITY') : ConstraintType('NOT_EQUAL'),
+            ConstraintType('NOT_EQUAL'): ConstraintType('EQUALITY')
+        }
+
+class Constraint(AbstractConstraint):
     def __init__(self, ctype: ConstraintType, monomials=[], scalar = 0):
         """
         sum_i(monomial_i) ConstraintType scalar
         e.g. 5x + 3y <= 0
         """
+        super().__init__()
         self.type = ctype
         self.monomials = monomials 
         self.scalar = scalar
     
     def complement(self):
-        # return complement of constraint
-        if self.type == ConstraintType('GREATER'):
-            ccomp = Constraint(ConstraintType('LESS_EQ'))
-        elif self.type == ConstraintType('LESS'):
-            ccomp = Constraint(ConstraintType('GREATER_EQ'))
-        elif self.type == ConstraintType('GREATER_EQ'):
-            print("Warning: Can solver handle strict inequalities?")
-            ccomp = Constraint(ConstraintType('LESS'))
-        elif self.type == ConstraintType('LESS_EQ'):
-            print("Warning: Can solver handle strict inequalities?")
-            ccomp = Constraint(ConstraintType('GREATER'))
-        else:
-            ccomp = None
-            raise NotImplementedError
+        ccomp = Constraint(self.type_complement[self.type])
         ccomp.monomials = self.monomials
         ccomp.scalar = self.scalar
         return ccomp
@@ -78,18 +78,31 @@ class Constraint:
         out += str(self.scalar)
         return out
 
-class MatrixConstraint:
+class MatrixConstraint(AbstractConstraint):
     """
     Akin to a Constraint, but for constraints of the form Ax R b,
     where R represents a relation such as =, >=, <=, >, <.
     @pre If dim(A) = (m,n), dim(x) = n , dim(b) = m 
     """
-    def __init__(self, eqtype: ConstraintType, A=np.array([[]]), x = np.array([[]]), b = np.array([[]])):
-        # add assertions for the precondition
+    def __init__(self, eqtype: ConstraintType, A=np.zeros((0,0)), x = np.zeros((0,0)), b = np.zeros((0,0))):
+        super().__init__()
         self.type = eqtype
+        # assertions for the precondition
+        assert(A.shape[1] == x.shape[0])
+        assert(A.shape[0] == b.shape[0])
         self.A = A # contains real numbers
         self.x = x # contains variables. # when parsed from tf, will be numpy arrays.
         self.b = b # contains real numbers
+    
+    def complement(self):
+        """ 
+        Return complement of this constraint as list in DNF.
+        """
+        scalar_constraints = matrix_to_scalar(self)
+        complements = []
+        for c in scalar_constraints:
+            complements.append(c.complement())
+        return complements
     
     def __repr__(self):
         s = "<Constraint: Ax" + self.type.__repr__() + "b>\n"
@@ -128,9 +141,9 @@ def matrix_to_scalar(c : MatrixConstraint):
     scalar_constraints = []
     for row in range(c.A.shape[0]):
         coefficients = c.A[row, :]
-        scalar = c.b[row]
+        scalar = c.b[row][0] # assumes 1D b
         # construct monomials list 
-        monomials = [Monomial(c,v) for c,v in zip(coefficients, c.x)]
+        monomials = [Monomial(c,v) for c,v in zip(coefficients, c.x.flatten())]
         scalar_constraints.append(Constraint(c.type, monomials=monomials, scalar=scalar))
     return scalar_constraints
 

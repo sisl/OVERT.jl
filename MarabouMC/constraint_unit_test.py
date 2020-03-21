@@ -11,21 +11,25 @@ print(c)
 
 c = MatrixConstraint(ConstraintType('LESS_EQ'))
 c.A = np.array([[4,5,6],[6,7,8]])
-c.x = ['x', 'y', 'z']
-c.b = [1,2]
+c.x = np.array([['x'], ['y'], ['z']])
+c.b = np.array([[1],[2]])
 print(c)
 
 c = MatrixConstraint(ConstraintType('EQUALITY'))
 c.A = np.array([[4,5],[6,7], [8,9]])
-c.x = ['x', 'y']
-c.b = [1,2,3]
+c.x = np.array([['x'], ['y']])
+c.b = np.array([[1],[2],[3]])
 print(c)
 
 c = MatrixConstraint(ConstraintType('EQUALITY'))
 c.A = np.array([[4,5],[6,7]])
-c.x = ['x', 'y']
-c.b = [1,2]
+c.x = np.array([['x'], ['y']])
+c.b = np.array([[1],[2]])
 print(c)
 
 cs = matrix_to_scalar(c)
 print(cs)
+
+print(c.complement())
+
+print("All tests pass.")
