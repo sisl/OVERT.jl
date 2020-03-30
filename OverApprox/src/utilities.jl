@@ -64,9 +64,9 @@ function is_affine(expr)
     if typeof(expr) == Symbol
         return true
     else
-        try 
+        try
             eval(expr)
-            return true 
+            return true
         catch
             nothing
         end
@@ -103,7 +103,7 @@ function add_ϵ(points, ϵ)
         push!(new_points, (p[1], p[2] + ϵ))
     end
     return new_points
-end 
+end
 
 function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing, ϵ=0)
 
@@ -155,8 +155,8 @@ function check_expr_args_length(expr)
     end
 end
 
-# Think we could use stuff from https://github.com/JuliaIntervals/IntervalArithmetic.jl 
-# but whose to say if it's better tested? 
+# Think we could use stuff from https://github.com/JuliaIntervals/IntervalArithmetic.jl
+# but whose to say if it's better tested?
 function find_affine_range(expr, range_dict)
     """
     given a an affine expression expr, this function finds the
@@ -201,7 +201,7 @@ function find_affine_range(expr, range_dict)
     end
 end
 
-# todo: pretty sure we can use SymEngine.subs. 
+# todo: pretty sure we can use SymEngine.subs.
 # maybe better tested? but subs is also overly complicated...
 function substitute!(expr, old, new)
 
@@ -247,7 +247,7 @@ end
 #     return expr
 # end
 
-∉(e, set) = !(e ∈ set) 
+∉(e, set) = !(e ∈ set)
 
 function reduce_args_to_2(f::Symbol, arguments::Array)
     #println(f, arguments)
@@ -265,11 +265,7 @@ end
 reduce_args_to_2(x::Int) = x
 reduce_args_to_2(x::Float64) = x
 reduce_args_to_2(x::Float32) = x
-
-function reduce_args_to_2(x::Symbol)
-    #println(x)
-    return x
-end
+reduce_args_to_2(x::Symbol) = x
 
 function reduce_args_to_2(expr::Expr)
     #println(expr)
@@ -278,8 +274,21 @@ function reduce_args_to_2(expr::Expr)
     return reduce_args_to_2(f::Symbol, arguments::Array)
 end
 
+function get_rid_of_division(x)
+    if (x isa Expr) && (x.args[1] == :/)
+        println("*"^30)
+        println("division is $x")
+        println("*"^30)
+        inv_denom = Expr(:call, :/, 1., x.args[3])
+        println("turned to $(Expr(:call, :*, x.args[2], inv_denom))")
+        return Expr(:call, :*, x.args[2], inv_denom)
+    else
+        return x
+    end
+end
+
 function is_number(expr)
-    try 
+    try
         eval(expr)
         return true
     catch
@@ -291,6 +300,11 @@ function is_unary(expr::Expr)
     # one for function, one for single argument to function
     return length(expr.args) == 2
 end
+
+function is_1d(expr::Expr)
+    return length(find_variables(expr)) == 1
+end
+
 
 function is_effectively_unary(expr::Expr)
     # has 3 args, but first is function and one of next 2 is a constant
@@ -308,4 +322,3 @@ function multiply_interval(range, constant)
     S = [range[1]*constant, range[2]*constant]
     return [min(S...), max(S...)]
 end
-

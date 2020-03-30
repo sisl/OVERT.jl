@@ -8,12 +8,19 @@ include("overest_nd.jl")
 
 # test for is_affine
 @assert is_affine(:(x+1)) == true
-@assert is_affine(:(-x+(2y-z))) == true 
-# tests handling of unary operators like (- x)
+@assert is_affine(:(-x+(2y-z))) == true
 @assert is_affine(:(log(x))) == false
 @assert is_affine(:(x+ xz)) == true # interprets xz as one variable
 @assert is_affine(:(x+ x*z)) == false
 @assert is_affine(:(x + y*log(2))) == true
+
+# test for is_unary
+@assert is_unary(:(x+y)) == false
+@assert is_unary(:(x^2.5)) == true
+@assert is_unary(:(sin(x))) == true
+@assert is_unary(:(x*y)) == false
+@assert is_unary(:(x*log(2))) == true
+
 
 # test find_UB (really tests for overest_new.jl)
 
@@ -37,4 +44,3 @@ include("overest_nd.jl")
 @assert reduce_args_to_2!(:(x+y+z)) == :((x+y)+z)
 @assert reduce_args_to_2!(:(sin(x*y*z))) == :(sin((x*y)*z))
 # bug ^ doesn't seem to modify sin(x*y*z)
-

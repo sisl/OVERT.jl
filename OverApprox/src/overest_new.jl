@@ -9,7 +9,7 @@ using Calculus
 using NLsolve
 using Roots
 using Plots
-plotly()
+#plotly()
 
 
 RTOL = 0.01
@@ -24,12 +24,12 @@ function plot_bound(f, a, b, xp, yp; existing_plot=nothing)
 	x = range(a, stop=b, length=200)
 	y = f.(x)
 	if isnothing(existing_plot)
-		p = plot(x,  y, color="red", linewidth=2, label="f(x)")
-		plot!(p, xp, yp, color="blue", marker="o", linewidth=2, label="overest(f(x))")
+		p = plot(x,  y, color="red", linewidth=2, label="f(x)");
+		plot!(p, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))");
 		display(p)
 	else
-		plot!(existing_plot, x,  y, color="red", linewidth=2, label="f(x)")
-		plot!(existing_plot, xp, yp, color="blue", marker="o", linewidth=2, label="overest(f(x))")
+		plot!(existing_plot, x,  y, color="red", linewidth=2, label="f(x)");
+		plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))");
 		display(existing_plot)
 	end
 end
@@ -150,7 +150,7 @@ end
 # function bound(fexpr, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
 # 	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=true, existing_plot=nothing)
 #
-# plan: Interface to the bound function that accepts symbolic functions, not executable ones, so 
+# plan: Interface to the bound function that accepts symbolic functions, not executable ones, so
 that symbolic differentiation can be used.
 `
 
@@ -181,6 +181,13 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 		overest(sin, -π/2, π, 3, d2f_zero=[0])
 		overest(x-> x^3-sin(x), 0, 2, 3, out=points)
 	"""
+	try
+		f(a)
+		f(b)
+	catch
+		error("$a or $b is not in the domanin of $f")
+	end
+
 	if isnothing(df)
     	df = Calculus.derivative(f)
 	end
@@ -196,7 +203,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
         intervals = give_interval(d2f_zeros, a, b)  # find subintervals.
     end
 
-	println("algorithm begins")
+	println("OVERT applied on $f within ranges [$a, $b]")
     xp = []
     yp = []
     for interval in intervals
@@ -243,7 +250,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 		plot_bound(f, a, b, xp, yp; existing_plot=existing_plot)
 		return xp, yp
 	else
-		println("no plotting 4 u")
+		#println("no plotting 4 u")
 		return xp, yp
 	end
 end
