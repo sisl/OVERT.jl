@@ -10,35 +10,34 @@ Overapproximate an n-dimensional function using a relational abstraction.
 """
 function overapprox_nd(expr,
                        range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real};
-                       N::Integer=3,
+                       N::Integer=2,
                        ϵ::Real=1e-2)
     bound = OverApproximation()
     range_dict = floatize(range_dict)
     bound.ranges = range_dict
     bound.N = N
     bound.ϵ = ϵ
-    try
-        ccc = overapprox_nd(expr, bound)
-        println(ccc)
-    catch
-        return
-    end
+    expr = simplify(expr)
     return overapprox_nd(expr, bound)
 end
 
 function overapprox_nd(expr,
                        bound::OverApproximation)
-    # returns: bound::OverApproximation
     println(expr)
-    #println(bound.ranges)
-    # simplify all algebraic relations:
-    expr = try
-        eval(expr)
-    catch
-        expr
-    end
 
+    # simplify all algebraic expression like :(2+3.5)
+    # if expr isa Expr
+    #     if is_number(expr)
+    #     expr_sym = expr.args[1]
+    #     expr_args_simplified = [is_number(arg) ? eval(arg) : arg for arg in expr.args[2:end]]
+    #     expr = Expr(:call)
+    #     expr.args = [expr_sym, expr_args_simplified...]
+    # end
+
+    # all operations should have at most two arguments.
     expr = reduce_args_to_2(expr)
+
+    # write divisions in terms of multiplications
     expr = get_rid_of_division(expr)
 
     # base cases
@@ -47,6 +46,7 @@ function overapprox_nd(expr,
         bound.output_range = bound.ranges[expr]
         return bound
     # for easier parsing with marabou
+    # TODO: ideally should not be active.
     elseif is_number(expr)
         bound.output = add_var(bound)
         c  = eval(expr)
@@ -90,10 +90,19 @@ function overapprox_nd(expr,
             xexpr = expr.args[2]
             yexpr = expr.args[3]
             # recurse on aguments
-            bound = overapprox_nd(xexpr, bound)
-            x = bound.output
-            bound = overapprox_nd(yexpr, bound)
-            y = bound.output
+            if !is_number(xexpr) # goes through except for a^x
+                bound = overapprox_nd(xexpr, bound)
+                x = bound.output
+            else
+                x = eval(xexpr)
+            end
+
+            if !is_number(yexpr) # goes through except for x^a
+                bound = overapprox_nd(yexpr, bound)
+                y = bound.output
+            else
+                y = eval(yexpr)
+            end
             # handle outer function f
             bound = bound_binary_functions(f, x, y, bound)
             return bound
@@ -107,7 +116,17 @@ function bound_binary_functions(f, x, y, bound)
         push!(bound.approx_eq, :($z == $x + $y))
         bound.fun_eq[z] = :($x + $y)
         bound.output = z
-        sum_range = [bound.ranges[x][1] + bound.ranges[y][1], bound.ranges[x][2] + bound.ranges[y][2]]
+        if is_number(x)
+            lb_x, ub_x = x, x
+        else
+            lb_x, ub_x = bound.ranges[x][1], bound.ranges[x][2]
+        end
+        if is_number(y)
+            lb_y, ub_y = y, y
+        else
+            lb_y, ub_y = bound.ranges[y][1], bound.ranges[y][2]
+        end
+        sum_range = [lb_x + lb_y, ub_x + ub_y]
         bound.output_range = sum_range
         bound.ranges[z] = sum_range
         return bound
@@ -116,12 +135,22 @@ function bound_binary_functions(f, x, y, bound)
         push!(bound.approx_eq, :($z == $x - $y))
         bound.fun_eq[z] = :($x - $y)
         bound.output = z
-        diff_range = [bound.ranges[x][1] - bound.ranges[y][2],  bound.ranges[x][2] - bound.ranges[y][1]]
+        if is_number(x)
+            lb_x, ub_x = x, x
+        else
+            lb_x, ub_x = bound.ranges[x][1], bound.ranges[x][2]
+        end
+        if is_number(y)
+            lb_y, ub_y = y, y
+        else
+            lb_y, ub_y = bound.ranges[y][1], bound.ranges[y][2]
+        end
+        diff_range = [lb_x - lb_y,  ub_x - ub_y]
         bound.output_range = diff_range
         bound.ranges[z] = diff_range
         return bound
     elseif f == :*
-        if (is_number(bound, x) | is_number(bound, y))
+        if (is_number(x) | is_number(y))
             # multiplication of VARIABLES AND SCALARS ONLY
             # TODO: Actually, I think this is redundant and would be captured by "is_affine"
             bound.output  = add_var(bound)
@@ -136,20 +165,35 @@ function bound_binary_functions(f, x, y, bound)
         end
     # The following two operations are not yet fully tested.
     elseif f == :/
+        if (x isa Number) || (is_number(x))
+            y_tmp = bound.output
+
+            # range of y_tmp should not include 0
+            if bound.ranges[y_tmp][1]*bound.ranges[y_tmp][2] <= 0
+                error("range of y_tmp should not include 0")
+            end
+            f_tmp = :($x/$y_tmp)
+
+            bound = bound_unary_function(f_tmp, bound)
+        else
         error(
             """
-            rewrite your expression to exlude division
+            rewrite your expression to exlude division of two variables
             Example: expr = :(x/y)
-                    new_expr = :((1/y)*x)
+                    new_expr = :((1./y)*x)
              """)
-    # elseif f == :^
-    #     if is_number(bound, x)
-    #
-    #     elseif is_number(bound, y))
-    #
-    #     else
-    #         error ("f(x)^g(y) is not implemented yet.")
-    #     end
+        end
+    elseif f == :^
+        if is_number(y) # this is f(x)^a, where a is a constant.
+            #bound = overapprox_nd(x, bound)
+            x_tmp = bound.output
+            f_tmp = :($x_tmp^$y)
+            bound = bound_unary_function(f_tmp, bound)
+        elseif is_number(x)  # this is a^f(x), where a is a constant.
+            error("a^f(x) is not implemented yet.")
+        else  # this is f(x)^g(y)
+            error("f(x)^g(y) is not implemented yet.")
+        end
     else
         error(" operation $f with operands $x and $y is not implemented")
         return OverApproximation() # for type stability, maybe?
@@ -157,11 +201,11 @@ function bound_binary_functions(f, x, y, bound)
 end
 
 function multiply_variable_and_scalar(x, y, bound)
-    @assert (is_number(bound, x) | is_number(bound, y))
-    if is_number(bound, x)
+    @assert (is_number(x) | is_number(y))
+    if is_number(x)
         bound = mul_var_sca_helper(y, x, bound)
         return bound
-    elseif is_number(bound, y)
+    elseif is_number(y)
         bound = mul_var_sca_helper(x, y, bound)
         return bound
     end
@@ -171,13 +215,14 @@ function mul_var_sca_helper(var, constant, bound)
     z = bound.output
     push!(bound.approx_eq, :($z == $var * $constant))
     bound.fun_eq[z] = :($var * $constant)
-    prod_range = multiply_interval(bound.ranges[var], bound.ranges[constant][1])
+    #prod_range = multiply_interval(bound.ranges[var], bound.ranges[constant][1])
+    prod_range = multiply_interval(bound.ranges[var], constant)
     bound.ranges[z] = prod_range
     bound.output_range = prod_range
     return bound
 end
 
-function expand_multiplication(x, y, bound; ξ=0.1)
+function expand_multiplication(x, y, bound; ξ=1.0)
     """
     Re write multiplication e.g. x*y using exp(log()) and affine expressions
     e.g. x*y, x ∈ [a,b] ∧ y ∈ [c,d], ξ>0
@@ -191,6 +236,7 @@ function expand_multiplication(x, y, bound; ξ=0.1)
             = exp(log(x2) + log(y2)) + (a - ξ)*y2 + (c - ξ)*x2 + (a - ξ)*(c - ξ)
         In this final form, everything is decomposed into unary functions, +, and affine functions!
     """
+
     x2 = add_var(bound)
     y2 = add_var(bound)
     a,b = bound.ranges[x]
@@ -203,7 +249,7 @@ function expand_multiplication(x, y, bound; ξ=0.1)
     bound.fun_eq[y2] = :($y - $c + $ξ)
     bound.ranges[x2] = [ξ, b - a + ξ]
     bound.ranges[y2] = [ξ, d - c + ξ]
-    expr = :( exp(log($x2) + log($y2)) + ($a - $ξ)*$y2 + ($c - $ξ)*$x2 + ($a - $ξ)*($c - $ξ) )
+    expr = :( exp(log($x2) + log($y2)) + ($a - $ξ)*$y2 + ($c - $ξ)*$x2 + (($a - $ξ)*($c - $ξ)) )
     return expr, bound
 end
 
@@ -249,7 +295,7 @@ function apply_fx(f, a)
     substitute!(f, :x, a)
 end
 
-function bound_unary_function(f::Union{Symbol, Expr}, x_bound::OverApproximation; plotflag=false)
+function bound_unary_function(f::Union{Symbol, Expr}, x_bound::OverApproximation; plotflag=true)
     ## this is for three arguments unary like sin(x)
     ## create upper and lower bounds of function f(x)
     fun = f

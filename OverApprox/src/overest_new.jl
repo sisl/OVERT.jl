@@ -218,7 +218,31 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 		else
 			obj = bound_tangent(f, df, N, aa, bb, conc_method)
 		end
-        z = nlsolve(obj, zGuess) # solve the system of equations
+
+		# solving nonlinear system.
+		# z = nlsolve(obj, zGuess, autodiff = :forward)
+
+		z = 0
+		itr_nlsolve = 0
+		try # This may overshoot to outside of domain for log
+			z = nlsolve(obj, zGuess, autodiff = :forward)
+    	catch # if overshoots, change the zGuess until it works. 10 iterations allowed
+			while itr_nlsolve <= 10
+				zGuess[2:end] = zGuess[1:end-1]
+				zGuess[1] = 0.5*(aa + zGuess[1])
+				try
+					z = nlsolve(obj, zGuess, autodiff = :forward)
+					break
+				catch
+					itr_nlsove += 1
+				end
+				#z = mcpsolve(obj, sol_lb, sol_ub , zGuess_exp, autodiff = :forward)
+			end
+			if itr_nlsolve == 10
+				error("nlsolve could not converge")
+			end
+		end
+
         xx = vcat(aa, z.zero, bb)  # add endpoints to the intermediate points
 		if xor(d2f((aa+bb)/2) >= 0, lowerbound) # upper bound for convex or lower bound for concave
             yy = [f(x) for x in xx]  # for the convex case, points lie on the function

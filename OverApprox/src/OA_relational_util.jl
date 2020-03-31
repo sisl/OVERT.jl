@@ -13,21 +13,29 @@ mutable struct OverApproximation
     ϵ::Real # construct overapprox with ϵ leeway from function
 end
 # default constructor
-OverApproximation() = OverApproximation(:(null_output), 
-                                        Array{Float64, 1}(), 
-                                        Dict{Symbol, Array{Float64,1}}(), 
-                                        0, 
-                                        Array{Symbol, 1}(), 
-                                        Array{Expr, 1}(), 
-                                        Array{Expr, 1}(), 
-                                        Dict{Symbol, Any}(), 
+OverApproximation() = OverApproximation(:(null_output),
+                                        Array{Float64, 1}(),
+                                        Dict{Symbol, Array{Float64,1}}(),
+                                        0,
+                                        Array{Symbol, 1}(),
+                                        Array{Expr, 1}(),
+                                        Array{Expr, 1}(),
+                                        Dict{Symbol, Any}(),
                                         3,
                                         1e-2)
 
+N_VARS = 0 # number of varaibles; has to be defined globally.
+
 function add_var(bound)
-    bound.nvars += 1
+    global N_VARS
+    # bound.nvars += 1
     # @ is the symbol preceding A in ascii
-    return Symbol('v'*('@'+bound.nvars))
+    #return Symbol('v'*('@'+bound.nvars))
+
+    # the counter has to be a global variable.
+    # we run our of ascee variables, so numbers are more reasonable options
+    N_VARS += 1
+    return Symbol("v_$N_VARS")
 end
 
 function is_number(bound::OverApproximation, var::Symbol)
@@ -38,5 +46,5 @@ function is_number(bound::OverApproximation, var::Symbol)
         return true
     else
         return false
-    end 
+    end
 end

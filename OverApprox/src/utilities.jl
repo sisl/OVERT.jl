@@ -61,16 +61,7 @@ function is_affine(expr)
              is_affine(:(x + x*z))    = false
     """
     # it is symbol or number
-    if typeof(expr) == Symbol
-        return true
-    else
-        try
-            eval(expr)
-            return true
-        catch
-            nothing
-        end
-    end
+    expr isa Expr ? nothing : (return true)
 
     check_expr_args_length(expr)
     func = expr.args[1]
@@ -250,21 +241,37 @@ end
 ∉(e, set) = !(e ∈ set)
 
 function reduce_args_to_2(f::Symbol, arguments::Array)
-    #println(f, arguments)
+    """
+    reduce_args_to_2(x+y) = x+y
+    reduce_args_to_2(x+y+z) = x+(y+z)
+    reduce_args_to_2(0.5+y+z) = (0.5+y)+z
+    """
     if (length(arguments) <= 2) | (f ∉ [:+, :*])
         e = Expr(:call)
         e.args = [f, map(reduce_args_to_2, arguments)...]
         return e
-    else # length(args) > 2 and f ∈ [:+, :*]
-        a = reduce_args_to_2(arguments[1])
-        fbc = reduce_args_to_2(f, arguments[2:end])
+    elseif length(arguments) ==3 #length(args) = 3 and f ∈ [:+, :*]
+        if is_number(arguments[1])
+            a = reduce_args_to_2(arguments[2])
+            fbc = reduce_args_to_2(f, arguments[1:3 .!= 2])
+        else
+            a = reduce_args_to_2(arguments[1])
+            fbc = reduce_args_to_2(f, arguments[2:3])
+        end
         return :($f( $a, $fbc))
+    else
+        first_half = reduce_args_to_2(f, arguments[1:2])
+        second_half = reduce_args_to_2(f, arguments[3:end])
+        return reduce_args_to_2(f, [first_half, second_half])
+        error("""
+            operations with more than 3 arguments are not supported.
+            use () to break the arguments.
+            Example= x+y+z+w -> (x+y) + (y+z)
+            """)
     end
 end
 
-reduce_args_to_2(x::Int) = x
-reduce_args_to_2(x::Float64) = x
-reduce_args_to_2(x::Float32) = x
+reduce_args_to_2(x::Number) = x
 reduce_args_to_2(x::Symbol) = x
 
 function reduce_args_to_2(expr::Expr)
@@ -275,7 +282,7 @@ function reduce_args_to_2(expr::Expr)
 end
 
 function get_rid_of_division(x)
-    if (x isa Expr) && (x.args[1] == :/)
+    if (x isa Expr) && (x.args[1] == :/) && !is_number(x.args[2])
         println("*"^30)
         println("division is $x")
         println("*"^30)
