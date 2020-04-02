@@ -25,26 +25,26 @@ OverApproximation() = OverApproximation(:(null_output),
                                         1e-2)
 
 N_VARS = 0 # number of varaibles; has to be defined globally.
-
+add_var() = add_var(1.)
 function add_var(bound)
-    global N_VARS
     # bound.nvars += 1
     # @ is the symbol preceding A in ascii
     #return Symbol('v'*('@'+bound.nvars))
 
     # the counter has to be a global variable.
     # we run our of ascee variables, so numbers are more reasonable options
+    global N_VARS
     N_VARS += 1
     return Symbol("v_$N_VARS")
 end
 
-function is_number(bound::OverApproximation, var::Symbol)
-    # return true if a variable is marked as a constant
-    # this works because we are doing DFS, and args are parsed
-    # BEFORE functions are parsed
-    if (var in bound.consts)
-        return true
-    else
-        return false
-    end
-end
+# function is_number(bound::OverApproximation, var::Symbol)
+#     # return true if a variable is marked as a constant
+#     # this works because we are doing DFS, and args are parsed
+#     # BEFORE functions are parsed
+#     if (var in bound.consts)
+#         return true
+#     else
+#         return false
+#     end
+# end

@@ -283,11 +283,11 @@ end
 
 function get_rid_of_division(x)
     if (x isa Expr) && (x.args[1] == :/) && !is_number(x.args[2])
-        println("*"^30)
-        println("division is $x")
-        println("*"^30)
+        # println("*"^30)
+        # println("division is $x")
+        # println("*"^30)
         inv_denom = Expr(:call, :/, 1., x.args[3])
-        println("turned to $(Expr(:call, :*, x.args[2], inv_denom))")
+        # println("turned to $(Expr(:call, :*, x.args[2], inv_denom))")
         return Expr(:call, :*, x.args[2], inv_denom)
     else
         return x

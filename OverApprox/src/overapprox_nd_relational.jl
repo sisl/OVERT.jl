@@ -21,9 +21,10 @@ function overapprox_nd(expr,
     return overapprox_nd(expr, bound)
 end
 
+plotflag = false
 function overapprox_nd(expr,
                        bound::OverApproximation)
-    println(expr)
+    # println(expr)
 
     # simplify all algebraic expression like :(2+3.5)
     # if expr isa Expr
@@ -253,49 +254,11 @@ function expand_multiplication(x, y, bound; ξ=1.0)
     return expr, bound
 end
 
-# function expand_division(x, y, bound; ξ=0.1)
-#     """
-#     Re write multiplication e.g. x*/y using exp(log()) and affine expressions
-#     Assumption. range of y does NOT include 0.
-#     e.g. x/y, x ∈ [a,b] ∧ y ∈ [c,d], ξ>0
-#         --------------------------------
-#          where c*d > 0     (condition X)
-#         --------------------------------
-#          x2 = x - a + ξ  , x2 ∈ [ξ, b - a + ξ] aka x2 > 0   (recall, b > a)
-#          ⇒ x = x2 + a - ξ
-#          define auxilary variable s = 1/y
-#          s ∈ [1/d, 1/c] (this is true regardless of sign of y provided condition X).
-#          s2 = s - 1/d + ξ, s2 ∈ [ξ, 1/c - 1/d + ξ]  aka s2 > 0   (recall, d > c)
-#          ⇒ s = s2 + 1/d - ξ
-#
-#         x/y = x*s = (x2 + a - ξ)/(s2 + 1/d - ξ)
-#             = x2*s2 + ((a - ξ)*s2 + (1/d - ξ)*x2 + (a - ξ)*(1/d - ξ)
-#             = exp(log(x2*s2)) + (a - ξ)*s2 + (1/d - ξ)*x2 + (a - ξ)*(1/d - ξ)
-#             = exp(log(x2) + log(s2)) + (a - ξ)*s2 + (1/d - ξ)*x2 + (a - ξ)*(c - ξ)
-#         recall s2 = 1/y -1/d + ξ
-#         In this final form, everything is decomposed into unary functions, +, and affine functions!
-#     """
-#     x2 = add_var(bound)
-#     s2 = add_var(bound)
-#     a,b = bound.ranges[x]
-#     c,d = bound.ranges[y]
-#     @assert(b >= a)
-#     @assert(d >= c)
-#     push!(bound.approx_eq, :($x2 == $x - $a + $ξ))
-#     push!(bound.approx_eq, :($s2 == 1/$y - 1/$d + $ξ))
-#     bound.fun_eq[x2] = :($x - $a + $ξ)
-#     bound.fun_eq[y2] = :($y - $c + $ξ)
-#     bound.ranges[x2] = [ξ, b - a + ξ]
-#     bound.ranges[y2] = [ξ, d - c + ξ]
-#     expr = :( exp(log($x2) + log($y2)) + ($a - $ξ)*$y2 + ($c - $ξ)*$x2 + ($a - $ξ)*($c - $ξ) )
-#     return expr, bound
-# end
-
 function apply_fx(f, a)
     substitute!(f, :x, a)
 end
 
-function bound_unary_function(f::Union{Symbol, Expr}, x_bound::OverApproximation; plotflag=true)
+function bound_unary_function(f::Union{Symbol, Expr}, x_bound::OverApproximation; plotflag=plotflag)
     ## this is for three arguments unary like sin(x)
     ## create upper and lower bounds of function f(x)
     fun = f
