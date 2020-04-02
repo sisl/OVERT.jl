@@ -21,9 +21,15 @@ function overapprox_nd(expr,
     return overapprox_nd(expr, bound)
 end
 
+function println_dbg(to_print, debug_flag)
+    if debug_flag
+        println(to_print)
+    end
+end
+
 function overapprox_nd(expr,
-                       bound::OverApproximation)
-    println(expr)
+                       bound::OverApproximation, debug_flag=true)
+    println_dbg(expr, true)
 
     # simplify all algebraic expression like :(2+3.5)
     # if expr isa Expr
@@ -110,7 +116,7 @@ function overapprox_nd(expr,
     end
 end
 
-function bound_binary_functions(f, x, y, bound)
+function bound_binary_functions(f, x, y, bound) # TODO: should only be for when both args are vars or 6/x
     if f == :+
         z = add_var(bound)
         push!(bound.approx_eq, :($z == $x + $y))
@@ -174,7 +180,7 @@ function bound_binary_functions(f, x, y, bound)
             end
             f_tmp = :($x/$y_tmp)
 
-            bound = bound_unary_function(f_tmp, bound)
+            bound = bound_unary_function(f_tmp, bound) # nothing is returned? return statement missing?
         else
         error(
             """

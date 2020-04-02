@@ -58,7 +58,9 @@ function is_affine(expr)
     Example: is_affine(:(x+1))       = true
              is_affine(:(-x+(2y-z))) = true
              is_affine(:(log(x)))    = false
-             is_affine(:(x + x*z))    = false
+             is_affine(:(x + x*z))   = false
+             is_affine(:(x/6))       = true
+             is_affine(:(5*x))       = true
     """
     # it is symbol or number
     expr isa Expr ? nothing : (return true)
