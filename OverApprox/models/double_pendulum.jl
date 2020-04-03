@@ -10,3 +10,9 @@ range_dict = Dict(:th1 => [0., 1.], :th2 => [0., 1.],
 
 u1p_approx = overapprox_nd(u1p_expr, range_dict)
 u2p_approx = overapprox_nd(u2p_expr, range_dict)
+
+# marabou_friendify!(u1p_approx)
+# marabou_friendify!(u2p_approx)
+#
+# bound_2_txt(u1p_approx, "u1p.h5")
+# bound_2_txt(u2p_approx, "u2p.h5")

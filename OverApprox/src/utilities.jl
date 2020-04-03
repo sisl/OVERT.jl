@@ -302,9 +302,7 @@ end
 
 # function get_rid_of_division(x)
 #     if (x isa Expr) && (x.args[1] == :/) && !is_number(x.args[2]) 
-#         # e.g. not 6/x, only x/6. Maybe because we don't have the ranges on hand 
-#         # to determine if 6/x is valid? (doesn't involve division by 0)
-#         # BUT on the other hand...shouldn't x/6 be handled by affine?
+#         # all moved to division case in binary functions
 #         println("*"^30)
 #         println("division is $x")
 #         println("*"^30)
