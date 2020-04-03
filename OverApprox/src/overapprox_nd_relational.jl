@@ -1,3 +1,4 @@
+include("overt_header.jl")
 include("autoline.jl")
 include("overest_new.jl")
 include("utilities.jl")
@@ -5,7 +6,13 @@ include("OA_relational_util.jl")
 using SymEngine
 using Revise
 
+
 """
+    overapprox_nd(expr,
+                  range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real};
+                  N::Integer=2,
+                  ϵ::Real=1e-2)
+    -> OverApproximation
 Overapproximate an n-dimensional function using a relational abstraction.
 """
 function overapprox_nd(expr,
@@ -17,43 +24,33 @@ function overapprox_nd(expr,
     bound.ranges = range_dict
     bound.N = N
     bound.ϵ = ϵ
-    expr = simplify(expr)
+    expr = simplify(expr) # turns x/6 to (1/6)*x, does not affect 6/x or x/y
     return overapprox_nd(expr, bound)
 end
 
-function println_dbg(to_print, debug_flag)
-    if debug_flag
-        println(to_print)
-    end
-end
+"""
+    overapprox_nd(expr, bound::OverApproximation) -> bound::OverApproximation
 
+Helper function. Bounds the expression _expr_ in a recursive manner. bound is used as a container
+to collect the relations describing the bound along the way.
+"""
 function overapprox_nd(expr,
-                       bound::OverApproximation, debug_flag=true)
-    println_dbg(expr, true)
-
-    # simplify all algebraic expression like :(2+3.5)
-    # if expr isa Expr
-    #     if is_number(expr)
-    #     expr_sym = expr.args[1]
-    #     expr_args_simplified = [is_number(arg) ? eval(arg) : arg for arg in expr.args[2:end]]
-    #     expr = Expr(:call)
-    #     expr.args = [expr_sym, expr_args_simplified...]
-    # end
+                       bound::OverApproximation)
+    @debug(expr)
 
     # all operations should have at most two arguments.
     expr = reduce_args_to_2(expr)
 
-    # write divisions in terms of multiplications
-    expr = get_rid_of_division(expr)
-
     # base cases
     if expr isa Symbol
+        @debug("symbol base case")
         bound.output = expr
         bound.output_range = bound.ranges[expr]
         return bound
     # for easier parsing with marabou
     # TODO: ideally should not be active.
     elseif is_number(expr)
+        @debug("is number base case")
         bound.output = add_var(bound)
         c  = eval(expr)
         bound.output_range = [c,c]
@@ -64,6 +61,7 @@ function overapprox_nd(expr,
         push!(bound.consts, bound.output)
         return bound
     elseif is_affine(expr)
+        @debug("is affine base case")
         bound.output = add_var(bound)
         bound.output_range = [find_affine_range(expr, bound.ranges)...]
         push!(bound.approx_eq, :($(bound.output) = $expr))
@@ -72,26 +70,27 @@ function overapprox_nd(expr,
         #println("typeof(range) is ", typeof(expr_range))
         return bound
     elseif is_1d(expr)
+        @debug("is 1d base case")
         sym = find_variables(expr)
         bound.output = sym[1]
-        #bound = bound_unary_function(expr, bound)
         bound = bound_unary_function(expr, bound)
         return bound
     # recursive cases
     else # is a non-affine function
         if is_unary(expr)
+            @debug("is unary")
             # unary expression with two args, like sin(x), cos(x), ...
             f = expr.args[1]
             xexpr = expr.args[2]
             # recurse on argument
             bound = overapprox_nd(xexpr, bound)
             # handle outer function f
-            # bound = bound_unary_function(f, bound)
             bound = bound_unary_function(f, bound)
             return bound
         else # is binary
             # pull out the big guns
             @assert is_binary(expr)
+            @debug("is binary")
             f = expr.args[1]
             xexpr = expr.args[2]
             yexpr = expr.args[3]
@@ -118,6 +117,7 @@ end
 
 function bound_binary_functions(f, x, y, bound) # TODO: should only be for when both args are vars or 6/x
     if f == :+
+        @debug("bounding +")
         z = add_var(bound)
         push!(bound.approx_eq, :($z == $x + $y))
         bound.fun_eq[z] = :($x + $y)
@@ -137,6 +137,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
         bound.ranges[z] = sum_range
         return bound
     elseif f == :-
+        @debug("bounding -")
         z = add_var(bound)
         push!(bound.approx_eq, :($z == $x - $y))
         bound.fun_eq[z] = :($x - $y)
@@ -157,40 +158,51 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
         return bound
     elseif f == :*
         if (is_number(x) | is_number(y))
+            @debug("bounding * with a var and a const")
             # multiplication of VARIABLES AND SCALARS ONLY
             # TODO: Actually, I think this is redundant and would be captured by "is_affine"
             bound.output  = add_var(bound)
             bound = multiply_variable_and_scalar(x, y, bound)
             return bound
         else # both args contain variables
+            @debug("bounding * btw two variables")
             # first expand multiplication expr
             expanded_mul_expr, bound = expand_multiplication(x, y, bound)
             # and then bound that expression wrt x2, y2
             bound = overapprox_nd(expanded_mul_expr, bound)
             return bound
         end
-    # The following two operations are not yet fully tested.
     elseif f == :/
-        if (x isa Number) || (is_number(x))
-            y_tmp = bound.output
-
-            # range of y_tmp should not include 0
-            if bound.ranges[y_tmp][1]*bound.ranges[y_tmp][2] <= 0
-                error("range of y_tmp should not include 0")
+        # handles x/y and c/y
+        # x/c should be transformed into (1./c)*x by simplify
+        if y isa Symbol # if y is symbol (variable)
+            @debug("division x/y or c/y")
+            # range of y should not include 0
+            if bound.ranges[y][1]*bound.ranges[y][2] <= 0
+                error("range of y should not include 0")
             end
-            f_tmp = :($x/$y_tmp)
-
-            bound = bound_unary_function(f_tmp, bound) # nothing is returned? return statement missing?
-        else
+            if is_number(x) # c/y
+                f_new = :($x/$y)
+                bound = bound_unary_function(f_new, bound) 
+                return bound
+            elseif x isa Symbol # x/y
+                @debug "converting: $x / $y"
+                inv_denom = :(1. / $y)
+                f_new = :($x * $inv_denom)
+                @debug "into: $f_new"
+                return overapprox_nd(f_new, bound)
+            end
+        else # y is a constant
         error(
             """
-            rewrite your expression to exlude division of two variables
-            Example: expr = :(x/y)
-                    new_expr = :((1./y)*x)
-             """)
+            x/c should be handled by simplify and turned into: (1/c)*x
+            and c/c should be handled by affine or is_number
+            """)
         end
+    # The following operation is not yet fully tested.
     elseif f == :^
         if is_number(y) # this is f(x)^a, where a is a constant.
+            @debug("handling f(x)^a")
             #bound = overapprox_nd(x, bound)
             x_tmp = bound.output
             f_tmp = :($x_tmp^$y)
@@ -251,6 +263,7 @@ function expand_multiplication(x, y, bound; ξ=1.0)
     @assert(d >= c)
     push!(bound.approx_eq, :($x2 == $x - $a + $ξ))
     push!(bound.approx_eq, :($y2 == $y - $c + $ξ))
+    @debug("Expanding multiplication")
     bound.fun_eq[x2] = :($x - $a + $ξ)
     bound.fun_eq[y2] = :($y - $c + $ξ)
     bound.ranges[x2] = [ξ, b - a + ξ]
@@ -259,51 +272,14 @@ function expand_multiplication(x, y, bound; ξ=1.0)
     return expr, bound
 end
 
-# function expand_division(x, y, bound; ξ=0.1)
-#     """
-#     Re write multiplication e.g. x*/y using exp(log()) and affine expressions
-#     Assumption. range of y does NOT include 0.
-#     e.g. x/y, x ∈ [a,b] ∧ y ∈ [c,d], ξ>0
-#         --------------------------------
-#          where c*d > 0     (condition X)
-#         --------------------------------
-#          x2 = x - a + ξ  , x2 ∈ [ξ, b - a + ξ] aka x2 > 0   (recall, b > a)
-#          ⇒ x = x2 + a - ξ
-#          define auxilary variable s = 1/y
-#          s ∈ [1/d, 1/c] (this is true regardless of sign of y provided condition X).
-#          s2 = s - 1/d + ξ, s2 ∈ [ξ, 1/c - 1/d + ξ]  aka s2 > 0   (recall, d > c)
-#          ⇒ s = s2 + 1/d - ξ
-#
-#         x/y = x*s = (x2 + a - ξ)/(s2 + 1/d - ξ)
-#             = x2*s2 + ((a - ξ)*s2 + (1/d - ξ)*x2 + (a - ξ)*(1/d - ξ)
-#             = exp(log(x2*s2)) + (a - ξ)*s2 + (1/d - ξ)*x2 + (a - ξ)*(1/d - ξ)
-#             = exp(log(x2) + log(s2)) + (a - ξ)*s2 + (1/d - ξ)*x2 + (a - ξ)*(c - ξ)
-#         recall s2 = 1/y -1/d + ξ
-#         In this final form, everything is decomposed into unary functions, +, and affine functions!
-#     """
-#     x2 = add_var(bound)
-#     s2 = add_var(bound)
-#     a,b = bound.ranges[x]
-#     c,d = bound.ranges[y]
-#     @assert(b >= a)
-#     @assert(d >= c)
-#     push!(bound.approx_eq, :($x2 == $x - $a + $ξ))
-#     push!(bound.approx_eq, :($s2 == 1/$y - 1/$d + $ξ))
-#     bound.fun_eq[x2] = :($x - $a + $ξ)
-#     bound.fun_eq[y2] = :($y - $c + $ξ)
-#     bound.ranges[x2] = [ξ, b - a + ξ]
-#     bound.ranges[y2] = [ξ, d - c + ξ]
-#     expr = :( exp(log($x2) + log($y2)) + ($a - $ξ)*$y2 + ($c - $ξ)*$x2 + ($a - $ξ)*($c - $ξ) )
-#     return expr, bound
-# end
-
 function apply_fx(f, a)
     substitute!(f, :x, a)
 end
 
 function bound_unary_function(f::Union{Symbol, Expr}, x_bound::OverApproximation; plotflag=true)
-    ## this is for three arguments unary like sin(x)
+    ## this is for one argument unary like sin(x), or two argument effectively unary like x^2 
     ## create upper and lower bounds of function f(x)
+    @debug "" f x_bound
     fun = f
     if f isa Symbol
         fun = eval(:($f))

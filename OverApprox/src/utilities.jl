@@ -283,18 +283,21 @@ function reduce_args_to_2(expr::Expr)
     return reduce_args_to_2(f::Symbol, arguments::Array)
 end
 
-function get_rid_of_division(x)
-    if (x isa Expr) && (x.args[1] == :/) && !is_number(x.args[2])
-        println("*"^30)
-        println("division is $x")
-        println("*"^30)
-        inv_denom = Expr(:call, :/, 1., x.args[3])
-        println("turned to $(Expr(:call, :*, x.args[2], inv_denom))")
-        return Expr(:call, :*, x.args[2], inv_denom)
-    else
-        return x
-    end
-end
+# function get_rid_of_division(x)
+#     if (x isa Expr) && (x.args[1] == :/) && !is_number(x.args[2]) 
+#         # e.g. not 6/x, only x/6. Maybe because we don't have the ranges on hand 
+#         # to determine if 6/x is valid? (doesn't involve division by 0)
+#         # BUT on the other hand...shouldn't x/6 be handled by affine?
+#         println("*"^30)
+#         println("division is $x")
+#         println("*"^30)
+#         inv_denom = Expr(:call, :/, 1., x.args[3])
+#         println("turned to $(Expr(:call, :*, x.args[2], inv_denom))")
+#         return Expr(:call, :*, x.args[2], inv_denom)
+#     else
+#         return x
+#     end
+# end
 
 function is_number(expr)
     try

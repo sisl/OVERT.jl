@@ -24,7 +24,8 @@ OverApproximation() = OverApproximation(:(null_output),
                                         3,
                                         1e-2)
 
-N_VARS = 0 # number of varaibles; has to be defined globally.
+N_VARS = 0 # number of variables; has to be defined globally.
+@debug("N_VARS := 0")
 
 function add_var(bound)
     global N_VARS
