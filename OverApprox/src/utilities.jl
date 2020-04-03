@@ -61,32 +61,38 @@ function is_affine(expr)
              is_affine(:(x + x*z))   = false
              is_affine(:(x/6))       = true
              is_affine(:(5*x))       = true
+             is_affine(:(log(2)*x))  = true
     """
-    # it is symbol or number
-    expr isa Expr ? nothing : (return true)
-
-    check_expr_args_length(expr)
-    func = expr.args[1]
-    func ∈ [:+, :-, :*, :/] ? nothing : (return false)  # only these operations are allowed
-
-    if func == :* # one of args has to be a number
-        n_x = 0
-        try eval(expr.args[2]) catch; n_x += 1 end
-        try eval(expr.args[3]) catch; n_x += 1 end
-        n_x > 1 ? (return false) : nothing
+    # it is number 
+    if is_number(expr)
+        return true
+    elseif expr isa Symbol # symbol
+        return true
+    elseif expr isa Expr
+        check_expr_args_length(expr)
+        func = expr.args[1]
+        if func ∉ [:+, :-, :*, :/] # only these operations are allowed
+            return false
+        else  # func ∈ [:+, :-, :*, :/]
+            if func == :* # one of args has to be a number
+                option1 =  is_number(expr.args[2]) && is_affine(expr.args[3])
+                option2 =  is_number(expr.args[3]) && is_affine(expr.args[2])
+                return (option1 || option2)
+            elseif func == :/ # second arg has to be a number
+                return is_number(expr.args[3])
+            else # func is + or -
+                condition1 = is_affine(expr.args[2])
+                if length(expr.args) > 2
+                    condition2 = is_affine(expr.args[3])
+                    return condition1 && condition2
+                else
+                    return condition1
+                end
+            end
+        end
+    else
+        return false # if not a number, symbol, or Expr, return false
     end
-
-    if func == :/ # second arg has to be a number
-        try eval(expr.args[3]) catch; (return false) end
-    end
-
-
-    is_affine(expr.args[2]) ? nothing : (return false)
-    if length(expr.args) > 2
-        is_affine(expr.args[3]) ? nothing : (return false)
-    end
-
-    return true
 end
 
 function add_ϵ(points, ϵ)

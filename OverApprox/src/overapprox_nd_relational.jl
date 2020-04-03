@@ -72,8 +72,8 @@ function overapprox_nd(expr,
     elseif is_1d(expr)
         @debug("is 1d base case")
         sym = find_variables(expr)
-        bound.output = sym[1]
-        bound = bound_unary_function(expr, bound)
+        arg = sym[1]
+        bound = bound_1arg_function(expr, arg, bound)
         return bound
     # recursive cases
     else # is a non-affine function
@@ -183,7 +183,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
             end
             if is_number(x) # c/y
                 f_new = :($x/$y)
-                bound = bound_unary_function(f_new, bound) 
+                bound = bound_1arg_function(f_new, y, bound) 
                 return bound
             elseif x isa Symbol # x/y
                 @debug "converting: $x / $y"
@@ -202,13 +202,15 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
     # The following operation is not yet fully tested.
     elseif f == :^
         if is_number(y) # this is f(x)^a, where a is a constant.
-            @debug("handling f(x)^a")
-            #bound = overapprox_nd(x, bound)
-            x_tmp = bound.output
-            f_tmp = :($x_tmp^$y)
-            bound = bound_unary_function(f_tmp, bound)
+            @debug "handling f(x)^a" 
+            f_new = :($x^$y)
+            bound = bound_1arg_function(f_new, x, bound)
+            return bound
         elseif is_number(x)  # this is a^f(x), where a is a constant.
-            error("a^f(x) is not implemented yet.")
+            @debug "handling  a^f(x)" 
+            f_new = :($x^$y)
+            bound = bound_1arg_function(f_new, y, bound)
+            return bound
         else  # this is f(x)^g(y)
             error("f(x)^g(y) is not implemented yet.")
         end
@@ -242,6 +244,7 @@ end
 
 function expand_multiplication(x, y, bound; ξ=1.0)
     """
+        expand_multiplication(x, y, bound; ξ=1.0)
     Re write multiplication e.g. x*y using exp(log()) and affine expressions
     e.g. x*y, x ∈ [a,b] ∧ y ∈ [c,d], ξ>0
          x2 = x - a + ξ  , x2 ∈ [ξ, b - a + ξ] aka x2 > 0   (recall, b > a)
@@ -276,44 +279,54 @@ function apply_fx(f, a)
     substitute!(f, :x, a)
 end
 
-function bound_unary_function(f::Union{Symbol, Expr}, x_bound::OverApproximation; plotflag=true)
-    ## this is for one argument unary like sin(x), or two argument effectively unary like x^2 
-    ## create upper and lower bounds of function f(x)
-    @debug "" f x_bound
-    fun = f
-    if f isa Symbol
-        fun = eval(:($f))
-        lb, ub, npoint = x_bound.output_range[1], x_bound.output_range[2], x_bound.N
-    else
-        sym = x_bound.output
-        fun = SymEngine.lambdify(f, [sym])
-        lb, ub, npoint = x_bound.ranges[sym][1], x_bound.ranges[sym][2], x_bound.N
-    end
+"""
+    bound_1arg_function(e::Expr, x::Symbol, bound::OverApproximation; plotflag=true)
+Bound one argument functions like x^2. 
+Create upper and lower bounds of function f(x)
+"""
+function bound_1arg_function(e::Expr, arg::Symbol, bound::OverApproximation; plotflag=true)
+    @debug "bound effectively unary" e arg bound
+    fun = SymEngine.lambdify(e, [arg])
+    lb, ub, npoint = bound.ranges[arg][1], bound.ranges[arg][2], bound.N
+    return bound_unary_function(fun, e, arg, lb, ub, npoint, bound, plotflag=plotflag)
+end    
 
+"""
+    bound_unary_function(f::Symbol, x_bound::OverflowError; plotflag=true)
+Bound one argument unary functions like sin(x). Create upper and lower bounds of function f(x)
+"""
+function bound_unary_function(f::Symbol, x_bound::OverApproximation; plotflag=true)
+    @debug "bound true unary" f x_bound.output
+    fun = eval(:($f))
+    lb, ub, npoint = x_bound.output_range[1], x_bound.output_range[2], x_bound.N
+    f_x_expr = :($(f)($(x_bound.output)))
+    return bound_unary_function(fun, f_x_expr, x_bound.output, lb, ub, npoint, x_bound, plotflag=plotflag)
+end
+
+"""
+    bound_unary_function(f::Function, lb, ub, npoint, bound)
+Bound one argument functions like sin(x) or x -> x^2 or x -> 1/x. Create upper and lower bounds of function f(x)
+"""
+function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound; plotflag=true)
     p = plotflag ? plot(0,0) : nothing
-    UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, existing_plot=p, ϵ= x_bound.ϵ)
+    UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, existing_plot=p, ϵ= bound.ϵ)
     fUBrange = [find_1d_range(UBpoints)...]
-    LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, existing_plot=p, ϵ= -x_bound.ϵ)
+    LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, existing_plot=p, ϵ= -bound.ϵ)
     fLBrange = [find_1d_range(LBpoints)...]
     ## create new vars for these expr, equate to exprs, and add them to equality list
     # e.g. y = fUB(x), z = fLB(x)
-    bound = x_bound
     UBvar = add_var(bound)
-    push!(bound.approx_eq, :($UBvar == $(apply_fx(UBfunc_sym, x_bound.output))))
+    push!(bound.approx_eq, :($UBvar == $(apply_fx(UBfunc_sym, x))))
     bound.ranges[UBvar] = fUBrange
     LBvar = add_var(bound)
-    push!(bound.approx_eq, :($LBvar == $(apply_fx(LBfunc_sym, x_bound.output))))
+    push!(bound.approx_eq, :($LBvar == $(apply_fx(LBfunc_sym, x))))
     bound.ranges[LBvar] = fLBrange
     OArange = [min(fLBrange...,fUBrange...), max(fLBrange..., fUBrange...)]
     ## create variable representing overapprox and add inequality to ineq list
     OAvar = add_var(bound)
     push!(bound.approx_ineq, (:($LBvar ≦ $OAvar)) )
     push!(bound.approx_ineq, (:($OAvar ≦ $UBvar)) )
-    if f isa Symbol
-        bound.fun_eq[OAvar] = :($(f)($(x_bound.output)))
-    else
-        bound.fun_eq[OAvar] = f
-    end
+    bound.fun_eq[OAvar] = f_x_expr
     bound.ranges[OAvar] = OArange
     bound.output = OAvar
     bound.output_range = OArange
