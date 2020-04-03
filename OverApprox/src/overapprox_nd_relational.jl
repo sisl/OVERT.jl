@@ -24,7 +24,7 @@ function overapprox_nd(expr,
     bound.ranges = range_dict
     bound.N = N
     bound.ϵ = ϵ
-    expr = simplify(expr) # turns x/6 to (1/6)*x, does not affect 6/x or x/y
+    #expr = simplify(expr) # turns x/6 to (1/6)*x, does not affect 6/x or x/y
     return overapprox_nd(expr, bound)
 end
 
@@ -36,10 +36,11 @@ to collect the relations describing the bound along the way.
 """
 function overapprox_nd(expr,
                        bound::OverApproximation)
-    @debug(expr)
 
     # all operations should have at most two arguments.
+    expr = rewrite_division_by_const(expr)
     expr = reduce_args_to_2(expr)
+    @debug(expr)
 
     # base cases
     if expr isa Symbol
@@ -160,7 +161,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
         if (is_number(x) | is_number(y))
             @debug("bounding * with a var and a const")
             # multiplication of VARIABLES AND SCALARS ONLY
-            # TODO: Actually, I think this is redundant and would be captured by "is_affine"
+            # TODO: Actually, I think this is redundant and COULD be captured by "is_affine"
             bound.output  = add_var(bound)
             bound = multiply_variable_and_scalar(x, y, bound)
             return bound

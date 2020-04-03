@@ -104,6 +104,17 @@ function add_ϵ(points, ϵ)
     return new_points
 end
 
+function rewrite_division_by_const(e) 
+    return e 
+end
+function rewrite_division_by_const(expr::Expr)
+    if expr.args[1] == :/ && !is_number(expr.args[2]) && is_number(expr.args[3])
+        return :( (1/$(expr.args[3])) * $(expr.args[2]) )
+    else
+        return expr
+    end
+end
+
 function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing, ϵ=0)
 
     """
