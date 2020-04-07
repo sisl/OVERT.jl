@@ -24,8 +24,11 @@ OverApproximation() = OverApproximation(:(null_output),
                                         3,
                                         1e-2)
 
-N_VARS = 0 # number of varaibles; has to be defined globally.
-add_var() = add_var(1.)
+N_VARS = 0 # number of variables; has to be defined globally.
+@debug("N_VARS := 0")
+
+add_var() = add_var(1.) # ??? @amir What is this ???
+
 function add_var(bound)
     # bound.nvars += 1
     # @ is the symbol preceding A in ascii

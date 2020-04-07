@@ -58,33 +58,41 @@ function is_affine(expr)
     Example: is_affine(:(x+1))       = true
              is_affine(:(-x+(2y-z))) = true
              is_affine(:(log(x)))    = false
-             is_affine(:(x + x*z))    = false
+             is_affine(:(x + x*z))   = false
+             is_affine(:(x/6))       = true
+             is_affine(:(5*x))       = true
+             is_affine(:(log(2)*x))  = true
     """
-    # it is symbol or number
-    expr isa Expr ? nothing : (return true)
-
-    check_expr_args_length(expr)
-    func = expr.args[1]
-    func ∈ [:+, :-, :*, :/] ? nothing : (return false)  # only these operations are allowed
-
-    if func == :* # one of args has to be a number
-        n_x = 0
-        try eval(expr.args[2]) catch; n_x += 1 end
-        try eval(expr.args[3]) catch; n_x += 1 end
-        n_x > 1 ? (return false) : nothing
+    # it is number 
+    if is_number(expr)
+        return true
+    elseif expr isa Symbol # symbol
+        return true
+    elseif expr isa Expr
+        check_expr_args_length(expr)
+        func = expr.args[1]
+        if func ∉ [:+, :-, :*, :/] # only these operations are allowed
+            return false
+        else  # func ∈ [:+, :-, :*, :/]
+            if func == :* # one of args has to be a number
+                option1 =  is_number(expr.args[2]) && is_affine(expr.args[3])
+                option2 =  is_number(expr.args[3]) && is_affine(expr.args[2])
+                return (option1 || option2)
+            elseif func == :/ # second arg has to be a number
+                return is_number(expr.args[3])
+            else # func is + or -
+                condition1 = is_affine(expr.args[2])
+                if length(expr.args) > 2
+                    condition2 = is_affine(expr.args[3])
+                    return condition1 && condition2
+                else
+                    return condition1
+                end
+            end
+        end
+    else
+        return false # if not a number, symbol, or Expr, return false
     end
-
-    if func == :/ # second arg has to be a number
-        try eval(expr.args[3]) catch; (return false) end
-    end
-
-
-    is_affine(expr.args[2]) ? nothing : (return false)
-    if length(expr.args) > 2
-        is_affine(expr.args[3]) ? nothing : (return false)
-    end
-
-    return true
 end
 
 function add_ϵ(points, ϵ)
@@ -94,6 +102,17 @@ function add_ϵ(points, ϵ)
         push!(new_points, (p[1], p[2] + ϵ))
     end
     return new_points
+end
+
+function rewrite_division_by_const(e) 
+    return e 
+end
+function rewrite_division_by_const(expr::Expr)
+    if expr.args[1] == :/ && !is_number(expr.args[2]) && is_number(expr.args[3])
+        return :( (1/$(expr.args[3])) * $(expr.args[2]) )
+    else
+        return expr
+    end
 end
 
 function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing, ϵ=0)
@@ -281,18 +300,19 @@ function reduce_args_to_2(expr::Expr)
     return reduce_args_to_2(f::Symbol, arguments::Array)
 end
 
-function get_rid_of_division(x)
-    if (x isa Expr) && (x.args[1] == :/) && !is_number(x.args[2])
-        # println("*"^30)
-        # println("division is $x")
-        # println("*"^30)
-        inv_denom = Expr(:call, :/, 1., x.args[3])
-        # println("turned to $(Expr(:call, :*, x.args[2], inv_denom))")
-        return Expr(:call, :*, x.args[2], inv_denom)
-    else
-        return x
-    end
-end
+# function get_rid_of_division(x)
+#     if (x isa Expr) && (x.args[1] == :/) && !is_number(x.args[2]) 
+#         # all moved to division case in binary functions
+#         println("*"^30)
+#         println("division is $x")
+#         println("*"^30)
+#         inv_denom = Expr(:call, :/, 1., x.args[3])
+#         println("turned to $(Expr(:call, :*, x.args[2], inv_denom))")
+#         return Expr(:call, :*, x.args[2], inv_denom)
+#     else
+#         return x
+#     end
+# end
 
 function is_number(expr)
     try

@@ -2,7 +2,7 @@ include("OverApprox/src/overapprox_nd_relational.jl")
 using Debugger
 using Revise
 
-@assert add_var(OverApproximation()) == :vA
+@assert add_var(OverApproximation()) == :v_1
 
 @assert apply_fx(:(x + y), :a) == :(a + y)
 
@@ -13,10 +13,23 @@ using Revise
 
 @assert is_binary(:(x + y))
 
+function affine_tests()
+    @assert is_affine(:(x+1))
+    @assert is_affine(:(-x+(2y-z)))
+    @assert !is_affine(:(log(x)))
+    @assert !is_affine(:(x + x*z))
+    @assert is_affine(:(x/6)) 
+    @assert is_affine(:(5*x))
+    @assert is_affine(:((1 / 6) * x))
+    @assert is_affine(:(log(2)*x))
+end
+affine_tests()
+
 overapprox_nd(:(sin(x)), Dict(:x=>[0,π/2]))
 
 overapprox_nd(:(sin(sin(x))), Dict(:x=>[0,π/2]))
 
+# improve how this is handled
 overapprox_nd(:(sin(sin(z + y))), Dict(:z=>[0,π], :y=>[-π,π]))
 
 overapprox_nd(:(2*x), Dict(:x=>[0,1]))
@@ -54,10 +67,34 @@ overapprox_nd(:(sin(6)*sin(x)), Dict(:x=>[1,2]))
 
 overapprox_nd(:(sin(6)*sin(x)*sin(y)), Dict(:x=>[1,2], :y=>[1,2])::Dict{Symbol,Array{Int64,1}})
 
+overapprox_nd(:(x/6), Dict(:x=>[-1,1]))
+# should be hangled by affine base case
+
+overapprox_nd(:(6/x), Dict(:x=>[1,2]))
+# should be handled by 1d base case
+
+overapprox_nd(:(6/(x+y)), Dict(:x=>[2,3], :y=>[-1,2]))
+
+overapprox_nd(:(x/y), Dict(:x=>[2,3], :y=>[1,2]))
+
+overapprox_nd(:(sin(x + y)/6), Dict(:x=>[2,3], :y=>[1,2]))
+
+overapprox_nd(:(sin(x + y)/y), Dict(:x=>[2,3], :y=>[1,2]))
+
 overapprox_nd(:(exp(x^2)), Dict(:x=>[-1,1]))
+
+# BOOKMARK, simplify making things difficult
+overapprox_nd(:((x+sin(y))^3), Dict(:x=>[2,3], :y=>[1,2]))
+
+overapprox_nd(:(2^x), Dict(:x=>[2,3]))
+
+
+
+
 
 # todo:
 # find good way to visualize overapprox and/or qualitatively validate overapprox
 # quantitative validation: dreal
 # analytical (symbolic) differentiation in overest_new.jl
 # handle division by scalars (multiplication really of 1/the_scalar...)
+
