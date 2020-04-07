@@ -16,11 +16,12 @@ from properties import ConstraintProperty
 from MC_interface import BMC
 
 # create controller object with a keras model
-model = load_model("../OverApprox/models/single_pend.h5")
+model = load_model("../OverApprox/models/single_pend_controller_nn.h5")
 controller = KerasController(keras_model=model)
 
 # create overt dynamics objects
-overt_obj = OvertConstraint("../OverApprox/src/up.h5")
+overt_obj = OvertConstraint("../OverApprox/models/single_pend_acceleration_overt.h5")
+#overt_obj = OvertConstraint("../OverApprox/src/up.h5")
 states = overt_obj.state_vars
 controls = overt_obj.control_vars
 acceleration = overt_obj.output_vars[0]
