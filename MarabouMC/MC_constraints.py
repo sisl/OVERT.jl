@@ -164,18 +164,8 @@ class MaxConstraint():
         self.var2in = varsin[1]
         self.varout = varout
     def __repr__(self):
-        return str(self.varout) + " = max(" + str(self.var1in) + " , " + str(self.var2in) + ")"   
+        return str(self.varout) + " = max(" + str(self.var1in) + " , " + str(self.var2in) + ")"
 
-class MinConstraint():
-    """
-    varout = min(var1in, var2in)
-    """
-    def __init__(self, varsin, varout):
-        self.var1in = varsin[0]
-        self.var2in = varsin[1]
-        self.varout = varout
-    def __repr__(self):
-        return str(self.varout) + " = min(" + str(self.var1in) + " , " + str(self.var2in) + ")"
 
 def matrix_to_scalar(c : MatrixConstraint):
     """

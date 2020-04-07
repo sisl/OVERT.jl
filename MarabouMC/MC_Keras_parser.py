@@ -1,20 +1,20 @@
 import numpy as np
 from keras.models import load_model
 from keras.layers import Dense, SimpleRNN
-from MarabouMC.MC_constraints import ConstraintType, Constraint, MatrixConstraint, ReluConstraint
+from MC_constraints import ConstraintType, Constraint, MatrixConstraint, ReluConstraint
 
 import tensorflow as tf
 
 
 NUM_VARS = 0
-def getNewVariable():
+def getNewVariable(var_sym='x'):
     """
     This function generates variables as strings x1, x2, ...
     NUM_VARS keeps the record of variables produced.
     """
     global NUM_VARS
     NUM_VARS += 1
-    return 'x'+str(NUM_VARS)
+    return var_sym+str(NUM_VARS)
 
 
 class KerasConstraint():
@@ -43,16 +43,28 @@ class KerasConstraint():
         - activations: activation functions of each layer. Only linear and relu are supported (list of strings)
         - input_vars: list of all input variables assigned to each layer (list of lists)
         - output_vars: list of all output variables assigned to each layer (list of lists)
+        - model_input_vars: list of variables that input to the network (inputs of the first layer)
+        - model_output_vars: list of variables that output to the network (output of the last layer AFTER activation function)
         - type: list of all layer types. Only Dense and SimpleRNN are supported. (list of strings)
     methods:
         - setup_constraint: depending on the layer, generates enough number of input and output variables and assigns them
                             to each layer. Then the constraints are made using rnn_constraint or dense constraint methods.
 
     """
-    def __init__(self, model, n_time=1):
-        self.model, self.layers, self.n_time = model, model.layers, n_time
-        self.names, self.input_sizes, self.output_sizes, self.activations, \
-        self.input_vars, self.output_vars, self.constraints, self.type = ([] for _ in range(8))
+    def __init__(self, model, n_time=1, condensed=True):
+        self.model  = model
+        self.layers = model.layers
+        self.n_time = n_time
+        self.names = []
+        self.type  = []
+        self.input_sizes = []
+        self.output_sizes= []
+        self.activations = []
+        self.input_vars  = []
+        self.output_vars = []
+        self.constraints = []
+        self.model_input_vars = []
+        self.model_output_vars= []
 
         for l in self.layers:
             self.names.append(l.input.name)
@@ -60,11 +72,16 @@ class KerasConstraint():
             self.output_sizes.append(l.output.shape.as_list()[-1])
             self.activations.append(self.find_activation(l))
 
-        self.setup_constraint(condensed=True)
+        # setup all equality and relu constraints
+        self.set_constraint(condensed=condensed)
+
+        # specify the input and output variables of the model and setup the
+        # the constraints for the output layer
+        self.set_input_output(condensed=condensed)
 
         self.check_constraints()
 
-    def setup_constraint(self, condensed=False):
+    def set_constraint(self, condensed=False):
         """
         This function assigned input and output variables to each layer.
         The construct the equality matrix constraints that prescribe the behavior of that model
@@ -111,7 +128,8 @@ class KerasConstraint():
         for i in range(len(self.layers) - 1):
             assert len(self.input_vars[i+1]) == len(self.output_vars[i])
             if self.activations[i] == "relu":
-                self.constraints.append(ReluConstraint(varin=self.output_vars[i], varout=self.input_vars[i]))
+                for v_in, v_out in zip(self.output_vars[i], self.input_vars[i+1]):
+                    self.constraints.append(ReluConstraint(varin=v_in, varout=v_out))
             elif self.activations[i] == "linear":
                 if condensed:
                     pass # no mapping is necessary
@@ -123,6 +141,9 @@ class KerasConstraint():
                     self.constraints.append(MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=x, b=b))
             else:
                 raise(IOError("Activation %s is not supported" %self.activations[i]))
+
+        # the output of the last layer after activation function may change.
+        # the necessary constraint for this is set in self.last_layer_constraint
 
     @staticmethod
     def rnn_constraint(n_t, weight_x, weight_h, bias):
@@ -156,12 +177,37 @@ class KerasConstraint():
 
     @staticmethod
     def find_activation(layer):
-        if (layer.activation(-3) == -3) & (layer.activation(3) == 3):
+        if layer.activation(-1) == -1:
             return "linear"
-        elif (layer.activation(-3) == 0) & (layer.activation(3) == 3):
+        elif (tf.is_tensor(layer.activation(0))) & ('Relu' in layer.activation(0).name):
             return "relu"
         else:
             raise (IOError("activation function is not supported"))
+
+    def set_input_output(self, condensed=False):
+        # find input variables of the model
+        input_idx = [l.input.name for l in self.layers].index(self.model.input.name)
+        self.model_input_vars = self.input_vars[input_idx].copy()
+
+        # find output variables of the model
+        output_layer_idx = [l.output.name for l in self.layers].index(self.model.output.name)
+        output_layer_activ_func = self.activations[output_layer_idx]
+        if (condensed) and output_layer_activ_func == "linear":
+            self.model_output_vars = self.output_vars[output_layer_idx].copy()
+            # no additional constraint
+        else:
+            output_layer_before_activ_func = self.output_vars[output_layer_idx]
+            output_layer_after_active_func = [getNewVariable() for _ in self.output_vars[output_layer_idx]]
+            self.model_output_vars = output_layer_after_active_func
+            if output_layer_activ_func == "linear":
+                w = np.eye(len(output_layer_before_activ_func))
+                A = np.hstack((w, -w))
+                b = np.zeros(2 * len(output_layer_before_activ_func))
+                x = np.array(output_layer_before_activ_func + output_layer_after_active_func)
+                self.constraints.append(MatrixConstraint(ConstraintType('EQUALITY'), A=A, x=x, b=b))
+            else:
+                for v_in, v_out in zip(output_layer_before_activ_func, output_layer_after_active_func):
+                    self.constraints.append(ReluConstraint(varin=v_in, varout=v_out))
 
     def check_constraints(self):
         """
@@ -171,8 +217,7 @@ class KerasConstraint():
         TODO: implement nonlinear solvers for relu activation
         """
         # find input variables of the model, and assign random numbers.
-        input_idx = [l.input.name for l in self.layers].index(self.model.input.name)
-        input_variables = self.input_vars[input_idx]
+        input_variables = self.model_input_vars
         input_values = [np.random.random() for _ in input_variables]
         input_variable_value_dict = dict(zip(input_variables, input_values))
 
@@ -192,7 +237,8 @@ class KerasConstraint():
 
         for c in self.constraints:
             if isinstance(c, ReluConstraint):
-                raise(NotImplementedError("This check does not work for relu yet."))
+                print("This check does not work for relu yet.")
+                return
             else:
                 x = c.x.flatten().tolist()
                 A = c.A
@@ -209,18 +255,21 @@ class KerasConstraint():
         sol = np.linalg.solve(A_tot, b_tot)
 
         # find output variables of the model
-        output_layer_idx = [l.output.name for l in self.layers].index(self.model.output.name)
-        output_variables = self.output_vars[output_layer_idx]
+        output_variables = self.model_output_vars
         output_variables_idx = [all_variables.index(v) for v in output_variables]
         sol_parser = sol[output_variables_idx]
 
-        # find
+        # find tf sol
         sol_tf = np.array([])
         assert len(input_variables) % self.n_time == 0
         m = len(input_variables) // self.n_time
         for i in range(self.n_time):
             x = np.array(input_values[i*m:(i+1)*m])
-            y = self.model.predict(x.reshape(1, 1, -1))
+            if len(self.model.input_shape) == 2:
+                x = x.reshape(1, -1)
+            else:
+                x = x.reshape(1, 1, -1)
+            y = self.model.predict(x)
             sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
 
         if np.all(np.isclose(sol_parser, sol_tf)):
@@ -229,9 +278,10 @@ class KerasConstraint():
             raise(ValueError("Test did not pass!"))
 
 
-n_t = 2
-m1 = load_model('dense_rnn_model_stateful.h5')
-p = KerasConstraint(m1, n_time=n_t)
+if __name__ == "__main__":
+    n_t = 2
+    m1 = load_model('dense_rnn_model_stateful.h5')
+    p = KerasConstraint(m1, n_time=n_t)
 
 # A, b = eval_constraints(cfeed)
 # sol = np.linalg.solve(A, b)

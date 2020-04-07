@@ -187,6 +187,9 @@ class TFConstraint:
             self.biasAddConstraint(op)
         elif op.node_def.op == 'Add':
             self.additionConstraint(op)
+        elif op.node_def.op == 'AddV2':  # I don't find any difference between Add and AddV2
+            # raise NotImplementedError("AddV2")
+            self.additionConstraint(op)
         # elif op.node_def.op == 'Sub':
         #     self.subEquations(op)
         # elif op.node_def.op == 'Conv2D':
@@ -286,7 +289,7 @@ class TFConstraint:
 
         ### END operations not requiring new variables ###
 
-        if op.node_def.op in ['MatMul', 'Mul', 'BiasAdd', 'Add', 'Sub', 'Relu', 'Maximum', 'MaxPool', 'Conv2D', 'Placeholder']:
+        if op.node_def.op in ['MatMul', 'Mul', 'BiasAdd', 'Add', 'Sub', 'Relu', 'Maximum', 'MaxPool', 'Conv2D', 'Placeholder', 'AddV2']:
             # need to create variables for these
             return self.opToVarArray(op)
 

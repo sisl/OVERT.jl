@@ -214,7 +214,7 @@ end
 
 
 
-function bound_2_txt(bound::OverApproximation, file_name::String)
+function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[], control_vars=[])
     """
     this function returns all equality and inequality constraints
     in forms of three lists and saves them in .h5 file.
@@ -298,13 +298,36 @@ function bound_2_txt(bound::OverApproximation, file_name::String)
     end
 
     # process inequalities
-    for ineq in u1p_approx.approx_ineq
+    for ineq in bound.approx_ineq
         @assert ineq.args[1] == :≦
         @assert length(ineq.args) == 3
         push!(ineq_list, [string(ineq.args[2]), string(ineq.args[3])])
     end
 
-    # write to file
+    # write input and output variables to file
+    if state_vars isa Array
+        state_vars_txt = [string(v) for v in state_vars]
+    else
+        state_vars_txt = [string(state_vars)]
+    end
+
+    if control_vars isa Array
+        control_vars_txt = [string(v) for v in control_vars]
+    else
+        control_vars_txt = [string(control_vars)]
+    end
+
+    if bound.output isa Array
+        output_vars_txt = [string(v) for v in bound.output]
+    else
+        output_vars_txt = [string(bound.output)]
+    end
+
+    h5write(file_name, "vars/states", state_vars_txt)
+    h5write(file_name, "vars/controls", control_vars_txt)
+    h5write(file_name, "vars/outputs", output_vars_txt)
+
+    # write constrains to file
     for (i, eq) in enumerate(eq_list)
         h5write(file_name, "eq/v$i", eq[1])
         h5write(file_name, "eq/c$i", eq[2])

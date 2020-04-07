@@ -5,8 +5,8 @@ u1p_expr = Meta.parse(u1p)
 u2p_expr = Meta.parse(u2p)
 
 range_dict = Dict(:th1 => [0., 1.], :th2 => [0., 1.],
-                  :u1 => [0., 3.], :u2 => [0., 3.],
-                  :T1 => [0., 5.], :T2 => [0., 5.])
+                  :u1 =>  [0., 3.],  :u2 => [0., 3.],
+                  :T1 =>  [0., 5.],  :T2 => [0., 5.])
 
 u1p_approx = overapprox_nd(u1p_expr, range_dict)
 u2p_approx = overapprox_nd(u2p_expr, range_dict)
