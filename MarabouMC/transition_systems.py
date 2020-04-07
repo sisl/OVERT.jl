@@ -1,6 +1,8 @@
 # transition system component classes
 from MC_TF_parser import TFConstraint
 from Constraint_utils import matrix_equality_constraint
+from MC_constraints import ReluConstraint
+from MC_Keras_parser import KerasConstraint
 import numpy as np
 
 class TransitionRelation:
@@ -24,6 +26,18 @@ class TFController(Controller):
         self.state_inputs = np.array(self.tfconstraintobj.inputVars).flatten().reshape(-1,1)
         self.control_outputs = self.tfconstraintobj.outputVars
         self.relus = self.tfconstraintobj.relus
+
+class KerasController(Controller):
+    def __init__(self, keras_model=None):
+        super().__init__()
+        """
+        load constraints by parsing network file
+        """
+        self.kerasconstraintobj = KerasConstraint(model=keras_model)
+        self.constraints = self.kerasconstraintobj.constraints
+        self.state_inputs = np.array(self.kerasconstraintobj.model_input_vars).reshape(-1,1)
+        self.control_outputs = self.kerasconstraintobj.model_output_vars
+        self.relus = [c for c in self.constraints if isinstance(c, ReluConstraint)]
 
 class Dynamics:
     def __init__(self, fun, states, controls):
@@ -92,7 +106,7 @@ class TFControlledTransitionRelation(ControlledTranstionRelation):
             assert(controller_obj is None)
             controller = TFController(network_file=controller_file)
         super().__init__(controller_file=controller_file, controller_obj=controller, dynamics_obj=dynamics_obj, epsilon=epsilon)
-            
+
 
 class TFControlledOVERTTransitionRelation(TFControlledTransitionRelation):
     

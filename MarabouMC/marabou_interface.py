@@ -1,8 +1,7 @@
 from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint
 import numpy as np
-from maraboupy import MarabouCore
+from maraboupy import Marabou, MarabouCore
 from MC_interface import Result
-
 # solver
 class MarabouWrapper():
     """
@@ -114,8 +113,9 @@ class MarabouWrapper():
     # inspired by MarabouNetwork.py::solve in Marabou/maraboupy
     def check_sat(self, output_filename="", timeout=0, vars_of_interest=[], verbose=True):
         # todo: redirect output to cwd/maraboulogs/
-        options = MarabouCore.createOptions(timeoutinSeconds=timeout)
+        options = Marabou.createOptions(timeoutInSeconds=timeout)
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
+#        vals, stats = MarabouCore.solve(self.ipq, output_filename, timeout)
         if verbose:
             self.print_results(vals, stats, vars_of_interest=vars_of_interest)
         if stats.hasTimedOut():
