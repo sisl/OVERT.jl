@@ -114,7 +114,8 @@ class MarabouWrapper():
     # inspired by MarabouNetwork.py::solve in Marabou/maraboupy
     def check_sat(self, output_filename="", timeout=0, vars_of_interest=[], verbose=True):
         # todo: redirect output to cwd/maraboulogs/
-        vals, stats = MarabouCore.solve(self.ipq, output_filename, timeout)
+        options = MarabouCore.createOptions(timeoutinSeconds=timeout)
+        vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
         if verbose:
             self.print_results(vals, stats, vars_of_interest=vars_of_interest)
         if stats.hasTimedOut():
