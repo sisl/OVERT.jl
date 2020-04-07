@@ -62,7 +62,8 @@ function is_affine(expr)
              is_affine(:(x/6))       = true
              is_affine(:(5*x))       = true
              is_affine(:(log(2)*x))  = true
-    """
+             is_affine(:(-x))        = true
+     """
     # it is number 
     if is_number(expr)
         return true
@@ -81,17 +82,38 @@ function is_affine(expr)
             elseif func == :/ # second arg has to be a number
                 return is_number(expr.args[3])
             else # func is + or -
-                condition1 = is_affine(expr.args[2])
-                if length(expr.args) > 2
-                    condition2 = is_affine(expr.args[3])
-                    return condition1 && condition2
-                else
-                    return condition1
-                end
+                return all(is_affine.(expr.args[2:end]))
             end
         end
     else
         return false # if not a number, symbol, or Expr, return false
+    end
+end
+
+is_outer_affine(s::Symbol) = true
+is_outer_affine(r::Real) = true
+function is_outer_affine(expr::Expr) 
+    """
+    5*sin(x) - 3*cos(y) is _outer_ affine. It can be re-written:
+    5*z - 3*w    where z = sin(x)   w = cos(y)
+    """
+    if is_number(expr)
+        return true
+    else
+        check_expr_args_length(expr)
+        func = expr.args[1]
+        if func ∈ [:+, :-]
+            # check args
+            return all(is_outer_affine.(expr.args[2:end]))
+        elseif func == :* # one of args has to be a number
+            option1 =  is_number(expr.args[2]) && is_outer_affine(expr.args[3])
+            option2 =  is_number(expr.args[3]) && is_outer_affine(expr.args[2])
+            return (option1 || option2)
+        elseif func == :/ # second arg has to be a number
+            return is_number(expr.args[3])
+        else
+            return false
+        end
     end
 end
 

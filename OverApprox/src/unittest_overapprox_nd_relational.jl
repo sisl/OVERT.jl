@@ -22,8 +22,15 @@ function affine_tests()
     @assert is_affine(:(5*x))
     @assert is_affine(:((1 / 6) * x))
     @assert is_affine(:(log(2)*x))
+    @assert is_affine(:(-x))
 end
 affine_tests()
+
+function outer_affine_tests()
+    @assert is_outer_affine(:(-sin(x) + sin(y)))
+    @assert is_outer_affine(:( -5*(sin(x) - 3*sin(y)) ) )
+end
+outer_affine_tests()
 
 overapprox_nd(:(sin(x)), Dict(:x=>[0,π/2]))
 
@@ -87,6 +94,8 @@ overapprox_nd(:(exp(x^2)), Dict(:x=>[-1,1]))
 overapprox_nd(:((x+sin(y))^3), Dict(:x=>[2,3], :y=>[1,2]))
 
 overapprox_nd(:(2^x), Dict(:x=>[2,3]))
+
+overapprox_nd(:(-sin(x+y)), Dict(:x=>[2,3]))
 
 
 

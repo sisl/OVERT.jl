@@ -1,7 +1,7 @@
 # Relational OverApproximation Utilities
 
 mutable struct OverApproximation
-    output::Symbol
+    output::Union{Symbol, Real}
     output_range::Array{T, 1} where {T <: Real}
     ranges::Dict{Symbol, Array{T, 1}} where {T <: Real}
     nvars::Integer

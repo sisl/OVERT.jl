@@ -115,7 +115,7 @@ class MarabouWrapper():
         # todo: redirect output to cwd/maraboulogs/
         options = Marabou.createOptions(timeoutInSeconds=timeout)
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
-#        vals, stats = MarabouCore.solve(self.ipq, output_filename, timeout)
+        #vals, stats = MarabouCore.solve(self.ipq, output_filename, timeout)
         if verbose:
             self.print_results(vals, stats, vars_of_interest=vars_of_interest)
         if stats.hasTimedOut():
