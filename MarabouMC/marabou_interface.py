@@ -1,4 +1,4 @@
-from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint
+from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint, MaxConstraint
 import numpy as np
 from maraboupy import Marabou, MarabouCore
 from MC_interface import Result
@@ -35,6 +35,8 @@ class MarabouWrapper():
             self.assert_simple_constraint(constraint)
         elif isinstance(constraint, ReluConstraint):
             self.assert_relu_constraint(constraint)
+        elif isinstance(constraint, MaxConstraint):
+            self.assert_max_constraint(constraint)
         else:
             raise NotImplementedError
     
@@ -56,6 +58,9 @@ class MarabouWrapper():
     
     def assert_relu_constraint(self, relu):
         MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout))
+    
+    def assert_max_constraint(self, c):
+        MarabouCore.addMaxConstraint(self.ipq, {self.get_new_var(c.var1in), self.get_new_var(c.var2in)}, self.get_new_var(c.varout))
     
     def add_marabou_eq(self, coeffs, variables, eq_type, scalar):
         if eq_type in [ConstraintType('LESS'), ConstraintType('GREATER')]:

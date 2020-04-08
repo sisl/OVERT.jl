@@ -1,7 +1,7 @@
 from enum import Enum
 #import tensorflow as tf
 # from maraboupy import *
-from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint
+from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint, MaxConstraint
 from Constraint_utils import matrix_equality_constraint, equality_constraint
 from properties import Property, ConstraintProperty
 from transition_systems import TransitionRelation
@@ -49,6 +49,21 @@ def substitute_relu(c: ReluConstraint, mapping):
     new_c.varout = mapping[c.varout]
     return new_c
 
+def substitute_max(c: MaxConstraint, mapping):
+    """
+    substitute(y = max(w, v), [w => w@1, v => v@1, y => y@1])
+    Used in unroller.
+    Return a NEW object. Do not modify input arg.
+    """
+    new_c = deepcopy(c)
+    new_c.var1in = mapping[c.var1in]
+    new_c.var2in = mapping[c.var2in]
+    new_c.varout = mapping[c.varout]
+    return new_c
+
+def timer_helper(var_list, t):
+    return [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in var_list]
+
 def isprimed(var):
     # if variable has ' in namestring, it is "primed"
     return ("'" in var)
@@ -68,16 +83,20 @@ class Unroller():
         """
         if isinstance(c, MatrixConstraint):
             vars_in_c = c.x.flatten()
-            timed_vars = [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in vars_in_c]
+            timed_vars = timer_helper(vars_in_c, t)
             return substitute_Mc(c, dict(zip(vars_in_c, timed_vars)))
         elif isinstance(c, Constraint):
             vars_in_c = [m.var for m in c.monomials]
-            timed_vars = [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in vars_in_c]
+            timed_vars = timer_helper(vars_in_c, t)
             return substitute_c(c, dict(zip(vars_in_c, timed_vars)))
         elif isinstance(c, ReluConstraint):
             vars_in_c = np.array([c.varin, c.varout]).flatten()
-            timed_vars = [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in vars_in_c]
+            timed_vars = timer_helper(vars_in_c, t)
             return substitute_relu(c, dict(zip(vars_in_c, timed_vars)))
+        elif isinstance(c, MaxConstraint):
+            vars_in_c = np.array([c.var1in, c.var2in, c.varout]).flatten()
+            timed_vars = timer_helper(vars_in_c, t)
+            return substitute_max(c, dict(zip(vars_in_c, timed_vars)))
         else:
             raise NotImplementedError
 
