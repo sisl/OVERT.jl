@@ -308,7 +308,7 @@ function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[],
     for ineq in bound.approx_ineq
         @assert ineq.args[1] == :≦
         @assert length(ineq.args) == 3
-        push!(ineq_list, [string(ineq.args[2]), string(ineq.args[3])])
+        push!(ineq_list, [[string(ineq.args[2])], [string(ineq.args[3])]])
     end
 
     # write input and output variables to file
@@ -350,7 +350,7 @@ function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[],
     end
     for (i, eq) in enumerate(ineq_list)
         h5write(file_name, "ineq/l$i", eq[1])
-        h5write(file_name, "ineq/r$i", eq[1])
+        h5write(file_name, "ineq/r$i", eq[2])
     end
     return eq_list, min_list, ineq_list
 end

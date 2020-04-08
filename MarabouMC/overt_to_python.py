@@ -16,12 +16,14 @@ class OvertConstraint():
         self.n_eq  = len(self.f['/eq/']) // 3
         self.n_min = len(self.f['/min/']) // 2
         self.n_max = len(self.f['/max/']) // 2
+        self.n_ineq = len(self.f['/ineq/']) // 2
 
         self.var_dict = {}
 
         self.eq_list = []
         self.max_list = []
         self.relu_list = []
+        self.ineq_list = []
         self.state_vars = []
         self.output_vars = []
         self.control_vars = []
@@ -30,6 +32,7 @@ class OvertConstraint():
         self.read_equations()
         self.read_min_equations()
         self.read_max_equations()
+        self.read_inequalities()
 
     def read_input_output_control_vars(self):
         self.state_vars = self.f['vars/states'][()]
@@ -47,6 +50,18 @@ class OvertConstraint():
             b = self.f['/eq/b%d'%(i+1)][()]
             monomial_list = [Monomial(c, self.var_dict[v]) for (c, v) in zip(coef, var)]
             self.eq_list.append(Constraint(ConstraintType('EQUALITY'), monomial_list, b))
+
+    def read_inequalities(self):
+        for i in range(self.n_ineq):
+            lvar = self.f['/ineq/l%d'%(i+1)][()][0]
+            rvar = self.f['/ineq/r%d'%(i+1)][()][0]
+            for v in [lvar, rvar]:
+                if v not in self.var_dict.keys():
+                    self.var_dict[v] = getNewVariable()
+
+            # add lvar <= rvar
+            monomial_list = [Monomial(1, self.var_dict[lvar]),  Monomial(-1, self.var_dict[rvar])]
+            self.ineq_list.append(Constraint(ConstraintType('LESS_EQ'), monomial_list, 0))
 
     def read_min_equations(self):
         for i in range(self.n_min):

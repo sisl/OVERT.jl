@@ -16,7 +16,7 @@ from properties import ConstraintProperty
 from MC_interface import BMC
 
 # create controller object with a keras model
-model = load_model("../OverApprox/models/single_pend_nn_ilqr_data.h5")
+model = load_model("../OverApprox/models/single_pend_nn_controller_ilqr_data.h5")
 controller = KerasController(keras_model=model)
 
 # create overt dynamics objects
@@ -42,7 +42,10 @@ c2 = Constraint(ConstraintType('EQUALITY'))
 c2.monomials = [Monomial(1, states[1]), Monomial(dt, acceleration), Monomial(-1, next_states[1])]
 print(c2.monomials)
 
-single_pendulum_dynamics.constraints = [c1, c2] # + overt_obj.constraint
+
+dynamics_constraints = [c1, c2]
+dynamics_constraints += overt_obj.eq_list + overt_obj.ineq_list + overt_obj.relu_list + overt_obj.max_list
+single_pendulum_dynamics.constraints = dynamics_constraints
 
 # create transition relation using controller and dynamics
 tr = TFControlledTransitionRelation(dynamics_obj=single_pendulum_dynamics,

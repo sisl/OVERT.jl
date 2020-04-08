@@ -35,8 +35,8 @@ class KerasController(Controller):
         """
         self.kerasconstraintobj = KerasConstraint(model=keras_model)
         self.constraints = self.kerasconstraintobj.constraints
-        self.state_inputs = np.array(self.kerasconstraintobj.model_input_vars).reshape(-1,1)
-        self.control_outputs = self.kerasconstraintobj.model_output_vars
+        self.state_inputs = np.array(self.kerasconstraintobj.model_input_vars).reshape(-1, 1)
+        self.control_outputs = np.array(self.kerasconstraintobj.model_output_vars).reshape(-1, 1)
         self.relus = [c for c in self.constraints if isinstance(c, ReluConstraint)]
 
 class Dynamics:
