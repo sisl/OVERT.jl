@@ -19,5 +19,7 @@ u2p_approx = overapprox_nd(u2p_expr, range_dict)
 marabou_friendify!(u1p_approx)
 marabou_friendify!(u2p_approx)
 
-# bound_2_txt(u1p_approx, "OverApprox/model/double_pend_acceleration_1_overt.h5"; state_vars=[:th1, :th2, :u1, :u2], control_vars=[:T1, :T2])
-# bound_2_txt(u2p_approx, "OverApprox/model/double_pend_acceleration_2_overt.h5"; state_vars=[:th1, :th2, :u1, :u2], control_vars=[:T1, :T2])
+bound_2_txt(u1p_approx, "OverApprox/models/double_pend_acceleration_1_overt.h5";
+      state_vars=[:th1, :th2, :u1, :u2], control_vars=[:T1, :T2])
+bound_2_txt(u2p_approx, "OverApprox/models/double_pend_acceleration_2_overt.h5";
+      state_vars=[:th1, :th2, :u1, :u2], control_vars=[:T1, :T2])
