@@ -1,4 +1,4 @@
-include("overt_header.jl")
+#include("overt_header.jl")
 include("autoline.jl")
 include("overest_new.jl")
 include("utilities.jl")
@@ -36,7 +36,7 @@ to collect the relations describing the bound along the way.
 """
 function overapprox_nd(expr,
                        bound::OverApproximation)
-
+    println(expr)
     # all operations should have at most two arguments.
     expr = rewrite_division_by_const(expr)
     expr = reduce_args_to_2(expr)
@@ -192,7 +192,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
             end
             if is_number(x) # c/y
                 f_new = :($x/$y)
-                bound = bound_1arg_function(f_new, y, bound) 
+                bound = bound_1arg_function(f_new, y, bound)
                 return bound
             elseif x isa Symbol # x/y
                 @debug "converting: $x / $y"
@@ -211,12 +211,12 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
     # The following operation is not yet fully tested.
     elseif f == :^
         if is_number(y) # this is f(x)^a, where a is a constant.
-            @debug "handling f(x)^a" 
+            @debug "handling f(x)^a"
             f_new = :($x^$y)
             bound = bound_1arg_function(f_new, x, bound)
             return bound
         elseif is_number(x)  # this is a^f(x), where a is a constant.
-            @debug "handling  a^f(x)" 
+            @debug "handling  a^f(x)"
             f_new = :($x^$y)
             bound = bound_1arg_function(f_new, y, bound)
             return bound
@@ -290,7 +290,7 @@ end
 
 """
     bound_1arg_function(e::Expr, x::Symbol, bound::OverApproximation; plotflag=true)
-Bound one argument functions like x^2. 
+Bound one argument functions like x^2.
 Create upper and lower bounds of function f(x)
 """
 function bound_1arg_function(e::Expr, arg::Symbol, bound::OverApproximation; plotflag=true)
@@ -298,7 +298,7 @@ function bound_1arg_function(e::Expr, arg::Symbol, bound::OverApproximation; plo
     fun = SymEngine.lambdify(e, [arg])
     lb, ub, npoint = bound.ranges[arg][1], bound.ranges[arg][2], bound.N
     return bound_unary_function(fun, e, arg, lb, ub, npoint, bound, plotflag=plotflag)
-end    
+end
 
 """
     bound_unary_function(f::Symbol, x_bound::OverflowError; plotflag=true)

@@ -174,6 +174,7 @@ find x, a and b in a linear 1d expression.
 # expr = x + b, return  (x, 1, b)
 # expr = 2x, return  (x, 2, 0)
 # expr = -x, return (x, -1, 0)
+# expr = :((1/2)*x -1), return (:x, 1/2, -1) # notice the second coefficient is number and not expr.
 """
 parse_linear_expr(expr::Symbol) = expr, 1, 0
 function parse_linear_expr(expr::Expr)
@@ -196,6 +197,8 @@ function parse_linear_expr(expr::Expr)
 
         b = is_number(expr.args[2]) ? expr.args[2] : expr.args[3]
         ax = is_number(expr.args[2]) ? expr.args[3] : expr.args[2]
+        b = eval(b) # makes expr to number
+
         if ax isa Symbol
             return (ax, 1, b)
         elseif ax isa Expr
@@ -207,6 +210,7 @@ function parse_linear_expr(expr::Expr)
         end
     else  # expr.args[1] == :*
         a = is_number(expr.args[2]) ? expr.args[2] : expr.args[3]
+        a = eval(a) # makes expr to number
         x = is_number(expr.args[2]) ? expr.args[3] : expr.args[2]
         return (x, a, 0)
     end
@@ -246,7 +250,10 @@ function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[],
         @assert length(eq.args) == 2
         left_arg = simplify(eq.args[1])
         rite_arg = simplify(eq.args[2])
-
+        println(eq, " ", rite_arg)
+        if length(rite_arg.args) == 2 && rite_arg.args[1] == :-
+            rite_arg = :(-1*$(rite_arg.args[2]))
+        end
         @assert length(rite_arg.args) >= 3
         f = rite_arg.args[1]
         if f in [:+, :-]

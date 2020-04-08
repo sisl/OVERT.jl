@@ -16,7 +16,7 @@ from properties import ConstraintProperty
 from MC_interface import BMC
 
 # create controller object with a keras model
-model = load_model("../OverApprox/models/single_pend_controller_nn.h5")
+model = load_model("../OverApprox/models/single_pend_nn_ilqr_data.h5")
 controller = KerasController(keras_model=model)
 
 # create overt dynamics objects
@@ -49,7 +49,7 @@ tr = TFControlledTransitionRelation(dynamics_obj=single_pendulum_dynamics,
                                         controller_obj=controller)
 
 # initial set
-init_set = {states[0]: (0., 1.), states[1]: (-1, 1)}
+init_set = {states[0]: (0., 0.1), states[1]: (-1., 1.)}
 
 # build the transition system as an (S, I(S), TR) tuple
 ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
@@ -57,16 +57,20 @@ ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relatio
 # solver
 solver = MarabouWrapper()
 
-# property
-p = Constraint(ConstraintType('GREATER'))
-# x > c (complement will be x <= c)
+# property x< 0.105, x' < 0.2
+p = Constraint(ConstraintType('LESS'))
 p.monomials = [Monomial(1, states[0])]
-p.scalar = -0.2 # 0 #
+p.scalar = 0.101 # 0 #
+prop = ConstraintProperty([p])
+
+
+p.monomials = [Monomial(1, states[0])]
+p.scalar = 0.101 # 0 #
 prop = ConstraintProperty([p])
 
 # algo
 algo = BMC(ts = ts, prop = prop, solver=solver)
-algo.check_invariant_until(3)
+algo.check_invariant_until(20)
 
 # random runs to give intuition to MC result
 # for i in range(10):
