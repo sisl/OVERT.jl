@@ -3,8 +3,8 @@
 
 import os
 import sys
-sys.path.insert(0, "/home/amaleki/Dropbox/stanford/Python/Marabou/")
-print(sys.path)
+#sys.path.insert(0, "/home/amaleki/Dropbox/stanford/Python/Marabou/")
+#print(sys.path)
 
 import numpy as np
 from keras.models import load_model

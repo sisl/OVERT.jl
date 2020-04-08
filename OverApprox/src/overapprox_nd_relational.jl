@@ -52,15 +52,17 @@ function overapprox_nd(expr,
     # TODO: ideally should not be active.
     elseif is_number(expr)
         @debug("is number base case")
-        bound.output = add_var(bound)
-        c  = eval(expr)
-        bound.output_range = [c,c]
-        # use :($newvar = $expr) # for use with infinite precision solvers
-        push!(bound.approx_eq, :($(bound.output) == $c))
-        bound.fun_eq[bound.output] = c
-        bound.ranges[bound.output] = bound.output_range
-        push!(bound.consts, bound.output)
+        bound.output = eval(expr)
         return bound
+        # bound.output = add_var(bound)
+        # c  = eval(expr)
+        # bound.output_range = [c,c]
+        # # use :($newvar = $expr) # for use with infinite precision solvers
+        # push!(bound.approx_eq, :($(bound.output) == $c))
+        # bound.fun_eq[bound.output] = c
+        # bound.ranges[bound.output] = bound.output_range
+        # push!(bound.consts, bound.output)
+        # return bound
     elseif is_affine(expr)
         @debug("is affine base case")
         bound.output = add_var(bound)
@@ -85,6 +87,11 @@ function overapprox_nd(expr,
             xexpr = expr.args[2]
             # recurse on argument
             bound = overapprox_nd(xexpr, bound)
+            if f == :- # handle unary minus
+                @debug "let affine handle unary minus"
+                new_expr = :(-$(bound.output))
+                return overapprox_nd(new_expr, bound)
+            end
             # handle outer function f
             bound = bound_unary_function(f, bound)
             return bound
@@ -96,19 +103,11 @@ function overapprox_nd(expr,
             xexpr = expr.args[2]
             yexpr = expr.args[3]
             # recurse on aguments
-            if !is_number(xexpr) # goes through except for a^x
-                bound = overapprox_nd(xexpr, bound)
-                x = bound.output
-            else
-                x = eval(xexpr)
-            end
-
-            if !is_number(yexpr) # goes through except for x^a
-                bound = overapprox_nd(yexpr, bound)
-                y = bound.output
-            else
-                y = eval(yexpr)
-            end
+            bound = overapprox_nd(xexpr, bound)
+            x = bound.output
+            #
+            bound = overapprox_nd(yexpr, bound)
+            y = bound.output
             # handle outer function f
             bound = bound_binary_functions(f, x, y, bound)
             return bound
@@ -117,8 +116,19 @@ function overapprox_nd(expr,
 end
 
 function bound_binary_functions(f, x, y, bound) # TODO: should only be for when both args are vars or 6/x
+    @debug "bound binary functions: f x y:" f x y
+    mul_two_vars = !is_number(x) && !(is_number(y)) && f  == :*
+    divide_by_var = !is_number(y) && f == :/
+    is_power = f == :^
+    if !(mul_two_vars || divide_by_var || is_power)
+        # then is affine
+        new_expr = :($f($x,$y))
+        @debug "rewriting into affine expr: " new_expr
+        return overapprox_nd(new_expr, bound)
+    end
+
     if f == :+
-        @debug("bounding +")
+        @debug("bounding +. should not be used anymore")
         z = add_var(bound)
         push!(bound.approx_eq, :($z == $x + $y))
         bound.fun_eq[z] = :($x + $y)
@@ -138,7 +148,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
         bound.ranges[z] = sum_range
         return bound
     elseif f == :-
-        @debug("bounding -")
+        @debug("bounding -. should not be used.")
         z = add_var(bound)
         push!(bound.approx_eq, :($z == $x - $y))
         bound.fun_eq[z] = :($x - $y)
