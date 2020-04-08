@@ -97,7 +97,7 @@ overapprox_nd(:(2^x), Dict(:x=>[2,3]))
 
 overapprox_nd(:(-sin(x+y)), Dict(:x=>[2,3]))
 
-
+overapprox_nd(:(log(x)), Dict(:x => [1.0, 166.99205596346707]))
 
 
 

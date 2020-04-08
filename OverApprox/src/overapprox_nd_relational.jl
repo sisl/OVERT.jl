@@ -48,8 +48,6 @@ function overapprox_nd(expr,
         bound.output = expr
         bound.output_range = bound.ranges[expr]
         return bound
-    # for easier parsing with marabou
-    # TODO: ideally should not be active.
     elseif is_number(expr)
         @debug("is number base case")
         bound.output = eval(expr)
