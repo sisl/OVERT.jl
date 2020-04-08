@@ -234,7 +234,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 					z = nlsolve(obj, zGuess, autodiff = :forward)
 					break
 				catch
-					itr_nlsove += 1
+					itr_nlsolve += 1
 				end
 				#z = mcpsolve(obj, sol_lb, sol_ub , zGuess_exp, autodiff = :forward)
 			end
