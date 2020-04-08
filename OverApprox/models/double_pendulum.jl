@@ -3,6 +3,9 @@ file to generate single pendulum overt dynamics. Assuming g=m=L=1.0 and c=0.
 the output is a .h5 file with a list of all equality, min, max and inequality constraints.
 """
 
+include("../src/overt_to_file.jl")
+include("../src/overapprox_nd_relational.jl")
+
 u1p = "(sin(2*th1 - 2*th2)*u1^2 + 2*sin(th1 - th2)*u2^2 - 2*T1 + sin(th1 - 2*th2) - 3*sin(th1) + 2*T2*cos(th1 - th2))/(cos(2*th1 - 2*th2) - 3)"
 u2p = "(2*(sin(th1 - th2)*u1^2 + T2 + sin(th2) - cos(th1 - th2)*(- (sin(th1 - th2)*u2^2)/2 + T1/2 + sin(th1))))/(2 - cos(th1 - th2)^2)"
 

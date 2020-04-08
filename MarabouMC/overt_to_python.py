@@ -33,6 +33,7 @@ class OvertConstraint():
         self.read_min_equations()
         self.read_max_equations()
         self.read_inequalities()
+        self.constraints = self.eq_list + self.max_list + self.relu_list + self.ineq_list
 
     def read_input_output_control_vars(self):
         self.state_vars = self.f['vars/states'][()]

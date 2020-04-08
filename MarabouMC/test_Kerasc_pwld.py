@@ -10,13 +10,17 @@ import numpy as np
 from keras.models import load_model
 from overt_to_python import OvertConstraint
 from transition_systems import KerasController, Dynamics, TFControlledTransitionRelation, TransitionSystem
-from MC_constraints import Constraint, ConstraintType, ReluConstraint, Monomial
+from MC_constraints import Constraint, ConstraintType, ReluConstraint, Monomial, MaxConstraint, ReluConstraint
 from marabou_interface import MarabouWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
 
 # create controller object with a keras model
+# good controller
 model = load_model("../OverApprox/models/single_pend_nn_controller_ilqr_data.h5")
+# bad controller
+# model = load_model("../OverApprox/models/single_pend_controller_nn_not_trained.h5")
+
 controller = KerasController(keras_model=model)
 
 # create overt dynamics objects
@@ -42,10 +46,7 @@ c2 = Constraint(ConstraintType('EQUALITY'))
 c2.monomials = [Monomial(1, states[1]), Monomial(dt, acceleration), Monomial(-1, next_states[1])]
 print(c2.monomials)
 
-
-dynamics_constraints = [c1, c2]
-dynamics_constraints += overt_obj.eq_list + overt_obj.ineq_list + overt_obj.relu_list + overt_obj.max_list
-single_pendulum_dynamics.constraints = dynamics_constraints
+single_pendulum_dynamics.constraints = [c1, c2] + overt_obj.constraints
 
 # create transition relation using controller and dynamics
 tr = TFControlledTransitionRelation(dynamics_obj=single_pendulum_dynamics,
@@ -67,9 +68,9 @@ p.scalar = 0.101 # 0 #
 prop = ConstraintProperty([p])
 
 
-p.monomials = [Monomial(1, states[0])]
-p.scalar = 0.101 # 0 #
-prop = ConstraintProperty([p])
+# p.monomials = [Monomial(1, states[0])]
+# p.scalar = 0.101 # 0 #
+# prop = ConstraintProperty([p])
 
 # algo
 algo = BMC(ts = ts, prop = prop, solver=solver)
