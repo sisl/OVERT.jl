@@ -1,4 +1,3 @@
-import gym
 import pickle
 import numpy as np
 from numpy import sin, cos, pi
@@ -13,10 +12,10 @@ if USE_LATEX:
     rc('text', usetex=True)
 
 
-class Pendulum(gym.Env):
+class Pendulum():
     """
         this is a n-link pendulum with massless links and identical joint mass and link length.
-        There is viscous friction assumed. Are joints are actuated. The inputs are
+        There is viscous friction assumed. The joints are actuated. The inputs are
             -m: mass of each point mass
             -L: length of each link
             -c: coefficient of viscous friction
@@ -237,8 +236,6 @@ class Pendulum3Env(Pendulum):
 
         return eq1, eq2, eq3
 
-
-from gym.envs.registration import make
 if __name__ == '__main__':
     p1 = Pendulum1Env(x_0=[2., 0.], dt =0.01)
     p1.reset()

@@ -79,30 +79,29 @@ algo = BMC(ts = ts, prop = prop, solver=solver)
 algo.check_invariant_until(20)
 
 # random runs to give intuition to MC result
-for i in range(5):
-    th = random.uniform(init_set[states[0]][0], init_set[states[0]][1])
-    print("th@0=", th)
-    dth = random.uniform(init_set[states[1]][0], init_set[states[1]][1])
-    print("dth@0=", dth)
-    for j in range(20):
-        T = model.predict(np.array([th, dth]).reshape(1,2))[0][0]
-        th, dth = single_pendulum(th, dth, T, dt)
-        print("th@",j+1,"=", th)
-        print("dth@",j+1,"=", th)
+# for i in range(5):
+#     th = random.uniform(init_set[states[0]][0], init_set[states[0]][1])
+#     print("th@0=", th)
+#     dth = random.uniform(init_set[states[1]][0], init_set[states[1]][1])
+#     print("dth@0=", dth)
+#     for j in range(20):
+#         T = model.predict(np.array([th, dth]).reshape(1,2))[0][0]
+#         th, dth = single_pendulum(th, dth, T, dt)
+#         print("th@",j+1,"=", th)
+#         print("dth@",j+1,"=", th)
 
 
 import sys
 sys.path.append('..')
 
-from gym_new.gym.envs.registration import make
-
-x0 = [np.random.random()*0.1, np.random.random()*2. -1.]
-env = make("Pendulum1-v0", x_0=[2., 0.], dt =0.01)
+from gym_new.pendulum_new import Pendulum1Env
+x_0 = [np.random.random()*0.1, np.random.random()*2. -1.]
+env = Pendulum1Env(x_0=x_0, dt=0.1)
 env.reset()
 
-
 for time in range(20):
-    torque = model.predict(env.x.reshape(-1,2))
+    print("time: %d, th=%0.3f, thdot=%0.3f" %(time, env.x[0], env.x[1]))
+    torque = model.predict(env.x.reshape(-1,2)).reshape(1)
     env.step(torque)
 
 env.render()

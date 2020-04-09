@@ -1,2 +1,0 @@
-model_checkpoint_path: "save_mode.ckpt-0"
-all_model_checkpoint_paths: "save_mode.ckpt-0"

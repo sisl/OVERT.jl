@@ -1,5 +1,4 @@
 import os
-import gym
 import pickle
 import numpy as np
 from scipy.integrate import odeint
@@ -9,7 +8,11 @@ import matplotlib.patches as patches
 import ipywidgets as widgets
 from IPython.display import display
 from matplotlib.animation import FuncAnimation
+
+## TODO: FIX THIS
 ORIGIN_PATH = "/home/amaleki/Dropbox/stanford/Python/gym-new-env/gym/envs/classic_control"
+##
+
 
 def add_subplot_axes(ax,rect,axisbg='w'):
     fig = plt.gcf()
@@ -33,7 +36,7 @@ def add_subplot_axes(ax,rect,axisbg='w'):
     return subax
 
 
-class AirplaneEnv(gym.Env):
+class AirplaneEnv():
     """
         this is a dynamical system for an airplane
     """
@@ -405,9 +408,8 @@ class AirplaneEnv(gym.Env):
         plt.show()
 
 
-from gym.envs.registration import make
 if __name__ == '__main__':
-    env = make("AirPlane-v0", g=1., dt=0.02, x_0=[0.,  2., 0.,  -5., 10., -3., 0., 0., 0., 0., 0., 0.])
+    env = AirplaneEnv(g=1., dt=0.02, x_0=[0.,  2., 0.,  -5., 10., -3., 0., 0., 0., 0., 0., 0.])
     env.reset()
 
     actions = [2., 0., -1.0, 0., 0., 0.]
