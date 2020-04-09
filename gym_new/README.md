@@ -13,5 +13,6 @@ This repo includes:
                                  which is crank-nicolson update. 
         -  `dt`: timestep (default value = 0.001 s)
     
-The single, double and triple pendulums are explicitly implemented. For higher-n's, one needs to add a function that include the dynamics of the system.
+The single, double and triple pendulums are explicitly implemented. For higher-n's, one needs to add a function that includes the dynamics of the system.
+
 2. airplane:
