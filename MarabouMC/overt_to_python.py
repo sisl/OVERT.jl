@@ -11,14 +11,17 @@ from MC_Keras_parser import KerasConstraint, getNewVariable
 
 
 class OvertConstraint():
-    def __init__(self, file_name):
+    def __init__(self, file_name, var_dict={}):
         self.f = h5py.File(file_name, "r")
         self.n_eq  = len(self.f['/eq/']) // 3
         self.n_min = len(self.f['/min/']) // 2
         self.n_max = len(self.f['/max/']) // 2
         self.n_ineq = len(self.f['/ineq/']) // 2
 
-        self.var_dict = {}
+        self.var_dict = var_dict
+        # var_dict is a dictionary with key and values of julia and corresponding python variables.
+        # when processing more than one overt function, e.g. for a double pendulum,
+        # the var_dict of the previous functions should be passed, to avoid creating dublicate variables.
 
         self.eq_list = []
         self.max_list = []
@@ -28,17 +31,17 @@ class OvertConstraint():
         self.output_vars = []
         self.control_vars = []
 
-        self.read_input_output_control_vars()
         self.read_equations()
         self.read_min_equations()
         self.read_max_equations()
         self.read_inequalities()
+        self.read_input_output_control_vars()
         self.constraints = self.eq_list + self.max_list + self.relu_list + self.ineq_list
 
     def read_input_output_control_vars(self):
-        self.state_vars = self.f['vars/states'][()]
-        self.control_vars = self.f['vars/controls'][()]
-        self.output_vars = self.f['vars/outputs'][()]
+        self.state_vars = [self.var_dict[v] for v in self.f['vars/states'][()]]
+        self.control_vars = [self.var_dict[v] for v in self.f['vars/controls'][()]]
+        self.output_vars = [self.var_dict[v] for v in self.f['vars/outputs'][()]]
 
     def read_equations(self):
         for i in range(self.n_eq):
@@ -84,20 +87,20 @@ class OvertConstraint():
                 #z = min(ax, by) = > z2 = max(x2, y2),  z2=-z,  x2=-ax, y2=-by.
                 # define new variables z2=-z,
                 new_var_out = getNewVariable()
-                monomial_list = [Monomial(1, self.var_dict[var_out]), Monomial(1, new_var_out)]  #z + z2 = 0
-                self.eq_list.append(Constraint(ConstraintType('EQUALITY'), monomial_list, 0))
+                monomial_list1 = [Monomial(1, self.var_dict[var_out]), Monomial(1, new_var_out)]  #z + z2 = 0
+                self.eq_list.append(Constraint(ConstraintType('EQUALITY'), monomial_list1, 0))
 
                 # define new variable x2=-ax,
                 new_var_in1 = getNewVariable()
-                monomial_list = [Monomial(coef1, self.var_dict[var_in1]), Monomial(1, new_var_in1)]  # ax + x2 = 0
-                self.eq_list.append(Constraint(ConstraintType('EQUALITY'), monomial_list, 0))
+                monomial_list2 = [Monomial(coef1, self.var_dict[var_in1]), Monomial(1, new_var_in1)]  # ax + x2 = 0
+                self.eq_list.append(Constraint(ConstraintType('EQUALITY'), monomial_list2, 0))
 
                 # define new variable y2=-by,
                 new_var_in2 = getNewVariable()
-                monomial_list = [Monomial(coef2, self.var_dict[var_in2]), Monomial(1, new_var_in2)]  #by + y2 = 0
-                self.eq_list.append(Constraint(ConstraintType('EQUALITY'), monomial_list, 0))
+                monomial_list3 = [Monomial(coef2, self.var_dict[var_in2]), Monomial(1, new_var_in2)]  #by + y2 = 0
+                self.eq_list.append(Constraint(ConstraintType('EQUALITY'), monomial_list3, 0))
 
-                self.max_list.append(MaxConstraint([new_var_in1, new_var_in2], new_var_out))  # z2 = max(x2, y2)
+                self.max_list.append(MaxConstraint(varsin=[new_var_in1, new_var_in2], varout=new_var_out))  # z2 = max(x2, y2)
             else:
                 # z = min(0, ay) => z2 = relu(y2), z2=-z, y2=-ay
                 new_var_out = getNewVariable()
@@ -109,7 +112,7 @@ class OvertConstraint():
                 monomial_list = [Monomial(coef2, self.var_dict[var_in2]), Monomial(1, new_var_in2)]  # by + y2 = 0
                 self.eq_list.append(Constraint(ConstraintType('EQUALITY'), monomial_list, 0))
 
-                self.relu_list.append(ReluConstraint(new_var_in2, new_var_out))
+                self.relu_list.append(ReluConstraint(varin=new_var_in2, varout=new_var_out))
 
     def read_max_equations(self):  # these are all relu equations
         for i in range(self.n_max):
@@ -123,34 +126,13 @@ class OvertConstraint():
             if var_out not in self.var_dict.keys(): self.var_dict[var_out] = getNewVariable()
             if var_in not in self.var_dict.keys(): self.var_dict[var_in] = getNewVariable()
 
+            # z = max(by, 0) => z = relu(y2), where y2 = -by
             # define new variable y2=-by,
             new_var_in = getNewVariable()
             monomial_list = [Monomial(coef2, self.var_dict[var_in]), Monomial(1, new_var_in)]  # by + y2 = 0
             self.eq_list.append(Constraint(ConstraintType('EQUALITY'), monomial_list, 0))
 
-            self.relu_list.append(ReluConstraint(self.var_dict[var_out], new_var_in))
+            self.relu_list.append(ReluConstraint(varin=new_var_in, varout=self.var_dict[var_out]))
 
-# class SinglePendulumOvertDynamics(OvertConstraint):
-#     def __init__(self, file_name, dt):
-#         super().__init__(file_name)
-#
-#         self.dt = dt
-#
-#     def compute_next_state(self):
-#         th, dth = self.state_vars
-#         torque = self.control_vars
-#         ddth = self.output_vars
-#
-#         return next_state_vars
-        # add
-
-# m1 = load_model("../OverApprox/models/single_pend.h5")
-# p = KerasConstraint(m1)
-# o = OvertConstraint("../OverApprox/src/up.h5")
-#
-# print(o.state_vars)
-# print(o.control_vars)
-# print(o.output_vars)
-# # consolidate_constraints
-#
-# print(getNewVariable())
+if __name__ == "__main__":
+    o = OvertConstraint("../OverApprox/models/single_pend_acceleration_overt.h5")
