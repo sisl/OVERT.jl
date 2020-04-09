@@ -289,10 +289,10 @@ function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[],
                 # the non-number argument has to be a min or max expression
                 @assert minx.args[1] in [:min, :max]
 
-                # z = c*min(x, y) = min(cx, cy) if c > 0
-                # z = c*min(x, y) = max(cx, cy) if c < 0
-                # z = c*max(x, y) = max(cx, cy) if c > 0
-                # z = c*max(x, y) = min(cx, cy) if c < 0
+                # if c > 0, z = c*min(x, y) = min(cx, cy) = -max(-cx, -cy)  => -z = max(-cx , -cy)
+                # if c < 0, z = c*min(x, y) = max(cx, cy)
+                # if c > 0, z = c*max(x, y) = max(cx, cy)
+                # if c < 0, z = c*max(x, y) = min(cx, cy) = -max(-cx, -cy)  => -z = max(-cx , -cy)
                 if c > 0
                     if minx.args[1] == :min
                         push!(min_list, [[string(left_arg), string(minx.args[2]), string(minx.args[3])], [c, c]])

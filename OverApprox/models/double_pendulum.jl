@@ -22,7 +22,15 @@ u2p_approx = overapprox_nd(u2p_expr, range_dict)
 marabou_friendify!(u1p_approx)
 marabou_friendify!(u2p_approx)
 
-bound_2_txt(u1p_approx, "OverApprox/models/double_pend_acceleration_1_overt.h5";
-      state_vars=[:th1, :th2, :u1, :u2], control_vars=[:T1, :T2])
-bound_2_txt(u2p_approx, "OverApprox/models/double_pend_acceleration_2_overt.h5";
-      state_vars=[:th1, :th2, :u1, :u2], control_vars=[:T1, :T2])
+
+# delete the file, if exists. h5 can't overwrite.
+out_file_name1 = "OverApprox/models/double_pend_acceleration_1_overt.h5"
+out_file_name2 = "OverApprox/models/double_pend_acceleration_2_overt.h5"
+if isfile(out_file_name1)
+    rm(out_file_name1)
+end
+if isfile(out_file_name2)
+    rm(out_file_name2)
+end
+bound_2_txt(u1p_approx, out_file_name1; state_vars=[:th1, :th2, :u1, :u2], control_vars=[:T1, :T2])
+bound_2_txt(u2p_approx, out_file_name2; state_vars=[:th1, :th2, :u1, :u2], control_vars=[:T1, :T2])

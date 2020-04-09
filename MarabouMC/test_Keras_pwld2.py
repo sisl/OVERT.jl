@@ -21,12 +21,19 @@ controller = KerasController(keras_model=model)
 
 # create overt dynamics objects
 overt_obj_1 = OvertConstraint("../OverApprox/models/double_pend_acceleration_1_overt.h5")
-overt_obj_2 = OvertConstraint("../OverApprox/models/double_pend_acceleration_2_overt.h5")
-#overt_obj = OvertConstraint("../OverApprox/src/up.h5")
+overt_obj_2 = OvertConstraint("../OverApprox/models/double_pend_acceleration_2_overt.h5", var_dict=overt_obj_1.var_dict)
+
+# sanity checks
+assert(len(overt_obj_1.state_vars) == len(overt_obj_2.state_vars))
+assert(len(overt_obj_1.control_vars) == len(overt_obj_2.control_vars))
+for s in overt_obj_1.state_vars:
+    assert(s in overt_obj_2.state_vars)
+for c in overt_obj_1.control_vars:
+    assert(c in overt_obj_2.control_vars)
+
+# setup states, control and dynamics variables.
 states = overt_obj_1.state_vars
 controls = overt_obj_1.control_vars
-assert(all(states == overt_obj_2.state_vars))
-assert(all(controls == overt_obj_2.control_vars))
 acceleration_1 = overt_obj_1.output_vars[0]
 acceleration_2 = overt_obj_2.output_vars[0]
 
@@ -60,8 +67,8 @@ c4.monomials = [Monomial(1, states[3]), Monomial(dt, acceleration_2), Monomial(-
 print(c4.monomials)
 
 dynamics_constraints = [c1, c2, c3, c4]
-dynamics_constraints += overt_obj_1.eq_list + overt_obj_1.ineq_list + overt_obj_1.relu_list + overt_obj_1.max_list
-dynamics_constraints += overt_obj_2.eq_list + overt_obj_2.ineq_list + overt_obj_2.relu_list + overt_obj_2.max_list
+dynamics_constraints += overt_obj_1.constraints
+dynamics_constraints += overt_obj_2.constraints
 double_pendulum_dynamics.constraints = dynamics_constraints
 
 # create transition relation using controller and dynamics

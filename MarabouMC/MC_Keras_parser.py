@@ -210,11 +210,18 @@ class KerasConstraint():
                     self.constraints.append(ReluConstraint(varin=v_in, varout=v_out))
 
     def check_constraints(self):
+        if all([type(c) == MatrixConstraint for c in self.constraints]):
+            self.check_constraints_no_relu()
+        elif all([a == "relu" for a in self.activations[:-1]]):
+            self.check_constraints_with_relu()
+        else:
+            raise(NotImplementedError("for a relu network, only the last layer can have linear activation."))
+
+    def check_constraints_no_relu(self):
         """
         This function compares the output of parser and a tensorflow output for random input values.
-        Only works if there no relu activation
+        No relu activation should be present.
 
-        TODO: implement nonlinear solvers for relu activation
         """
         # find input variables of the model, and assign random numbers.
         input_variables = self.model_input_vars
@@ -237,8 +244,7 @@ class KerasConstraint():
 
         for c in self.constraints:
             if isinstance(c, ReluConstraint):
-                print("This check does not work for relu yet.")
-                return
+                raise(IOError("This check does not work for relu constraints."))
             else:
                 x = c.x.flatten().tolist()
                 A = c.A
@@ -273,16 +279,80 @@ class KerasConstraint():
             sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
 
         if np.all(np.isclose(sol_parser, sol_tf)):
-            print("succeeded")
+            print("Test passed.")
         else:
             raise(ValueError("Test did not pass!"))
 
+    def check_constraints_with_relu(self):
+        """
+        This function compares the output of parser and a tensorflow output for random input values.
+        activations should contain at least one relu constraint.
+
+        This only works for n_t = 1
+
+        """
+
+        assert self.n_time == 1
+
+        # find input variables of the model, and assign random numbers.
+        input_variables = self.model_input_vars
+        input_values = [np.random.random() for _ in input_variables]
+        input_variable_value_dict = dict(zip(input_variables, input_values))
+
+        relu_constraints = [c for c in self.constraints if type(c) == ReluConstraint]
+        eq_constraints = [c for c in self.constraints if type(c) == MatrixConstraint]
+
+        for eq in eq_constraints:
+            A = eq.A.copy()
+            b = eq.b.copy()
+            x = eq.x.tolist()
+            common_x = set(x).intersection(set(input_variable_value_dict.keys()))
+            assert(len(common_x) == A.shape[1] - A.shape[0])  # check if the constraint can be removed.
+            for v in common_x:
+                new_row = np.zeros((1, A.shape[1]))
+                new_row[0, x.index(v)] = 1
+                A = np.concatenate((A, new_row))
+                b = np.concatenate((b, [input_variable_value_dict[v]]))
+            sol = np.linalg.solve(A, b)
+            for v, s in zip(x, sol):
+                input_variable_value_dict[v] = s
+
+            for rel in relu_constraints:
+                varin = rel.varin
+                if varin in input_variable_value_dict.keys():  # this constrained can be removed.
+                    varout = rel.varout
+                    input_variable_value_dict[varout] = max(0, input_variable_value_dict[varin])
+
+        # find output variables of the model
+        output_variables = self.model_output_vars
+        sol_parser = [input_variable_value_dict[v] for v in output_variables]
+
+        # find tf sol
+        sol_tf = np.array([])
+        for i in range(self.n_time):
+            x = np.array(input_values)
+            if len(self.model.input_shape) == 2:
+                x = x.reshape(1, -1)
+            else:
+                x = x.reshape(1, 1, -1)
+            y = self.model.predict(x)
+            sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
+
+        if np.all(np.isclose(sol_parser, sol_tf)):
+            print("Test passed.")
+            #print("sol_tf:", sol_tf, " sol_parser:", sol_parser)
+        else:
+            #print("sol_tf:", sol_tf, " sol_parser:", sol_parser)
+            raise(ValueError("Test did not pass!"))
 
 if __name__ == "__main__":
-    n_t = 2
+    n_t = 1
     m1 = load_model('dense_rnn_model_stateful.h5')
-    p = KerasConstraint(m1, n_time=n_t)
+    p1 = KerasConstraint(m1, n_time=n_t)
 
+    #m2 = load_model('../OverApprox/models/single_pend_controller_nn_not_trained.h5')
+    m2 = load_model("m2.h5")
+    p2 = KerasConstraint(m2, n_time=n_t)
 # A, b = eval_constraints(cfeed)
 # sol = np.linalg.solve(A, b)
 # all_variables = [x for xs in p.input_vars for x in xs] + [x for xs in p.output_vars for x in xs]

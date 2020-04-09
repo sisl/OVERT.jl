@@ -19,7 +19,7 @@ from MC_interface import BMC
 # good controller
 model = load_model("../OverApprox/models/single_pend_nn_controller_ilqr_data.h5")
 # bad controller
-# model = load_model("../OverApprox/models/single_pend_controller_nn_not_trained.h5")
+#model = load_model("../OverApprox/models/single_pend_controller_nn_not_trained.h5")
 
 controller = KerasController(keras_model=model)
 
