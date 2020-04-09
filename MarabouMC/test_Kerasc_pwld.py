@@ -3,6 +3,7 @@
 
 import os
 import sys
+import random
 #sys.path.insert(0, "/home/amaleki/Dropbox/stanford/Python/Marabou/")
 #print(sys.path)
 
@@ -14,6 +15,7 @@ from MC_constraints import Constraint, ConstraintType, ReluConstraint, Monomial,
 from marabou_interface import MarabouWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
+from funs import single_pendulum
 
 # create controller object with a keras model
 # good controller
@@ -76,7 +78,19 @@ prop = ConstraintProperty([p])
 algo = BMC(ts = ts, prop = prop, solver=solver)
 algo.check_invariant_until(20)
 
-#testing
+# random runs to give intuition to MC result
+for i in range(5):
+    th = random.uniform(init_set[states[0]][0], init_set[states[0]][1])
+    print("th@0=", th)
+    dth = random.uniform(init_set[states[1]][0], init_set[states[1]][1])
+    print("dth@0=", dth)
+    for j in range(20):
+        T = model.predict(np.array([th, dth]).reshape(1,2))[0][0]
+        th, dth = single_pendulum(th, dth, T, dt)
+        print("th@",j+1,"=", th)
+        print("dth@",j+1,"=", th)
+
+
 import sys
 sys.path.append('..')
 
@@ -92,4 +106,3 @@ for time in range(20):
     env.step(torque)
 
 env.render()
-
