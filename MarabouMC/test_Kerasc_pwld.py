@@ -76,14 +76,20 @@ prop = ConstraintProperty([p])
 algo = BMC(ts = ts, prop = prop, solver=solver)
 algo.check_invariant_until(20)
 
-# random runs to give intuition to MC result
-# for i in range(10):
-#     x = np.random.rand()*(2 - 1.1) + 1.1
-#     print("x@0=", x)
-#     y = np.random.rand()*(1 - -1) + -1
-#     for j in range(3):
-#         state = np.array([x,y]).flatten().reshape(-1,1)
-#         u = np.maximum(0, W2@(np.maximum(0,W1@state + b1)) + b2)
-#         #x' = relu(x + u)
-#         x = max(0, x + u.flatten()[0])
-#         print("x@",j+1,"=", x)
+#testing
+import sys
+sys.path.append('..')
+
+from gym_new.gym.envs.registration import make
+
+x0 = [np.random.random()*0.1, np.random.random()*2. -1.]
+env = make("Pendulum1-v0", x_0=[2., 0.], dt =0.01)
+env.reset()
+
+
+for time in range(20):
+    torque = model.predict(env.x.reshape(-1,2))
+    env.step(torque)
+
+env.render()
+
