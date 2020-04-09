@@ -3,6 +3,7 @@
 
 import os
 import sys
+import random
 #sys.path.insert(0, "/home/amaleki/Dropbox/stanford/Python/Marabou/")
 #print(sys.path)
 
@@ -14,6 +15,7 @@ from MC_constraints import Constraint, ConstraintType, ReluConstraint, Monomial,
 from marabou_interface import MarabouWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
+from funs import single_pendulum
 
 # create controller object with a keras model
 # good controller
@@ -77,13 +79,13 @@ algo = BMC(ts = ts, prop = prop, solver=solver)
 algo.check_invariant_until(20)
 
 # random runs to give intuition to MC result
-# for i in range(10):
-#     x = np.random.rand()*(2 - 1.1) + 1.1
-#     print("x@0=", x)
-#     y = np.random.rand()*(1 - -1) + -1
-#     for j in range(3):
-#         state = np.array([x,y]).flatten().reshape(-1,1)
-#         u = np.maximum(0, W2@(np.maximum(0,W1@state + b1)) + b2)
-#         #x' = relu(x + u)
-#         x = max(0, x + u.flatten()[0])
-#         print("x@",j+1,"=", x)
+for i in range(5):
+    th = random.uniform(init_set[states[0]][0], init_set[states[0]][1])
+    print("th@0=", th)
+    dth = random.uniform(init_set[states[1]][0], init_set[states[1]][1])
+    print("dth@0=", dth)
+    for j in range(20):
+        T = model.predict(np.array([th, dth]).reshape(1,2))[0][0]
+        th, dth = single_pendulum(th, dth, T, dt)
+        print("th@",j+1,"=", th)
+        print("dth@",j+1,"=", th)
