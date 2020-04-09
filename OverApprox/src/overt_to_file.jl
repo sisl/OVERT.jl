@@ -217,7 +217,6 @@ function parse_linear_expr(expr::Expr)
 end
 
 
-
 function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[], control_vars=[])
     """
     this function returns all equality and inequality constraints
@@ -247,20 +246,30 @@ function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[],
     # process equalities
     for eq in bound.approx_eq
 
+        # preprocess eq. eq has to be of form :(v1 = v2). v1 must be a Symbol.
         @assert length(eq.args) == 2
-        left_arg = simplify(eq.args[1])
+        @assert eq.args[1] isa Symbol
+
+        # simplify simplifies the numerical expressions like
+        #:(x+ (2-1)) = :(x+1) or :(2(x-1)) = :(2x-2)
+        #left_arg = simplify(eq.args[1])
+        left_arg = eq.args[1]
         rite_arg = simplify(eq.args[2])
-        println(eq, " ", rite_arg)
+
+        # take care of cases like :(-(x-1)), rewrite :(-1*(x-1))
         if length(rite_arg.args) == 2 && rite_arg.args[1] == :-
             rite_arg = :(-1*$(rite_arg.args[2]))
         end
+
+        # make sure ##args are consistent.
         @assert length(rite_arg.args) >= 3
+
         f = rite_arg.args[1]
-        if f in [:+, :-]
-            if linear_1d_expr(rite_arg)
-                v, a, b = parse_linear_expr(rite_arg)
-                push!(eq_list, [[string(left_arg), string(v)], [1, -a], b])
-            else
+        if linear_1d_expr(rite_arg) # parse cases like "(y=3x-2)"
+            v, a, b = parse_linear_expr(rite_arg)
+            push!(eq_list, [[string(left_arg), string(v)], [1, -a], b])
+        else
+            if f in [:+, :-] # parse cases like "(z = 2x+3y)"
                 sym_list = [string(left_arg)]
                 a_list = [1]
                 for e in rite_arg.args[2:end]
@@ -270,17 +279,20 @@ function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[],
                     push!(a_list, -a)
                 end
                 push!(eq_list, [sym_list, a_list, 0])
-            end
-        elseif f == :*
-            if linear_1d_expr(rite_arg)
-                v, a, b = parse_linear_expr(rite_arg)
-                push!(eq_list, [[string(left_arg), string(v)], [1, -a], b])
-            else # this must be a min or max
+            elseif f == :*  # parse cases like (z = 2*min(x,2y))
+
+                # one argument has to be a number.
                 @assert xor(is_number(rite_arg.args[2]), is_number(rite_arg.args[3]))
                 c = is_number(rite_arg.args[2]) ? rite_arg.args[2] : rite_arg.args[3]
                 minx = is_number(rite_arg.args[2]) ? rite_arg.args[3] : rite_arg.args[2]
+
+                # the non-number argument has to be a min or max expression
                 @assert minx.args[1] in [:min, :max]
 
+                # z = c*min(x, y) = min(cx, cy) if c > 0
+                # z = c*min(x, y) = max(cx, cy) if c < 0
+                # z = c*max(x, y) = max(cx, cy) if c > 0
+                # z = c*max(x, y) = min(cx, cy) if c < 0
                 if c > 0
                     if minx.args[1] == :min
                         push!(min_list, [[string(left_arg), string(minx.args[2]), string(minx.args[3])], [c, c]])
@@ -294,13 +306,13 @@ function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[],
                         push!(min_list, [[string(left_arg), string(minx.args[2]), string(minx.args[3])], [c, c]])
                     end
                 end
+            elseif f == :min # parse cases like z = min(x,y)
+                push!(min_list, [[string(left_arg), string(rite_arg.args[2]), string(rite_arg.args[3])], [1, 1]])
+            elseif f == :max # parse cases like z = max(x,y)
+                push!(max_list, [[string(left_arg), string(rite_arg.args[2]), string(rite_arg.args[3])], [1, 1]])
+            else
+                error("the operation $f is not recognized.")
             end
-        elseif f == :min
-            push!(min_list, [[string(left_arg), string(rite_arg.args[2]), string(rite_arg.args[3])], [1, 1]])
-        elseif f == :max
-            push!(max_list, [[string(left_arg), string(rite_arg.args[2]), string(rite_arg.args[3])], [1, 1]])
-        else
-            error("the operation $f is not recognized.")
         end
     end
 
@@ -352,5 +364,5 @@ function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[],
         h5write(file_name, "ineq/l$i", eq[1])
         h5write(file_name, "ineq/r$i", eq[2])
     end
-    return eq_list, min_list, ineq_list
+    return eq_list, min_list, max_list, ineq_list
 end
