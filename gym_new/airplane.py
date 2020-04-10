@@ -10,7 +10,7 @@ from IPython.display import display
 from matplotlib.animation import FuncAnimation
 
 ## TODO: FIX THIS
-ORIGIN_PATH = "/home/amaleki/Dropbox/stanford/Python/gym-new-env/gym/envs/classic_control"
+# ORIGIN_PATH = "/home/amaleki/Dropbox/stanford/Python/gym-new-env/gym/envs/classic_control"
 ##
 
 

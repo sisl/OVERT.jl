@@ -19,11 +19,18 @@ from funs import single_pendulum
 
 # create controller object with a keras model
 # good controller
-model = load_model("../OverApprox/models/single_pend_nn_controller_ilqr_data.h5")
+# model = load_model("../OverApprox/models/single_pend_nn_controller_ilqr_data.h5")
+model = load_model("../OverApprox/models/single_pend_nn_controller_lqr_data.h5")
 # bad controller
 #model = load_model("../OverApprox/models/single_pend_controller_nn_not_trained.h5")
 
 controller = KerasController(keras_model=model)
+
+# rewrite to make a simple controller that is always equal to 1.0
+monomial_list = [Monomial(1, controller.control_outputs[0][0])]
+fake_constraint = [Constraint(ConstraintType('EQUALITY'), monomial_list, 1.0)]
+controller.constraints = fake_constraint
+controller.relus = []
 
 # create overt dynamics objects
 overt_obj = OvertConstraint("../OverApprox/models/single_pend_acceleration_overt.h5")
@@ -76,7 +83,7 @@ prop = ConstraintProperty([p])
 
 # algo
 algo = BMC(ts = ts, prop = prop, solver=solver)
-algo.check_invariant_until(20)
+algo.check_invariant_until(2)
 
 # random runs to give intuition to MC result
 # for i in range(5):
@@ -99,9 +106,10 @@ x_0 = [np.random.random()*0.1, np.random.random()*2. -1.]
 env = Pendulum1Env(x_0=x_0, dt=0.1)
 env.reset()
 
-for time in range(20):
+for time in range(40):
     print("time: %d, th=%0.3f, thdot=%0.3f" %(time, env.x[0], env.x[1]))
-    torque = model.predict(env.x.reshape(-1,2)).reshape(1)
+    #torque = model.predict(env.x.reshape(-1,2)).reshape(1)
+    torque = [1.]
     env.step(torque)
 
 env.render()
