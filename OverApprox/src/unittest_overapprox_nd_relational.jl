@@ -26,11 +26,11 @@ function affine_tests()
 end
 affine_tests()
 
-function outer_affine_tests()
-    @assert is_outer_affine(:(-sin(x) + sin(y)))
-    @assert is_outer_affine(:( -5*(sin(x) - 3*sin(y)) ) )
-end
-outer_affine_tests()
+# function outer_affine_tests()
+#     @assert is_outer_affine(:(-sin(x) + sin(y)))
+#     @assert is_outer_affine(:( -5*(sin(x) - 3*sin(y)) ) )
+# end
+# outer_affine_tests()
 
 overapprox_nd(:(sin(x)), Dict(:x=>[0,π/2]))
 
