@@ -57,7 +57,12 @@ class MarabouWrapper():
             self.add_marabou_eq(coefficients, marabou_vars, constraint.type, scalar)
     
     def assert_relu_constraint(self, relu):
-        MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout))
+        try: # problematic case
+            len(relu.varin)
+            print("relu.varin is not scalar! It has length", len(relu.varin))
+            raise NotImplementedError
+        except: # truly, the ok case
+            MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout))
     
     def assert_max_constraint(self, c):
         MarabouCore.addMaxConstraint(self.ipq, {self.get_new_var(c.var1in), self.get_new_var(c.var2in)}, self.get_new_var(c.varout))

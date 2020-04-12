@@ -10,8 +10,8 @@ class ConstraintType: #(Enum):
     # GREATER_EQ = 3
     # GREATER = 4
     type2str = {
-        'EQUALITY': "==",
-        'NOT_EQUAL': "not==",
+        'EQUALITY': "=",
+        'NOT_EQUAL': "not=",
         'LESS_EQ': "<=",
         'LESS' : "<",
         'GREATER_EQ' : ">=",
