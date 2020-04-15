@@ -96,11 +96,11 @@ class KerasConstraint():
         """
         n_t = self.n_time
         for i in range(len(self.layers)):
-            l, s_in, s_out, activ_fnc = self.layers[i], self.input_sizes[i], self.output_sizes[i], self.activations[i]
+            l, s_in, s_out = self.layers[i], self.input_sizes[i], self.output_sizes[i]
 
             # assign all input output variables.
             # if condensed option, and no activation, output variables of previous layer is assigned to the input of the current layer
-            if (condensed) and (i > 0) and (activ_fnc == "linear"):
+            if (condensed) and (i > 0) and (self.activations[i-1] == "linear"):
                 x_in = self.output_vars[-1]  # assign last layer output
             else:
                 x_in = [getNewVariable() for _ in range(s_in * n_t)] # assign new variables.

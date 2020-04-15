@@ -16,7 +16,7 @@ function single_pendulum(th, dth, T, dt)
 end
 
 # ranges of parameters
-range_dict = Dict(:th => [0., 2.], :dth => [-1., 1.], :T => [-3., 3.])
+range_dict = Dict(:th => [0., 3.], :dth => [-1., 1.], :T => [-3., 3.])
 
 # apply overt
 up_approx = overapprox_nd(up_expr, range_dict; N=1)

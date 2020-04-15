@@ -36,6 +36,9 @@ model = load_model("../OverApprox/models/single_pend_nn_controller_lqr_data.h5")
 # model = load_model("../OverApprox/models/single_pend_controller_nn_not_trained.h5")
 # bad yet super simple model
 # model = load_model("/home/amaleki/Downloads/test_2_linear.h5")
+# model = load_model("/home/amaleki/Downloads/test_3_linear.h5")
+# model = load_model("/home/amaleki/Downloads/test_2_relu.h5")
+# model = load_model("/home/amaleki/Downloads/test_3_relu.h5")
 
 controller = KerasController(keras_model=model)
 print(controller.constraints)
@@ -80,7 +83,7 @@ tr = TFControlledTransitionRelation(dynamics_obj=single_pendulum_dynamics,
                                         controller_obj=controller)
 
 # initial set
-x1_init_set = (0.9, 1.1)
+x1_init_set = (0.6, 0.8)
 x2_init_set = (-1., 1.)
 init_set = {states[0]: x1_init_set, states[1]: x2_init_set}
 
@@ -93,12 +96,12 @@ solver = MarabouWrapper()
 prop_list =[]
 p1 = Constraint(ConstraintType('GREATER'))
 p1.monomials = [Monomial(1, states[0])]
-p1.scalar = 0.7
+p1.scalar = 0.2
 prop_list.append(p1)
 
 p2 = Constraint(ConstraintType('LESS'))
 p2.monomials = [Monomial(1, states[0])]
-p2.scalar = 1.55
+p2.scalar = 1.08
 prop_list.append(p2)
 
 # p3 = Constraint(ConstraintType('GREATER'))
@@ -120,39 +123,47 @@ algo = BMC(ts=ts, prop=prop, solver=solver)
 result = algo.check_invariant_until(ncheck_invariant)
 
 # random runs to give intuition to MC result
-for i in range(100):
+violation_found = False
+n_simulation = 10000
+for i in range(n_simulation):
     th = np.random.uniform(init_set[states[0]][0], init_set[states[0]][1])
     dth = np.random.uniform(init_set[states[1]][0], init_set[states[1]][1])
-    for j in range(3):
+    for j in range(ncheck_invariant-1):
         T = model.predict(np.array([th, dth]).reshape(1,2))[0][0]
         th, dth = single_pendulum(th, dth, T, dt)
         if th < p1.scalar or th > p2.scalar:
-            print(th)
+            print("violation was found: %0.3f" %th)
+            violation_found = True
             break
-
-
-
-
-n_repeat = 10000
-no_vi = True
-for _ in range(n_repeat):
-    x_0_0 = np.random.uniform(init_set[states[0]][0], init_set[states[0]][1])
-    x_0_1 = np.random.uniform(init_set[states[1]][0], init_set[states[1]][1])
-    x_0 = [x_0_0, x_0_1]
-    env = Pendulum1Env(x_0=x_0, dt=dt)
-    env.reset()
-    for time in range(ncheck_invariant-1):
-        # print("time: %d, th=%0.3f, thdot=%0.3f" %(time, env.x[0], env.x[1]))
-        torque = model.predict(env.x.reshape(-1,2)).reshape(1)
-        env.step(torque)
-
-    if property_violated(env, prop):
-        print("***property was violated***")
-        no_vi = False
+    if violation_found:
         break
 
-if no_vi:
-    print("no violation found in %d simulations" %n_repeat)
+if not violation_found:
+    print("No violation was found in %d simulations" %n_simulation)
+
+
+
+
+# n_repeat = 10000
+# no_vi = True
+# for _ in range(n_repeat):
+#     x_0_0 = np.random.uniform(init_set[states[0]][0], init_set[states[0]][1])
+#     x_0_1 = np.random.uniform(init_set[states[1]][0], init_set[states[1]][1])
+#     x_0 = [x_0_0, x_0_1]
+#     env = Pendulum1Env(x_0=x_0, dt=dt)
+#     env.reset()
+#     for time in range(ncheck_invariant-1):
+#         # print("time: %d, th=%0.3f, thdot=%0.3f" %(time, env.x[0], env.x[1]))
+#         torque = model.predict(env.x.reshape(-1,2)).reshape(1)
+#         env.step(torque)
+#
+#     if property_violated(env, prop):
+#         print("***property was violated***")
+#         no_vi = False
+#         break
+#
+# if no_vi:
+#     print("no violation found in %d simulations" %n_repeat)
 
 
 # env.render()
