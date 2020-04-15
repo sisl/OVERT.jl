@@ -7,9 +7,10 @@ the output is a .h5 file with a list of all equality, min, max and inequality co
 up = "T + sin(th) - 0.2*dth"
 up_expr = Meta.parse(up)
 
+# what is this for?
 function single_pendulum(th, dth, T, dt)
     thnew = th + dth*dt
-    ddth = T + sin(th) + .2*dth
+    ddth = T + sin(th) - 0.2*dth
     dthnew = dth + ddth*dt
     return thnew, dthnew
 end
