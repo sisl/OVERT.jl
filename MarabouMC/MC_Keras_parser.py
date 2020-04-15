@@ -7,7 +7,7 @@ import tensorflow as tf
 
 
 NUM_VARS = 0
-def getNewVariable(var_sym='x'):
+def getNewVariable(var_sym='xc'):
     """
     This function generates variables as strings x1, x2, ...
     NUM_VARS keeps the record of variables produced.
@@ -279,9 +279,9 @@ class KerasConstraint():
             sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
 
         if np.all(np.isclose(sol_parser, sol_tf)):
-            print("Test passed.")
+            print("Keras parser: Test passed.")
         else:
-            raise(ValueError("Test did not pass!"))
+            raise(ValueError("Keras parser: Test did not pass!"))
 
     def check_constraints_with_relu(self):
         """
@@ -339,11 +339,11 @@ class KerasConstraint():
             sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
 
         if np.all(np.isclose(sol_parser, sol_tf)):
-            print("Test passed.")
+            print("Keras parser: Test passed.")
             #print("sol_tf:", sol_tf, " sol_parser:", sol_parser)
         else:
             #print("sol_tf:", sol_tf, " sol_parser:", sol_parser)
-            raise(ValueError("Test did not pass!"))
+            raise(ValueError("Keras parser: Test did not pass!"))
 
 if __name__ == "__main__":
     n_t = 1

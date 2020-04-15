@@ -30,7 +30,7 @@ class Pendulum():
     def __init__(self, n_pend,
                  m=0.5, L=0.5, c=0.0, g=9.8,  # physical paramters
                  max_action=1000, x_0=0.,  # initializations
-                 integration_method="2st", dt=0.001 # computational parameters.
+                 integration_method="1st", dt=0.001 # computational parameters.
                  ):
         self.m, self.L, self.c = m, L, c
         self.g, self.dt, self.max_action = g, dt, max_action

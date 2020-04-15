@@ -48,8 +48,9 @@ class Dynamics:
         self.constraints = [] # constraints over the states and next states
 
 class OVERTDynamics(Dynamics):
-    def __init__(self, fun, states, controls):
-        super().__init__(fun, states, controls)
+    def __init__(self, fun=None, overt_obj=None):
+        super().__init__(fun, overt_obj.states, overt_obj.controls)
+
         self.abstract_constraints = [] # constraints over the states and next states, linearized
 
     def abstract(self, initial_set, epsilon=1e-1):

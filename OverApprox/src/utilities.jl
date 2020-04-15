@@ -64,7 +64,7 @@ function is_affine(expr)
              is_affine(:(log(2)*x))  = true
              is_affine(:(-x))        = true
      """
-    # it is number 
+    # it is number
     if is_number(expr)
         return true
     elseif expr isa Symbol # symbol
@@ -92,7 +92,7 @@ end
 
 is_outer_affine(s::Symbol) = true
 is_outer_affine(r::Real) = true
-function is_outer_affine(expr::Expr) 
+function is_outer_affine(expr::Expr)
     """
     5*sin(x) - 3*cos(y) is _outer_ affine. It can be re-written:
     5*z - 3*w    where z = sin(x)   w = cos(y)
@@ -126,8 +126,8 @@ function add_ϵ(points, ϵ)
     return new_points
 end
 
-function rewrite_division_by_const(e) 
-    return e 
+function rewrite_division_by_const(e)
+    return e
 end
 function rewrite_division_by_const(expr::Expr)
     if expr.args[1] == :/ && !is_number(expr.args[2]) && is_number(expr.args[3])
@@ -254,6 +254,13 @@ function substitute!(expr, old, new)
     return expr
 end
 
+function substitute!(expr::Expr, old_list::Vector{Any}, new_list::Array{Any})
+    for (k, v) in zip(old_list, new_list)
+        substitute!(expr, k, v)
+    end
+    return expr
+end
+
 # function reduce_args_to_2!(expr)
 
 #     """
@@ -323,7 +330,7 @@ function reduce_args_to_2(expr::Expr)
 end
 
 # function get_rid_of_division(x)
-#     if (x isa Expr) && (x.args[1] == :/) && !is_number(x.args[2]) 
+#     if (x isa Expr) && (x.args[1] == :/) && !is_number(x.args[2])
 #         # all moved to division case in binary functions
 #         println("*"^30)
 #         println("division is $x")

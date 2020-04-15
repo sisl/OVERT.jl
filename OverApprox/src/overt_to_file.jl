@@ -140,6 +140,7 @@ function marabou_friendify!(bound::OverApproximation)
     return bound
 end
 
+linear_1d_expr(expr::Symbol) = true
 function linear_1d_expr(expr::Expr)
     """
     returns true if expr is a 1d linear expression like
@@ -269,7 +270,7 @@ function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[],
             v, a, b = parse_linear_expr(rite_arg)
             push!(eq_list, [[string(left_arg), string(v)], [1, -a], b])
         else
-            if f in [:+, :-] # parse cases like "(z = 2x+3y)"
+            if f == :+ # parse cases like "(z = 2x+3y or w = 2x+3y+4z)"
                 sym_list = [string(left_arg)]
                 a_list = [1]
                 for e in rite_arg.args[2:end]
@@ -279,6 +280,15 @@ function bound_2_txt(bound::OverApproximation, file_name::String; state_vars=[],
                     push!(a_list, -a)
                 end
                 push!(eq_list, [sym_list, a_list, 0])
+            elseif f == :- # parse cases like "(z = 2x-3y)". it does NOT support (w = 2x-3y-4z), which should never happen.
+                @assert(length(rite_arg.args) == 3)
+                @assert(linear_1d_expr(rite_arg.args[2]))
+                @assert(linear_1d_expr(rite_arg.args[3]))
+
+                v1, a1, b1 = parse_linear_expr(rite_arg.args[2])
+                v2, a2, b2 = parse_linear_expr(rite_arg.args[3])
+                @assert(b1 == b2 == 0)
+                push!(eq_list, [[string(left_arg), string(v1), string(v2)], [1, -a1, a2], 0])
             elseif f == :*  # parse cases like (z = 2*min(x,2y))
 
                 # one argument has to be a number.
