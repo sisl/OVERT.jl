@@ -160,9 +160,18 @@ class OvertConstraint():
         self.constraints = self.eq_list + self.max_list + self.relu_list + self.ineq_list
 
     def read_input_output_control_vars(self):
-        self.state_vars = [self.var_dict[v] for v in self.f['vars/states'][()]]
-        self.control_vars = [self.var_dict[v] for v in self.f['vars/controls'][()]]
-        self.output_vars = [self.var_dict[v] for v in self.f['vars/outputs'][()]]
+        for v in self.f['vars/states'][()]:
+            if v not in self.var_dict:
+                self.var_dict[v] = getNewVariable('xd')
+            self.state_vars.append(self.var_dict[v])
+        for v in self.f['vars/controls'][()]:
+            if v not in self.var_dict:
+                self.var_dict[v] = getNewVariable('xd')
+            self.control_vars.append(self.var_dict[v])
+        for v in self.f['vars/outputs'][()]:
+            if v not in self.var_dict:
+                self.var_dict[v] = getNewVariable('xd')
+            self.output_vars.append(self.var_dict[v])
 
     def read_equations(self):
         for i in range(self.n_eq):
@@ -172,7 +181,7 @@ class OvertConstraint():
                     self.var_dict[v] = getNewVariable('xd')
 
             coeffs = self.f['/eq/coeffs%d'%(i+1)][()].astype(np.float)
-            b = self.f['/eq/scalar%d'%(i+1)][()].astype(np.float)
+            b = self.f['/eq/scalar%d'%(i+1)][()].astype(np.float)[0]
             monomial_list = [Monomial(c, self.var_dict[v]) for (c, v) in zip(coeffs, vars)]
             self.eq_list.append(Constraint(ConstraintType('EQUALITY'), monomial_list, b))
 

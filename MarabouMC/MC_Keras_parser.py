@@ -153,7 +153,7 @@ class KerasConstraint():
         for i in range(n_t):
             for j in range(n_out):
                 w[i * n_out + j, i * n_in: (i + 1) * n_in] = weight_x[:, j]
-                w[i * n_out + j, n_in * n_t + i * n_out + j] = -1
+                w[i * n_out + j, n_in * n_t + i * n_out + j] = -1.
                 if i > 0:
                     w[i * n_out + j, n_in * n_t + (i - 1) * n_out: n_in * n_t + i * n_out] = weight_h[:, j]
                 b[i * n_out + j] = -bias[j]

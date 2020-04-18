@@ -195,7 +195,7 @@ class Pendulum1Env(Pendulum):
 
 class Pendulum2Env(Pendulum):
     def __init__(self, x_0=0., dt=0.001):
-        super().__init__(n_pend=2, x_0=x_0, dt=dt)
+        super().__init__(n_pend=2, x_0=x_0, dt=dt, c=0.0, g=1.0, m=0.5, L=0.5)
 
     def setup_equation(self, u_prime, x, torques):
         T1, T2 = torques

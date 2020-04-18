@@ -14,9 +14,14 @@ from MC_constraints import Constraint, ConstraintType, ReluConstraint, Monomial
 from marabou_interface import MarabouWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
+from MC_simulate import simulate_double_pend
 
-# create controller object with a keras model
-model = load_model("../OverApprox/models/double_pend_controller_nn_not_trained.h5")
+# This is trained controller with lqr data.
+# model = load_model("../OverApprox/models/double_pend_nn_controller_lqr_data.h5")
+# This a untrained controller
+# model = load_model("../OverApprox/models/double_pend_controller_nn_not_trained.h5")
+# super simple controller
+model = load_model("/home/amaleki/Downloads/test_6_linear.h5")
 controller = KerasController(keras_model=model)
 
 # create overt dynamics objects
@@ -42,8 +47,7 @@ next_states = double_pendulum_dynamics.next_states.reshape(4,)
 
 print(states, controls, acceleration_1, acceleration_2, next_states)
 
-# timestep = 0.1
-dt = 0.1
+dt = 0.01
 
 # x1_next = x1 + dt*u1
 c1 = Constraint(ConstraintType('EQUALITY'))
@@ -76,32 +80,38 @@ tr = TFControlledTransitionRelation(dynamics_obj=double_pendulum_dynamics,
                                         controller_obj=controller)
 
 # initial set
-init_set = {states[0]: (0., 0.1), states[1]: (0., 0.1), states[2]: (-1., 1.), states[3]: (-1., 1.)}
+init_set = {states[0]: (0.5, 0.6), states[1]: (0.5, 0.6), states[2]: (-0.5, 0.5), states[3]: (-0.5, 0.5)}
 
 # build the transition system as an (S, I(S), TR) tuple
 ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
 
+print(len([c for c in double_pendulum_dynamics.constraints if isinstance(c, ReluConstraint)]))
+print(len([c for c in controller.constraints if isinstance(c, ReluConstraint)]))
+
 # solver
 solver = MarabouWrapper()
 
-# property x< 0.105, x' < 0.2
-p = Constraint(ConstraintType('LESS'))
-p.monomials = [Monomial(1, states[0])]
-p.scalar = 0.101 # 0 #
-prop = ConstraintProperty([p])
+# property th1 < some_number
+prop_list = []
+p1 = Constraint(ConstraintType('GREATER'))
+p1.monomials = [Monomial(1, states[0])]
+p1.scalar = 0.48 # 0 #
+prop_list.append(p1)
+
+# property th1 > some_number
+p2 = Constraint(ConstraintType('LESS'))
+p2.monomials = [Monomial(1, states[0])]
+p2.scalar = 0.7
+prop_list.append(p2)
+
+prop = ConstraintProperty(prop_list)
 
 # algo
-algo = BMC(ts = ts, prop = prop, solver=solver)
-algo.check_invariant_until(10)
+ncheck_invariant = 3
+algo = BMC(ts=ts, prop=prop, solver=solver)
+result = algo.check_invariant_until(ncheck_invariant)
 
 # random runs to give intuition to MC result
-# for i in range(10):
-#     x = np.random.rand()*(2 - 1.1) + 1.1
-#     print("x@0=", x)
-#     y = np.random.rand()*(1 - -1) + -1
-#     for j in range(3):
-#         state = np.array([x,y]).flatten().reshape(-1,1)
-#         u = np.maximum(0, W2@(np.maximum(0,W1@state + b1)) + b2)
-#         #x' = relu(x + u)
-#         x = max(0, x + u.flatten()[0])
-#         print("x@",j+1,"=", x)
+n_simulation = 10000
+print("Now running %d simulations: " %n_simulation, end="")
+simulate_double_pend(prop, n_simulation, ncheck_invariant, model, dt, init_set, states)

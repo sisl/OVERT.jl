@@ -111,6 +111,8 @@ function parse_bound(bound::OverApproximation,
 end
 
 function parse_eq(expr::Expr, bound_parser::OverApproximationParser)
+    println(expr)
+    fix_negation!(expr)
     assert_expr(expr, "eq")
     if is_max_expr(expr)
         parse_max_expr(expr, bound_parser)
@@ -131,6 +133,17 @@ end
 function parse_ineq(expr::Expr, bound_parser::OverApproximationParser)
     assert_expr(expr, "ineq")
     push!(bound_parser.ineq_list, IneqList(expr.args[2], expr.args[3]))
+end
+
+""" this function turns :(w == -(x+1)) to :(w == -1(x+1)) """
+function fix_negation!(expr::Expr)
+    if length(expr.args[3].args) == 2
+        if expr.args[3].args[1] == :-
+            arg = expr.args[3].args[2]
+            expr.args[3].args = [:*, -1, arg]
+        end
+    end
+    return expr
 end
 
 """
