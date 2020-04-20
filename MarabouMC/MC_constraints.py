@@ -118,9 +118,12 @@ class MatrixConstraint(AbstractConstraint):
     where R represents a relation such as =, >=, <=, >, <.
     @pre If dim(A) = (m,n), dim(x) = n , dim(b) = m 
     """
-    def __init__(self, eqtype: ConstraintType, A=np.zeros((0,0)), x = np.zeros((0,0)), b = np.zeros((0,0))):
+    def __init__(self, ctype: ConstraintType, A=np.zeros((0,0)), x = np.zeros((0,0)), b = np.zeros((0,0))):
         super().__init__()
-        self.type = eqtype
+        if isinstance(ctype, str):
+            self.type = ConstraintType(ctype)
+        elif isinstance(ctype, ConstraintType):
+            self.type = ctype
         # assertions for the precondition
         assert(A.shape[1] == x.shape[0])
         assert(A.shape[0] == b.shape[0])

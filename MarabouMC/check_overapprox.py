@@ -33,9 +33,26 @@ class FormulaConverter:
     Meta-programming.
     """
     def __init__(self):
-        self.var_count = 0
-        self.var_map = {}
+        self.new_var_count = 0
+        self.var_list = {'bools':[], 
+                        'reals':[]}
 
+    def __repr__(self):
+        s = ""
+        s += "Formula Converter\n"
+        s += "new_var_count = " + str(self.new_var_count) + " "
+        s += "bools: " + " ".join(self.var_list['bools']) + " "
+        s += "reals: " + " ".join(self.var_list['reals'])
+        return s
+
+    def add_real_var(self, v):
+        if v not in self.var_list['reals']:
+            self.var_list['reals'].append(v)
+    
+    def add_real_vars(self, vlist):
+        for v in vlist:
+            self.add_real_var(v)
+        
     def prefix_notate(self, op, args):
         """
         Turn an op into its prefix form: (op arg1 arg2 ...)
@@ -50,6 +67,12 @@ class FormulaConverter:
     def declare_const(self, constname, consttype):
         return self.prefix_notate("declare-const", [constname, consttype])
     
+    def declare_reals(self):
+        real_decls = []
+        for v in self.var_list['reals']:
+            real_decls += [self.declare_const(v, 'Real')]
+        return real_decls
+
     def define_atom(self, atomname, atomvalue):
         eq_expr = self.prefix_notate("=", [atomname, atomvalue])
         return self.assert_statement(eq_expr)
@@ -100,7 +123,7 @@ class FormulaConverter:
         """
         bool_var_defs, bool_var_names = self.declare_list(constraint_list)
         if conjunct_name is None:
-            conjunct_name = self.get_new_var()
+            conjunct_name = self.get_new_bool()
         conjunct = self.prefix_notate("and", bool_var_names)
         formula = bool_var_defs + [self.define_atom(conjunct_name, conjunct)]
         return formula, conjunct_name
@@ -127,7 +150,7 @@ class FormulaConverter:
             else:
                 raise NotImplementedError
             for e in expr:
-                bool_var = self.get_new_var()
+                bool_var = self.get_new_bool()
                 bool_var_names += [bool_var]
                 bool_var_defs += [self.declare_const(bool_var, "Bool")]
                 bool_var_defs += [self.define_atom(bool_var, e)]
@@ -151,6 +174,7 @@ class FormulaConverter:
     def convert_constraint_helper(self, coeffs, variables, eq_type, scalar):
         # build up list of monomials: (* 5 y), (* (- 6) x), applying unary minus where necessary
         m_list = []
+        self.add_real_vars(variables) # log in var map
         for i in range(len(variables)):
             if coeffs[i] < 0:
                 # apply unary minus
@@ -190,6 +214,7 @@ class FormulaConverter:
         """
         varsin = np.array(c.varin, dtype='object').flatten() # allows handling multi-dimensional inputs
         varsout = np.array(c.varout, dtype='object').flatten()
+        self.add_real_vars(np.hstack((varsin, varsout)).flatten())  # log in var map
         l = []
         for i in range(len(varsin)):
             left_side = self.prefix_notate("relu", [varsin[i]])
@@ -203,13 +228,17 @@ class FormulaConverter:
         """
         # does NOT handle multi dimensional inputs
         assert(not isinstance(c.var1in, np.ndarray) and not isinstance(c.var1in, list))
+        self.add_real_vars([c.var1in, c.var2in]) # log in var map
         left_side = self.prefix_notate("max", [c.var1in, c.var2in])
         right_side = c.varout
         return [self.prefix_notate("=", [left_side, right_side])]
 
-    def get_new_var(self):
-        self.var_count += 1
-        return "b"+str(self.var_count) # b for boolean
+    def get_new_bool(self):
+        self.new_var_count += 1
+        v = "b"+str(self.new_var_count) # b for boolean
+        assert(v not in self.var_list['bools'])
+        self.var_list['bools'].append(v)
+        return v
 
 
     

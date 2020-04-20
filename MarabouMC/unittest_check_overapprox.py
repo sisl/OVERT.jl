@@ -1,5 +1,5 @@
 import numpy as np
-from check_overapprox import FormulaConverter
+from check_overapprox import FormulaConverter, OverapproxVerifier
 from MC_constraints import Constraint, Monomial, MaxConstraint, ReluConstraint, MatrixConstraint
 
 f = FormulaConverter()
@@ -28,3 +28,22 @@ print(f.declare_list([c1, c1, c2, c2, c3, c3, c4]))
 
 print('\n'.join(f.declare_conjunction([c1, c2, c3, c4])[0]))
 
+def linear_plant_test():
+    """
+    linear plant test
+    # phi
+    y = x  
+    # phi hat
+    OA: x - 1 <= y <= x + 1
+    """
+    # phi
+    x = 'x'
+    y = 'y'
+    phi = Constraint("EQUALITY", [Monomial(1, x), Monomial(-1,y)], 0) # x - y == 0
+    # phi hat
+    c1 = Constraint("LESS_EQ", [Monomial(1, x), Monomial(-1,y)], 1 ) # x - y <= 1
+    c2 = Constraint("LESS_EQ", [Monomial(-1, x), Monomial(1,y)], 1 )# y - x <= 1
+    phi_hat = [c1, c2]
+    # check!
+    oav = OverapproxVerifier(phi, phi_hat)
+    oav.convert_formula() # should write to file that can be checked with: https://cvc4.github.io/app/
