@@ -125,15 +125,15 @@ class MarabouWrapper():
         # todo: redirect output to cwd/maraboulogs/
         options = Marabou.createOptions(timeoutInSeconds=timeout)
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
-        #vals, stats = MarabouCore.solve(self.ipq, output_filename, timeout)
+        self.convert_sat_vals_to_mc_vars(vals)
         if verbose:
             self.print_results(vals, stats, vars_of_interest=vars_of_interest)
         if stats.hasTimedOut():
-            return Result.TIMEOUT, vals, stats
+            return Result.TIMEOUT, self.vals_with_mc_vars, stats
         elif len(vals) == 0:
-            return Result.UNSAT, vals, stats
+            return Result.UNSAT, self.vals_with_mc_vars, stats
         else: # len(vals) /== 0
-            return Result.SAT, vals, stats
+            return Result.SAT, self.vals_with_mc_vars, stats
     
     # directly inspired by MarabouNetwork.py::solve in Marabou/maraboupy
     def print_results(self, vals, stats, vars_of_interest=[]):
@@ -144,12 +144,14 @@ class MarabouWrapper():
         else:
             print("SAT")
             #
-            inverted_var_map = {value: key for key, value in self.variable_map.items()}
-            print("values: ", {(inverted_var_map[k],v) for k,v in vals.items()})
+            print("values: ", self.vals_with_mc_vars)
             # for i in range(len(self.input_vars)):
             #     print("input ", self.input_vars[i], " = ", vals[self.inputVars[i]])
             # for i in range(self.outputVars.size):
             #     print("output {} = {}".format(i, vals[self.outputVars.item(i)]))
             # TODO: add printing for output vars and some subset of vars you care about (vars_of_interest)
 
+    def convert_sat_vals_to_mc_vars(self, vals):
+        inverted_var_map = {value: key for key, value in self.variable_map.items()}
+        self.vals_with_mc_vars = {(inverted_var_map[k],v) for k,v in vals.items()}
         
