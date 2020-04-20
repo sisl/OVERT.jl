@@ -19,9 +19,9 @@ from MC_simulate import simulate_double_pend
 # This is trained controller with lqr data.
 # model = load_model("../OverApprox/models/double_pend_nn_controller_lqr_data.h5")
 # This a untrained controller
-# model = load_model("../OverApprox/models/double_pend_controller_nn_not_trained.h5")
+model = load_model("../OverApprox/models/double_pend_controller_nn_not_trained.h5")
 # super simple controller
-model = load_model("/home/amaleki/Downloads/test_6_linear.h5")
+# model = load_model("/home/amaleki/Downloads/test_6_linear.h5")
 controller = KerasController(keras_model=model)
 
 # create overt dynamics objects
