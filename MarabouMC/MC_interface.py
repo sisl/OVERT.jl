@@ -176,12 +176,13 @@ class BMC():
         Check invariant property p holds until time t
         """
         # For now "incremental" sort of. 
+        values, stats = None, None
         for i in range(time):
             result, values, stats = self.step_invariant(i) # checks that property holds at i
             if not (result == Result.UNSAT):
                 print("Property may not hold at time ", i)
-                return result
-        return Result.UNSAT ## TODO: make sure this is correct
+                return result, values, stats
+        return Result.UNSAT, values, stats ## TODO: make sure this is correct
     
     def step_invariant_assume(self, t):
         """
