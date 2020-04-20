@@ -7,7 +7,7 @@ import tensorflow as tf
 
 
 NUM_VARS = 0
-def getNewVariable(var_sym='x'):
+def getNewVariable(var_sym='xc'):
     """
     This function generates variables as strings x1, x2, ...
     NUM_VARS keeps the record of variables produced.
@@ -96,11 +96,11 @@ class KerasConstraint():
         """
         n_t = self.n_time
         for i in range(len(self.layers)):
-            l, s_in, s_out, activ_fnc = self.layers[i], self.input_sizes[i], self.output_sizes[i], self.activations[i]
+            l, s_in, s_out = self.layers[i], self.input_sizes[i], self.output_sizes[i]
 
             # assign all input output variables.
             # if condensed option, and no activation, output variables of previous layer is assigned to the input of the current layer
-            if (condensed) and (i > 0) and (activ_fnc == "linear"):
+            if (condensed) and (i > 0) and (self.activations[i-1] == "linear"):
                 x_in = self.output_vars[-1]  # assign last layer output
             else:
                 x_in = [getNewVariable() for _ in range(s_in * n_t)] # assign new variables.
@@ -153,7 +153,7 @@ class KerasConstraint():
         for i in range(n_t):
             for j in range(n_out):
                 w[i * n_out + j, i * n_in: (i + 1) * n_in] = weight_x[:, j]
-                w[i * n_out + j, n_in * n_t + i * n_out + j] = -1
+                w[i * n_out + j, n_in * n_t + i * n_out + j] = -1.
                 if i > 0:
                     w[i * n_out + j, n_in * n_t + (i - 1) * n_out: n_in * n_t + i * n_out] = weight_h[:, j]
                 b[i * n_out + j] = -bias[j]
@@ -279,9 +279,9 @@ class KerasConstraint():
             sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
 
         if np.all(np.isclose(sol_parser, sol_tf)):
-            print("Test passed.")
+            print("Keras parser: Test passed.")
         else:
-            raise(ValueError("Test did not pass!"))
+            raise(ValueError("Keras parser: Test did not pass!"))
 
     def check_constraints_with_relu(self):
         """
@@ -339,11 +339,11 @@ class KerasConstraint():
             sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
 
         if np.all(np.isclose(sol_parser, sol_tf)):
-            print("Test passed.")
+            print("Keras parser: Test passed.")
             #print("sol_tf:", sol_tf, " sol_parser:", sol_parser)
         else:
             #print("sol_tf:", sol_tf, " sol_parser:", sol_parser)
-            raise(ValueError("Test did not pass!"))
+            raise(ValueError("Keras parser: Test did not pass!"))
 
 if __name__ == "__main__":
     n_t = 1

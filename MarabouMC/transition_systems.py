@@ -1,7 +1,7 @@
 # transition system component classes
 from MC_TF_parser import TFConstraint
 from Constraint_utils import matrix_equality_constraint
-from MC_constraints import ReluConstraint
+from MC_constraints import ReluConstraint, Constraint, ConstraintType, Monomial
 from MC_Keras_parser import KerasConstraint
 import numpy as np
 
@@ -48,15 +48,45 @@ class Dynamics:
         self.constraints = [] # constraints over the states and next states
 
 class OVERTDynamics(Dynamics):
-    def __init__(self, fun, states, controls):
-        super().__init__(fun, states, controls)
-        self.abstract_constraints = [] # constraints over the states and next states, linearized
+    def __init__(self, fun=None, overt_objs=None, dt=0.1):
+        self.overt_objs = overt_objs
+        self.assert_overt_objs()
+        states_vars = np.array(self.overt_objs[0].state_vars).reshape(-1, 1)
+        controls_vars = np.array(self.overt_objs[0].control_vars).reshape(-1, 1)
+        super().__init__(fun, states_vars, controls_vars)
 
-    def abstract(self, initial_set, epsilon=1e-1):
+        self.overt_constraints = [] # constriants introduced by overt
+        self.euler_constraints = [] # constraints introduced by euler integration.
+        self.get_overt_constraints()
+        self.get_euler_constraint(dt)
+        self.constraints = self.overt_constraints + self.euler_constraints
+
+    def assert_overt_objs(self):
+        for i in range(len(self.overt_objs)-1):
+            assert set(self.overt_objs[i].state_vars) == set(self.overt_objs[i + 1].state_vars), "overt_objs should have same state variables"
+            assert set(self.overt_objs[i].control_vars) == set(self.overt_objs[i + 1].control_vars), "overt_objs should have same control variables"
+            assert len(self.overt_objs) == len(self.overt_objs[i].state_vars) // 2, "with %d state variables, there should be %d overt objects" %(len(self.state_vars), len(self.overt_objs))
+
+    def get_overt_constraints(self):
+        for overt_obj in self.overt_objs:
+            self.overt_constraints += overt_obj.constraints
+
+    def get_euler_constraint(self, dt):
         """
-        Convert dynamics constraints from nonlinear to linearized using OVERT and epsilon.
+        Add additional constraint for euler integration.
+        It is assumed the format of state vector is like [x1, x2, dx1, dx2]
         """
-        pass
+        ndim = len(self.states) // 2
+        for i in range(ndim):
+            # x_next = x + dt*u
+            c1 = Constraint(ConstraintType('EQUALITY'))
+            c1.monomials = [Monomial(1, self.states[i, 0]), Monomial(dt, self.states[i + ndim, 0]), Monomial(-1, self.next_states[i, 0])]
+            self.euler_constraints.append(c1)
+
+            # u_next = u + dt*a
+            c2 = Constraint(ConstraintType('EQUALITY'))
+            c2.monomials = [Monomial(1, self.states[i + ndim, 0]), Monomial(dt, self.overt_objs[i].output_vars[0]), Monomial(-1, self.next_states[i + ndim, 0])]
+            self.euler_constraints.append(c2)
         # fill self.abstract_constraints
         # add constraints matching self.next_states and what comes out of abstraction generator
 

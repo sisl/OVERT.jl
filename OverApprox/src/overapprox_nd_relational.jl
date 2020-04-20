@@ -65,7 +65,7 @@ function overapprox_nd(expr,
         @debug("is affine base case")
         bound.output = add_var(bound)
         bound.output_range = [find_affine_range(expr, bound.ranges)...]
-        push!(bound.approx_eq, :($(bound.output) = $expr))
+        push!(bound.approx_eq, :($(bound.output) == $expr))
         bound.fun_eq[bound.output] = expr
         bound.ranges[bound.output] = bound.output_range
         #println("typeof(range) is ", typeof(expr_range))
