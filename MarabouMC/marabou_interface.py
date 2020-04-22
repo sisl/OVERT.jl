@@ -1,7 +1,10 @@
 from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint, MaxConstraint
 import numpy as np
-from maraboupy import Marabou, MarabouCore
+from maraboupy import Marabou, MarabouCore, DnCSolver, DnC
+from multiprocessing import Process, Pipe
+import os
 from MC_interface import Result
+import pickle
 # solver
 class MarabouWrapper():
     """
@@ -120,9 +123,12 @@ class MarabouWrapper():
         pass
 
     # inspired by MarabouNetwork.py::solve in Marabou/maraboupy
-    def check_sat(self, output_filename="", timeout=0, vars_of_interest=[], verbose=True):
+    def check_sat(self, output_filename="", timeout=0, vars_of_interest=[], verbose=True, dnc=True):
         # todo: redirect output to cwd/maraboulogs/
-        options = Marabou.createOptions(timeoutInSeconds=timeout)
+        if not dnc:
+            options = Marabou.createOptions(timeoutInSeconds=timeout)
+        else: # dnc
+            options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0+verbose, initialDivides=2)
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
         self.convert_sat_vals_to_mc_vars(vals)
         if verbose:
