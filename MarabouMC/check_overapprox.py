@@ -1,25 +1,61 @@
 from MC_constraints import Constraint, MatrixConstraint, MaxConstraint, ReluConstraint
 import numpy as np
+import os
 class OverapproxVerifier:
     """
     A function to verify the validity of an overapproximation using dreal. 
     Translates Constraint objects into smtlib2
     """
     def __init__(self, phi, phihat):
+        assert(isinstance(phi, list))
+        assert(isinstance(phihat, list))
         self.phi = phi # the true function
         self.phihat = phihat # the overapproximation
-        self.smtlib_formula = [] # the formula not(phi => phihat) in smtlib2
-        self.formula_converter = FormulaConverter() 
+        self.smtlib_formula = [] # the formula not(phi => phihat) aka (phi and not phihat) in smtlib2
+        self.f = FormulaConverter() 
 
     def check(self):
-        self.convert_formula()
+        self.create_smtlib_script()
         self.run_dreal()
 
     def convert_formula(self):
         """
         Converts to smtlib2 (possibly write to file?)
+        Assert the formula not(phi => phihat) aka (phi and not phihat)
         """
-        pass
+        self.smtlib_formula = ["; assert phi"]
+        phi = self.f.assert_logical(self.phi)
+        self.smtlib_formula += phi
+        # 
+        self.smtlib_formula += ["; assert not phi-hat"]
+        notphihat = self.f.assert_negated_logical(self.phihat)
+        self.smtlib_formula += notphihat # combine constraint lists
+        print(self.f) #  for debug, mainly
+        
+    def create_smtlib_script(self):
+        self.convert_formula() # populates smtlib_formula with details of formula
+        self.smtlib_formula = self.f.header() + \
+                              self.f.declare_reals() + \
+                              self.smtlib_formula + \
+                              self.f.footer()
+        self._print()
+    
+    def _print(self, dirname="", fname=""):
+        """ 
+        Print to stdout or to file
+        """
+        txt = "\n".join(self.smtlib_formula)
+        if fname == "":
+            print(txt)
+        else:
+            if dirname == "":
+                # put in subdir of cwd
+                dirname = os.path.join(os.getcwd(), "smtlib_files")
+                if not os.path.isdir(dirname):
+                    os.mkdir(dirname)
+            abs_fname = os.path.join(dirname, fname)
+            fhandle = open(abs_fname+".smtlib2", 'wt')
+            fhandle.write(txt)
 
     def run_dreal(self):
         """
@@ -27,10 +63,24 @@ class OverapproxVerifier:
         """
         pass
 
+class stateful_dreal_wrapper:
+    """
+    A wrapper like the one in marabou_interface.py
+    that collects constraints as they are asserted.
+    Should implement a check_sat() method with calls dreal.
+    Will contain a FormulaConverter object and use
+    similar logic to OverApproxVerifier class. 
+    """
+    def __init__(self):
+        pass
+
 class FormulaConverter:
     """
     A class to convert MarabouModelChecker Constraint type into smtlib2.
     Meta-programming.
+    The functions in this class are (mostly) intended to be pure; i.e.
+    given some arguments they return the result, and there are no
+    side - effects.
     """
     def __init__(self):
         self.new_var_count = 0
@@ -39,12 +89,38 @@ class FormulaConverter:
 
     def __repr__(self):
         s = ""
-        s += "Formula Converter\n"
+        s += "~~~~~~~~~~Formula Converter~~~~~~~~~~\n"
         s += "new_var_count = " + str(self.new_var_count) + " "
         s += "bools: " + " ".join(self.var_list['bools']) + " "
         s += "reals: " + " ".join(self.var_list['reals'])
+        s += "\n~~~~~~~~~~\n"
         return s
-
+    
+    def assert_logical(self, f):
+        """
+        Assert expression. f is a list.
+        Returns a list.
+        """
+        if len(f) == 1:
+            return [self.assert_statement(self.convert_any_constraint(f[0])[0])]
+        elif len(f) > 1:
+            # assert conjunction
+            return self.assert_conjunction(f)
+        else: # empty list
+            return []
+    
+    def assert_negated_logical(self, f):
+        """
+        Assert the negation of an expression. f is a list.
+        Returns a list.
+        """
+        if len(f) == 0:
+            return []
+        elif len(f) == 1:
+            return [self.assert_statement(self.negate(self.convert_any_constraint(f[0])[0]))]
+        else: # len(f) > 1
+            return self.assert_negated_conjunction(f)
+        
     def add_real_var(self, v):
         if v not in self.var_list['reals']:
             self.var_list['reals'].append(v)
@@ -83,14 +159,22 @@ class FormulaConverter:
     def negate(self, expr):
         return self.prefix_notate("not", [expr])
     
-    def footer(self, expr):
+    def footer(self):
         return ["(check-sat)", "(get-model)"]
     
-    def header(self, expr):
+    def header(self):
         """
         define max and relu functions.
         """
-        return [self.define_max(), self.define_relu()]
+        h = [self.set_logic(), self.produce_models()]
+        h += [self.define_max(), self.define_relu()]
+        return h
+
+    def set_logic(self):
+        return "(set-logic ALL)"
+    
+    def produce_models(self):
+        return "(set-option :produce-models true)"
 
     def define_max(self):
         return "(define-fun max ((x Real) (y Real)) Real (ite (< x y) y x))"
@@ -103,8 +187,14 @@ class FormulaConverter:
         formula += [self.assert_statement(conjunct_name)] # assert conjunction
         return formula
 
-    def assert_negated_conjunct(self, constraint_list):
-        pass
+    def assert_negated_conjunction(self, constraint_list, conjunct_name=None):
+        """
+        Assert the negation of conjunction of the constraints passed in constraint_list.
+        not (A and B and C and ...)
+        """
+        formula, conjunct_name = self.declare_conjunction(constraint_list, conjunct_name=conjunct_name) # declare conjunction
+        formula += [self.assert_statement(self.negate(conjunct_name))] # assert NEGATED conjunction
+        return formula
 
     def declare_conjunction(self, constraint_list, conjunct_name=None):
         """
@@ -124,9 +214,28 @@ class FormulaConverter:
         bool_var_defs, bool_var_names = self.declare_list(constraint_list)
         if conjunct_name is None:
             conjunct_name = self.get_new_bool()
+        assert(len(bool_var_names) > 1)
         conjunct = self.prefix_notate("and", bool_var_names)
-        formula = bool_var_defs + [self.define_atom(conjunct_name, conjunct)]
+        conjunct_decl = [self.declare_const(conjunct_name, "Bool")]
+        conjunct_def = [self.define_atom(conjunct_name, conjunct)]
+        formula = bool_var_defs + conjunct_decl + conjunct_def
         return formula, conjunct_name
+    
+    def assert_disjunction(self, constraint_list, disjunct_name=None):
+        raise NotImplementedError
+
+    def convert_any_constraint(self, item):
+        if isinstance(item, Constraint):
+            expr = self.convert_Constraint(item)
+        elif isinstance(item, MatrixConstraint):
+            expr = self.convert_MatrixConstraint(item)
+        elif isinstance(item, ReluConstraint):
+            expr = self.convert_ReluConstraint(item)
+        elif isinstance(item, MaxConstraint):
+            expr = self.convert_MaxConstraint(item)
+        else:
+            raise NotImplementedError
+        return expr
 
     def declare_list(self, constraint_list):
         """
@@ -139,16 +248,7 @@ class FormulaConverter:
         bool_var_defs = [] # definitions + declarations
         bool_var_names = [] # names
         for item in constraint_list:  
-            if isinstance(item, Constraint):
-                expr = self.convert_Constraint(item)
-            elif isinstance(item, MatrixConstraint):
-                expr = self.convert_MatrixConstraint(item)
-            elif isinstance(item, ReluConstraint):
-                expr = self.convert_ReluConstraint(item)
-            elif isinstance(item, MaxConstraint):
-                expr = self.convert_MaxConstraint(item)
-            else:
-                raise NotImplementedError
+            expr = self.convert_any_constraint(item)
             for e in expr:
                 bool_var = self.get_new_bool()
                 bool_var_names += [bool_var]

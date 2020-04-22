@@ -3,12 +3,7 @@
 import numpy as np
 import copy
 
-class ConstraintType: #(Enum):
-    # EQUALITY = 0
-    # LESS_EQ = 1
-    # LESS = 2
-    # GREATER_EQ = 3
-    # GREATER = 4
+class ConstraintType:
     type2str = {
         'EQUALITY': "=",
         'NOT_EQUAL': "not=",
@@ -59,6 +54,7 @@ class AbstractConstraint:
 class Constraint(AbstractConstraint):
     def __init__(self, ctype: ConstraintType, monomials=[], scalar = 0):
         """
+        A class to represent linear constraints.
         sum_i(monomial_i) ConstraintType scalar
         e.g. 5x + 3y <= 0
         """
@@ -185,4 +181,27 @@ def matrix_to_scalar(c : MatrixConstraint):
         scalar_constraints.append(Constraint(c.type, monomials=monomials, scalar=scalar))
     return scalar_constraints
 
-
+class NLConstraint(AbstractConstraint):
+    def __init__(self, ctype: ConstraintType, left, right):
+        """
+        A class to represent nonlinear constraints.
+        left R right
+        where R is a relation in the set: <, <=, >, >=, =
+        """
+        super().__init__()
+        if isinstance(ctype, str):
+            self.type = ConstraintType(ctype)
+        elif isinstance(ctype, ConstraintType):
+            self.type = ctype
+        self.left = left
+        self.right = right
+    
+    def complement(self):
+        ccomp = Constraint(self.type_complement[self.type])
+        ccomp.left = self.left
+        ccomp.right = self.right
+        return ccomp
+    
+    def __repr__(self):
+        s = "<Non Linear Constraint: left " + self.type.__repr__() + " right\n"
+        return s
