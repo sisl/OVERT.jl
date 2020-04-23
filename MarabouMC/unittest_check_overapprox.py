@@ -50,5 +50,9 @@ def linear_plant_test():
     oav.create_smtlib_script() # should write to file that can be checked with: https://cvc4.github.io/app/
     # copy and paste smtlib2 formula into https://cvc4.github.io/app/
     # should be unsat
-    
+
+def nonlinear_plant_test():
+    pass
+
 linear_plant_test()
+nonlinear_plant_test()

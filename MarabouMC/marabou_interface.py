@@ -108,6 +108,10 @@ class MarabouWrapper():
             upper_bound = init_set[k][1] 
             self.ipq.setLowerBound(input_var, lower_bound)
             self.ipq.setUpperBound(input_var, upper_bound)
+        #
+        # mark input vars for marabou
+        for i in range(len(self.input_vars)):
+            self.ipq.markInputVariable(self.input_vars[i], i)
     
     def get_bounds(self):
         lb = {}
