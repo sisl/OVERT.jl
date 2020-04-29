@@ -1,5 +1,5 @@
 """
-file to generate single pendulum overt dynamics. Assuming g=1.0, m=L=0.5 and c=0.
+file to generate double pendulum overt dynamics. Assuming g=1.0, m=L=0.5 and c=0.
 the output is a .h5 file with a list of all equality, min, max and inequality constraints.
 """
 
