@@ -9,12 +9,11 @@ OVERT_FOLDER = "/home/amaleki/Dropbox/stanford/Python/OverApprox/"
 include(OVERT_FOLDER * "OverApprox/src/overapprox_nd_relational.jl")
 include(OVERT_FOLDER * "OverApprox/src/overt_parser.jl")
 
-function single_pendulum(file_name)
+function run_overt(file_name)
     N_overt = h5read(file_name, "overt/N")
 
     x_vars = [Meta.parse(x) for x in h5read(file_name, "overt/states")]
     u_vars = [Meta.parse(u) for u in h5read(file_name, "overt/controls")]
-    expr = [Meta.parse(eq) for eq in h5read(file_name, "overt/eq")]
 
     x_bounds = h5read(file_name, "overt/bounds/states")
     u_bounds = h5read(file_name, "overt/bounds/controls")
@@ -28,18 +27,47 @@ function single_pendulum(file_name)
     end
 
     # apply overt
-    expr_approx = [overapprox_nd(e, range_dict; N=N_overt) for e in expr]
-    expr_approx_parser = OverApproximationParser()
-    for ea in expr_approx
-        tmp_parser = OverApproximationParser()
-        parse_bound(ea, tmp_parser)
-        expr_approx_parser = add_overapproximateparser(expr_approx_parser, tmp_parser)
-    end
-
-    # write to file
-    out_vars = [ea.output for ea in expr_approx]
-    write_overapproximateparser(expr_approx_parser, file_name, x_vars, u_vars, out_vars)
+    dynamics(range_dict, N_overt, file_name, x_vars, u_vars)
 end
 
-file_name = "/home/amaleki/Dropbox/stanford/Python/OverApprox/OverApprox/models/single_pendulum_overt.h5"
-single_pendulum(file_name)
+function dynamics(range_dict, N_OVERT, file_name, x_vars, u_vars)
+
+    # state variables are th1, th2, u1, u2
+    # control variables are T1, T2
+    @assert x_vars == [:th, :dth]
+    @assert u_vars == [:T]
+    N_VARS = 1
+
+    v1 = :(T + sin(th) - 0.2*dth)
+    v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
+
+    oAP = combine_them_all([v1_oA])
+
+    write_overapproximateparser(oAP, file_name,
+                                       x_vars,
+                                       u_vars,
+                                       [v1_oA.output])
+
+    println("With N_overt = $N_OVERT")
+    println(range_dict)
+    println("range of outputs: ")
+    println(v1_oA.output_range)
+    println("# relu's = $(length(oAP.relu_list))")
+    println("# max's = $(length(oAP.max_list))")
+
+
+    return oAP
+end
+
+function combine_them_all(variables)
+    oAP = OverApproximationParser()
+    for v in variables
+        oAP_tmp = OverApproximationParser()
+        parse_bound(v, oAP_tmp)
+        oAP = add_overapproximateparser(oAP, oAP_tmp)
+    end
+    return oAP
+end
+
+file_name = "/home/amaleki/Dropbox/stanford/Python/OverApprox/OverApprox/models/single_pendulum2_savefile.h5"
+run_overt(file_name)

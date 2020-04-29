@@ -49,53 +49,79 @@ class Dynamics:
         self.next_states = np.array([x+"'" for x in states.flatten()]).reshape(self.states.shape) # [x,y,z] -> [x', y', z']
         self.constraints = [] # constraints over the states and next states
 
-class OVERTDynamics(Dynamics):
-    """
-    This object takes two inputs:
-    - overt_objs: a list of OvertConstraint objects.
-    - time_update_dict: a dictionary with following key-values:
-        - type: "continuous" : x_{t+1} = x_t + dt*dx_t
-                "discrete" : x_{t+1} is explicitly given
-        - dt: dt for continuous
-        - map: a dictionary with key-values= x_t => dx_t for continuous and x_{t+1} => x_{t+1} for discrete.
-    """
-    def __init__(self, overt_objs, time_update_dict):
-        # check all overt_objs are OvertConstant objects and have same state and control variables.
-        self.assert_overt_objs(overt_objs)
-        super().__init__(np.array(overt_objs[0].state_vars).reshape(-1, 1),
-                         np.array(overt_objs[0].control_vars).reshape(-1, 1))
+# class OVERTDynamics(Dynamics):
+#     """
+#     This object takes two inputs:
+#     - overt_objs: a list of OvertConstraint objects.
+#     - time_update_dict: a dictionary with following key-values:
+#         - type: "continuous" : x_{t+1} = x_t + dt*dx_t
+#                 "discrete" : x_{t+1} is explicitly given
+#         - dt: dt for continuous
+#         - map: a dictionary with key-values= x_t => dx_t for continuous and x_{t+1} => x_{t+1} for discrete.
+#     """
+#     def __init__(self, overt_objs, time_update_dict):
+#         # check all overt_objs are OvertConstant objects and have same state and control variables.
+#         self.assert_overt_objs(overt_objs)
+#         super().__init__(np.array(overt_objs[0].state_vars).reshape(-1, 1),
+#                          np.array(overt_objs[0].control_vars).reshape(-1, 1))
+#
+#         # merge overt objects constrants
+#         self.overt_constraints = []
+#         for obj in overt_objs:
+#             self.overt_constraints += obj.constraints
+#
+#         # add additional constraints for time advancement
+#         self.euler_constraints = []
+#         self.setup_euler_constraint(time_update_dict) # constraints introduced by time update
+#         self.constraints = self.overt_constraints + self.euler_constraints
+#
+#     @staticmethod
+#     def assert_overt_objs(overt_objs):
+#         assert type(overt_objs) == type([]), "overt_objs has to be a list."
+#         for i in range(len(overt_objs)-1):
+#             assert set(overt_objs[i].state_vars) == set(overt_objs[i + 1].state_vars), "overt_objs should have same state variables"
+#             assert set(overt_objs[i].control_vars) == set(overt_objs[i + 1].control_vars), "overt_objs should have same control variables"
+#
+#     def setup_euler_constraint(self, time_update_dict):
+#         assert set(time_update_dict["map"].keys()) == set(self.states.reshape(-1)),  "time_update_dict[map] keys should be state variables."
+#         if time_update_dict["type"] == "continuous":
+#             dt = time_update_dict["dt"]
+#             for x, next_x in zip(self.states.reshape(-1), self.next_states.reshape(-1)):
+#                 dx = time_update_dict["map"][x]
+#                 c = Constraint(ConstraintType('EQUALITY'))
+#                 c.monomials = [Monomial(1, x), Monomial(dt, dx), Monomial(-1, next_x)]
+#                 self.euler_constraints.append(c)
+#         elif time_update_dict["type"] == "discrete":
+#             raise(NotImplementedError())
+#
+#         # fill self.abstract_constraints
+#         # add constraints matching self.next_states and what comes out of abstraction generator
 
-        # merge overt objects constrants
-        self.overt_constraints = []
-        for obj in overt_objs:
-            self.overt_constraints += obj.constraints
+class OvertDynamics(Dynamics):
+    """
+    This object three inputs:
+    - overt_objs: an instance of OvertConstraint object.
+    - dx_vec: vector of dx
+    - dt: dt for continuous
+    """
+    def __init__(self, overt_objs, dx_vec, dt):
+        super().__init__(np.array(overt_objs.state_vars).reshape(-1, 1),
+                         np.array(overt_objs.control_vars).reshape(-1, 1))
+
+        # overt objects constrants
+        self.overt_constraints = overt_objs.constraints
 
         # add additional constraints for time advancement
         self.euler_constraints = []
-        self.setup_euler_constraint(time_update_dict) # constraints introduced by time update
+        self.setup_euler_constraint(dx_vec, dt) # constraints introduced by time update
         self.constraints = self.overt_constraints + self.euler_constraints
 
-    @staticmethod
-    def assert_overt_objs(overt_objs):
-        assert type(overt_objs) == type([]), "overt_objs has to be a list."
-        for i in range(len(overt_objs)-1):
-            assert set(overt_objs[i].state_vars) == set(overt_objs[i + 1].state_vars), "overt_objs should have same state variables"
-            assert set(overt_objs[i].control_vars) == set(overt_objs[i + 1].control_vars), "overt_objs should have same control variables"
-
-    def setup_euler_constraint(self, time_update_dict):
-        assert set(time_update_dict["map"].keys()) == set(self.states.reshape(-1)),  "time_update_dict[map] keys should be state variables."
-        if time_update_dict["type"] == "continuous":
-            dt = time_update_dict["dt"]
-            for x, next_x in zip(self.states.reshape(-1), self.next_states.reshape(-1)):
-                dx = time_update_dict["map"][x]
+    def setup_euler_constraint(self, dx_vec, dt):
+        for x, dx, next_x in zip(self.states.reshape(-1), dx_vec, self.next_states.reshape(-1)):
                 c = Constraint(ConstraintType('EQUALITY'))
                 c.monomials = [Monomial(1, x), Monomial(dt, dx), Monomial(-1, next_x)]
                 self.euler_constraints.append(c)
-        elif time_update_dict["type"] == "discrete":
-            raise(NotImplementedError())
 
-        # fill self.abstract_constraints
-        # add constraints matching self.next_states and what comes out of abstraction generator
 
 class ControlledTranstionRelation(TransitionRelation):
     """

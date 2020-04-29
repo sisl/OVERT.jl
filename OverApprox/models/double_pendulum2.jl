@@ -14,7 +14,6 @@ function run_overt(file_name)
 
     x_vars = [Meta.parse(x) for x in h5read(file_name, "overt/states")]
     u_vars = [Meta.parse(u) for u in h5read(file_name, "overt/controls")]
-    expr = [Meta.parse(eq) for eq in h5read(file_name, "overt/eq")]
 
     x_bounds = h5read(file_name, "overt/bounds/states")
     u_bounds = h5read(file_name, "overt/bounds/controls")
@@ -32,6 +31,11 @@ function run_overt(file_name)
 end
 
 function dynamics(range_dict, N_OVERT, file_name, x_vars, u_vars)
+
+    # state variables are th1, th2, u1, u2
+    # control variables are T1, T2
+    @assert Set(x_vars) == Set([:th1, :th2, :u1, :u2])
+    @assert Set(u_vars) == Set([:T1, :T2])
     N_VARS = 10
 
     v1 = :(sin(th1))
@@ -72,6 +76,7 @@ function dynamics(range_dict, N_OVERT, file_name, x_vars, u_vars)
 
     oAP = combine_them_all([v1_oA, v2_oA, v3_oA, v4_oA, v5_oA, v6_oA, v7_oA, v8_oA, v9_oA])
 
+    rm(file_name)
     write_overapproximateparser(oAP, file_name,
                                        x_vars,
                                        u_vars,
@@ -100,5 +105,5 @@ function combine_them_all(variables)
 end
 
 
-file_name = "/home/amaleki/Dropbox/stanford/Python/OverApprox/OverApprox/models/double_pendulum_overt.h5"
+file_name = "/home/amaleki/Dropbox/stanford/Python/OverApprox/OverApprox/models/double_pendulum2_savefile.h5"
 out = run_overt(file_name);

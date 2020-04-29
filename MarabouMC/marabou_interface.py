@@ -130,7 +130,8 @@ class MarabouWrapper():
         if not dnc:
             options = Marabou.createOptions(timeoutInSeconds=timeout)
         else: # dnc
-            options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0+verbose, initialDivides=2)
+            options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0+verbose,
+                                            initialDivides=2, initialTimeout=120, numWorkers=8)
 
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
         self.convert_sat_vals_to_mc_vars(vals)
