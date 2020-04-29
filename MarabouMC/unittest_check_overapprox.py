@@ -36,14 +36,23 @@ def linear_plant_test():
     # phi hat
     OA: x - 1 <= y <= x + 1
     """
+    print("~~~~~~~~~~~lin plant test~~~~~~~~~~~~~~~\n")
     # phi
     x = 'x'
     y = 'y'
-    phi = Constraint("EQUALITY", [Monomial(1, x), Monomial(-1,y)], 0) # x - y == 0
+    phi = [Constraint("EQUALITY", [Monomial(1, x), Monomial(-1,y)], 0)] # x - y == 0
     # phi hat
     c1 = Constraint("LESS_EQ", [Monomial(1, x), Monomial(-1,y)], 1 ) # x - y <= 1
     c2 = Constraint("LESS_EQ", [Monomial(-1, x), Monomial(1,y)], 1 )# y - x <= 1
     phi_hat = [c1, c2]
     # check!
     oav = OverapproxVerifier(phi, phi_hat)
-    oav.convert_formula() # should write to file that can be checked with: https://cvc4.github.io/app/
+    oav.create_smtlib_script() # should write to file that can be checked with: https://cvc4.github.io/app/
+    # copy and paste smtlib2 formula into https://cvc4.github.io/app/
+    # should be unsat
+
+def nonlinear_plant_test():
+    pass
+
+linear_plant_test()
+nonlinear_plant_test()
