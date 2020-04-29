@@ -1,10 +1,9 @@
-# test TF network controller and pwl plant
-
 
 import os
 import sys
-#sys.path.insert(0, "/home/amaleki/Dropbox/stanford/Python/Marabou/")
-#print(sys.path)
+sys.path.insert(0, "..")
+sys.path.insert(0, "/home/amaleki/Downloads/Marabou/")
+print(sys.path)
 
 import numpy as np
 from keras.models import load_model
@@ -14,12 +13,13 @@ from MC_constraints import Constraint, ConstraintType, ReluConstraint, Monomial
 from marabou_interface import MarabouWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
-from MC_simulate import simulate_double_pend
+from IterativeReachability import ReachabilityIterator
+#from MC_simulate import simulate_double_pend
 
 # This is trained controller with lqr data.
-# model = load_model("../OverApprox/models/double_pend_nn_controller_lqr_data.h5")
+model = load_model("../OverApprox/models/double_pend_nn_controller_lqr_data.h5")
 # This a untrained controller
-model = load_model("../OverApprox/models/double_pend_controller_nn_not_trained.h5")
+# model = load_model("../OverApprox/models/double_pend_controller_nn_not_trained.h5")
 # super simple controller
 # model = load_model("/home/amaleki/Downloads/test_6_linear.h5")
 controller = KerasController(keras_model=model)
@@ -48,12 +48,12 @@ controls = overt_obj_1.control_vars
 acceleration_1 = overt_obj_1.output_vars[0]
 acceleration_2 = overt_obj_2.output_vars[0]
 
-double_pendulum_dynamics = Dynamics(None, np.array(states).reshape(-1, 1), np.array(controls).reshape(-1, 1))
+double_pendulum_dynamics = Dynamics(np.array(states).reshape(-1, 1), np.array(controls).reshape(-1, 1))
 next_states = double_pendulum_dynamics.next_states.reshape(4,)
 
 print(states, controls, acceleration_1, acceleration_2, next_states)
 
-dt = .01
+dt = 0.01
 
 # x1_next = x1 + dt*u1
 c1 = Constraint(ConstraintType('EQUALITY'))
@@ -81,12 +81,24 @@ dynamics_constraints += overt_obj_1.constraints
 dynamics_constraints += overt_obj_2.constraints
 double_pendulum_dynamics.constraints = dynamics_constraints
 
+
+###################################
+init_set = {theta1: (-0.1, 0.1), theta2: (-0.1, 0.1), theta1d: (-0.1, 0.1), theta2d: (-0.1, 0.1)}
+ri = ReachabilityIterator(model, double_pendulum_dynamics, init_set, alpha=1.5, cap_values=[[-1., -1.],[1., 1.]])
+ri.run(6)
+for h in ri.init_history:
+    print(h)
+
+##########################################3
+print(dsdsfd)
+
+
 # create transition relation using controller and dynamics
 tr = TFControlledTransitionRelation(dynamics_obj=double_pendulum_dynamics,
                                         controller_obj=controller)
 
 # initial set
-init_set = {theta1: (0.5, 0.6), theta2: (0.5, 0.6), theta1d: (-0.5, 0.5), theta2d: (-0.5, 0.5)}
+init_set = {theta1: (0.1, 0.6), theta2: (0.5, 0.6), theta1d: (-0.5, 0.5), theta2d: (-0.5, 0.5)}
 
 # build the transition system as an (S, I(S), TR) tuple
 ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
@@ -121,19 +133,8 @@ prop = ConstraintProperty(prop_list)
 ncheck_invariant = 2
 algo = BMC(ts=ts, prop=prop, solver=solver)
 result = algo.check_invariant_until(ncheck_invariant)
-import pdb; pdb.set_trace()
 
 # random runs to give intuition to MC result
-n_simulation = 10000
-print("Now running %d simulations: " %n_simulation, end="")
-simulate_double_pend(prop, n_simulation, ncheck_invariant, model, dt, init_set, states)
-
-# simulate failure if applicable
-
-# things for demo:
-# slide of double pendulum EOM
-# show overt working
-# simulate (bad) controller in the region that we test
-# come to this script, run, it produces SAT and simulate(?) or plot(?) the SAT failure 
-
-# notes just for marabou team: marabou gets slow with good controller
+# n_simulation = 10000
+# print("Now running %d simulations: " %n_simulation, end="")
+# simulate_double_pend(prop, n_simulation, ncheck_invariant, model, dt, init_set, states)

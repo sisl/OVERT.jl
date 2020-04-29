@@ -79,6 +79,17 @@ function print_overapproximateparser(oAP::OverApproximationParser)
     end
 end
 
+
+#Base.add_sum(x_oAP::OverApproximationParser, y_oAP::OverApproximationParser) = add_overapproximateparser(x_oAP,y_oAP)
+function add_overapproximateparser(x_oAP::OverApproximationParser, y_oAP::OverApproximationParser)
+    z_oAP = OverApproximationParser()
+    z_oAP.relu_list = vcat(x_oAP.relu_list, y_oAP.relu_list)
+    z_oAP.max_list = vcat(x_oAP.max_list, y_oAP.max_list)
+    z_oAP.eq_list = vcat(x_oAP.eq_list, y_oAP.eq_list)
+    z_oAP.ineq_list = vcat(x_oAP.ineq_list, y_oAP.ineq_list)
+    return z_oAP
+end
+
 """
 ----------------------------------------------
 High leverl functions

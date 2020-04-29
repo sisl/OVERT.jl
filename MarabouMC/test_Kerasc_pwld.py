@@ -10,7 +10,8 @@ from MC_constraints import Constraint, ConstraintType, ReluConstraint, Monomial,
 from marabou_interface import MarabouWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
-from MC_simulate import simulate_single_pend
+from MC_simulate import simulate
+from funs import single_pendulum
 
 
 # create controller object with a keras model
@@ -46,7 +47,12 @@ acceleration = overt_obj.output_vars[0]
 print(states, " ", controls, " ", acceleration)
 
 dt = 0.1
-single_pendulum_dynamics = OVERTDynamics(fun=None, overt_objs=[overt_obj], dt=dt)
+time_update_dict = {"dt": dt,
+                    "type": "continuous",
+                    "map": {states[0]: states[1], states[1]: acceleration}
+                    }
+
+single_pendulum_dynamics = OVERTDynamics([overt_obj], time_update_dict)
 
 # single_pendulum_dynamics = Dynamics(None, np.array(states).reshape(-1, 1), np.array(controls).reshape(-1, 1))
 # single_pendulum_dynamics.constraints = overt_obj.constraints.copy()
@@ -112,4 +118,5 @@ result = algo.check_invariant_until(ncheck_invariant)
 
 # random runs to give intuition to MC result
 n_simulation = 10000
-simulate_single_pend(prop, n_simulation, ncheck_invariant, model, dt, init_set, states)
+simulate(single_pendulum, prop, model, init_set, states, n_simulation, ncheck_invariant, dt)
+#simulate_single_pend(prop, n_simulation, ncheck_invariant, model, dt, init_set, states)

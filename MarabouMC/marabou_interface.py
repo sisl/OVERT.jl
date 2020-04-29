@@ -105,6 +105,8 @@ class MarabouWrapper():
             upper_bound = init_set[k][1] 
             self.ipq.setLowerBound(input_var, lower_bound)
             self.ipq.setUpperBound(input_var, upper_bound)
+        for i in range(len(self.input_vars)):
+            self.ipq.markInputVariable(self.input_vars[i], i)
     
     def get_bounds(self):
         lb = {}
@@ -122,7 +124,9 @@ class MarabouWrapper():
     # inspired by MarabouNetwork.py::solve in Marabou/maraboupy
     def check_sat(self, output_filename="", timeout=0, vars_of_interest=[], verbose=True):
         # todo: redirect output to cwd/maraboulogs/
-        options = Marabou.createOptions(timeoutInSeconds=timeout)
+        # options = Marabou.createOptions(timeoutInSeconds=timeout)
+        options = Marabou.createOptions(dnc=True, verbosity=0, initialDivides=2,
+                                        timeoutInSeconds=timeout, numWorkers=8, initialTimeout=120)
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
         self.convert_sat_vals_to_mc_vars(vals)
         if verbose:

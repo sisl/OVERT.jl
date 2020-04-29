@@ -24,6 +24,19 @@ OverApproximation() = OverApproximation(:(null_output),
                                         3,
                                         1e-2)
 
+Base.print(oA::OverApproximation) = print_overapproximate(oA)
+Base.display(oA::OverApproximation) = print_overapproximate(oA)
+function print_overapproximate(oA::OverApproximation)
+    println("output = $(oA.output)")
+    for eq in oA.approx_eq
+        println(eq)
+    end
+    for ineq in oA.approx_ineq
+        println(ineq)
+    end
+    println(oA.output_range)
+end
+
 N_VARS = 0 # number of variables; has to be defined globally.
 @debug("N_VARS := 0")
 
