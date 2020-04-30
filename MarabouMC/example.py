@@ -1,7 +1,10 @@
 import os
 import os.path
 import sys
-MARABOU_PATH = "PATH_TO_MARABOU_FOLDER"
+assert len(sys.argv) == 3, "you should pass marabou address AND number of cores used in the job"
+MARABOU_PATH = sys.argv[1]
+N_CORES = int(sys.argv[2])
+
 sys.path.insert(0, "..")
 sys.path.insert(0, MARABOU_PATH)
 
@@ -120,7 +123,7 @@ class OvertMCExample():
         tr = TFControlledTransitionRelation(dynamics_obj=self.overt_dyn_obj, controller_obj=self.controller_obj)
         init_set = dict(zip(self.state_vars, self.init_range))
         ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
-        solver = MarabouWrapper()
+        solver = MarabouWrapper(n_worker=N_CORES)
         prop = self.setup_property()
         algo = BMC(ts=ts, prop=prop, solver=solver)
         return algo.check_invariant_until(self.n_check_invariant)
