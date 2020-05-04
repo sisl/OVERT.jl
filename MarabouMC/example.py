@@ -1,7 +1,10 @@
 import os
 import os.path
 import sys
-MARABOU_PATH = "/home/amaleki/Downloads/Marabou/"
+assert len(sys.argv) == 3, "you should pass marabou address AND number of cores used in the job"
+MARABOU_PATH = sys.argv[1]
+N_CORES = int(sys.argv[2])
+
 sys.path.insert(0, "..")
 sys.path.insert(0, MARABOU_PATH)
 
@@ -120,7 +123,7 @@ class OvertMCExample():
         tr = TFControlledTransitionRelation(dynamics_obj=self.overt_dyn_obj, controller_obj=self.controller_obj)
         init_set = dict(zip(self.state_vars, self.init_range))
         ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
-        solver = MarabouWrapper()
+        solver = MarabouWrapper(n_worker=N_CORES)
         prop = self.setup_property()
         algo = BMC(ts=ts, prop=prop, solver=solver)
         return algo.check_invariant_until(self.n_check_invariant)
@@ -132,21 +135,21 @@ class OvertMCExample():
             raise(NotImplementedError())
 
 if __name__ == "__main__":
-    example_1 = OvertMCExample(
-                 keras_controller_file="../OverApprox/models/single_pend_nn_controller_ilqr_data.h5",
-                 overt_dynamics_file="../OverApprox/models/single_pendulum2.jl",
-                 controller_bounding_values=[[-2., 2.]],
-                 integration_map=['s1', 'o0'],
-                 model_states=[b'th', b'dth'],
-                 model_controls=[b'T'],
-                 init_range=[[-0.1, 0.1], [-0.1, 0.1]],
-                 query_range=[[-0.3, 0.3], [-0.3, 0.3]],
-                 query_type="simple",
-                 n_check_invariant=10,
-                 N_overt=2,
-                 dt=0.1,
-                 recalculate=False
-                 )
+    # example_1 = OvertMCExample(
+    #              keras_controller_file="../OverApprox/models/single_pend_nn_controller_ilqr_data.h5",
+    #              overt_dynamics_file="../OverApprox/models/single_pendulum2.jl",
+    #              controller_bounding_values=[[-2., 2.]],
+    #              integration_map=['s1', 'o0'],
+    #              model_states=[b'th', b'dth'],
+    #              model_controls=[b'T'],
+    #              init_range=[[-0.1, 0.1], [-0.1, 0.1]],
+    #              query_range=[[-0.3, 0.3], [-0.3, 0.3]],
+    #              query_type="simple",
+    #              n_check_invariant=10,
+    #              N_overt=2,
+    #              dt=0.1,
+    #              recalculate=False
+    #              )
    # example_1.run()
 
     example_2 = OvertMCExample(
@@ -162,7 +165,7 @@ if __name__ == "__main__":
                  n_check_invariant=3,
                  N_overt=1,
                  dt=0.02,
-                 recalculate=True
+                 recalculate=False
                  )
     example_2.run()
 

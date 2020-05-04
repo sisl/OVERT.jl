@@ -10,9 +10,10 @@ class MarabouWrapper():
     """
     A class which converts to the maraboupy interface.
     """
-    def __init__(self):
+    def __init__(self, n_worker=4):
         # initialize "clean" query
         self.clear()
+        self.n_worker = n_worker
         self.eq_type_map = {ConstraintType('EQUALITY'): MarabouCore.Equation.EQ,
                             ConstraintType('LESS_EQ') : MarabouCore.Equation.LE,
                             ConstraintType('GREATER_EQ'): MarabouCore.Equation.GE}
@@ -131,7 +132,7 @@ class MarabouWrapper():
             options = Marabou.createOptions(timeoutInSeconds=timeout)
         else: # dnc
             options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0+verbose,
-                                            initialDivides=2, initialTimeout=120, numWorkers=8)
+                                            initialDivides=2, initialTimeout=120, numWorkers=self.n_worker)
 
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
         self.convert_sat_vals_to_mc_vars(vals)
