@@ -1,12 +1,13 @@
 import os
 import os.path
-import sys
-assert len(sys.argv) == 3, "you should pass marabou address AND number of cores used in the job"
-MARABOU_PATH = sys.argv[1]
-N_CORES = int(sys.argv[2])
 
-sys.path.insert(0, "..")
-sys.path.insert(0, MARABOU_PATH)
+#import sys
+# assert len(sys.argv) == 3, "you should pass marabou address AND number of cores used in the job"
+# MARABOU_PATH = sys.argv[1]
+# N_CORES = int(sys.argv[2])
+#
+# sys.path.insert(0, "..")
+# sys.path.insert(0, MARABOU_PATH)
 
 import h5py
 from keras.models import load_model
@@ -31,7 +32,8 @@ class OvertMCExample():
                  n_check_invariant=4,  # number of timestep checked in MC
                  N_overt=2,
                  dt=0.01,
-                 recalculate=True
+                 recalculate=True,
+                 ncore=4
                  ):
         """
 
@@ -56,6 +58,7 @@ class OvertMCExample():
             N_overt: number of intermediate points in the overt alg.
             dt: dt of euler integration.
             recalculate: if True, the overt is reculculated by running Julia. Otherwise, the already saved file is parsed.
+            ncore: #cpus for running marabou in parallel.
         """
         self.keras_controller_file = keras_controller_file
         self.overt_dynamics_file = overt_dynamics_file
@@ -70,7 +73,9 @@ class OvertMCExample():
         self.N_overt = N_overt
         self.dt = dt
         self.recalculate = recalculate
+        self.ncore = ncore
 
+        assert self.n_check_invariant == 2 or self.query_type != "simple", "simple query types only support two time steps."
         assert self.overt_dynamics_file.split('.')[-1] == "jl"
         self.dynamic_save_file = self.overt_dynamics_file[:-3] + "_savefile.h5" # OVERT inputs/outputs will be saved here.
         self.overt_dyn_obj = None # will contain an instance of OVERTDynamics class.
@@ -123,10 +128,10 @@ class OvertMCExample():
         tr = TFControlledTransitionRelation(dynamics_obj=self.overt_dyn_obj, controller_obj=self.controller_obj)
         init_set = dict(zip(self.state_vars, self.init_range))
         ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
-        solver = MarabouWrapper(n_worker=N_CORES)
+        solver = MarabouWrapper(n_worker=self.ncore)
         prop = self.setup_property()
         algo = BMC(ts=ts, prop=prop, solver=solver)
-        return algo.check_invariant_until(self.n_check_invariant)
+        return algo.check_invariant_until(2)
 
     def run(self):
         if self.query_type == "simple":

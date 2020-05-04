@@ -128,7 +128,7 @@ class MarabouWrapper():
     # inspired by MarabouNetwork.py::solve in Marabou/maraboupy
     def check_sat(self, output_filename="", timeout=0, vars_of_interest=[], verbose=True, dnc=True):
         # todo: redirect output to cwd/maraboulogs/
-        if not dnc:
+        if (not dnc) or (self.n_worker == 1):
             options = Marabou.createOptions(timeoutInSeconds=timeout)
         else: # dnc
             options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0+verbose,
