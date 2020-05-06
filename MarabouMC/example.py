@@ -28,8 +28,9 @@ class OvertMCExample():
                  model_controls,
                  init_range,
                  query_range,
-                 query_type,
-                 n_check_invariant=4,  # number of timestep checked in MC
+                 overt_range=None,
+                 query_type="simple",
+                 n_check_invariant=2,  # number of timestep checked in MC
                  N_overt=2,
                  dt=0.01,
                  recalculate=True,
@@ -42,14 +43,20 @@ class OvertMCExample():
             overt_dynamics_file: .jl file address that includes dynamics of the problem.
             controller_bounding_values: values at which control inputs are capped. format:
                                     [[u1_min, u1_max], [u2_min, u2_max], ...]
-            integration_map: a list that specifies the derivative of each state. use s for state and o for overts
-                example: ['s1','s2','o0','o1'] means the ds[0] = s1, ds[1]=s2, ds[2]=overt_output[0], ds[3]= overt_output[1]
+            integration_map: a list that specifies the derivative of each state. use s for state and o for overts and c for control.
+                example: ['s1','s2','o0','c1'] means the ds[0] = s1, ds[1]=s2, ds[2]=overt_output[0], ds[3]= control_var[1]
             model_states: list of state variables in the model like th1, th2, ...
             model_controls: list of control variables in the model like T1, T2, ...
             init_range: a list of lists that specifies the initial set. format:
                          [[x1_min, x1_max],[x2_min, x2_max], ...] for an initial set x1_min<x1<x1_max and x2_min<x2<x2_max, ...
             query_range: a list of lists that specifies property of interest. format:
                          [[x1_min, x1_max],[x2_min, x2_max], ...] for a property x1_min<x1<x1_max and x2_min<x2<x2_max, ...
+            overt_range: a list of lists that specifies the set overwhich overt is valid. format:
+                         [[x1_min, x1_max],[x2_min, x2_max], ...] for a set x1_min<x1<x1_max and x2_min<x2<x2_max, ...
+                         default value is None. If overt_range is None:
+                            - overt_range will be initialized to init_range.
+                            - only 1 timestep would be valid.
+
             query_type: can take the followings
                         "simple": this is a simple query with variables and constraints growing in each time step.
                         "iterative": this is iterative process where the query is expanded at each time step until
@@ -68,6 +75,7 @@ class OvertMCExample():
         self.model_controls = model_controls
         self.init_range = init_range
         self.query_range = query_range
+        self.overt_range = overt_range
         self.query_type = query_type
         self.n_check_invariant = n_check_invariant  # number of timestep checked in MC
         self.N_overt = N_overt
@@ -75,13 +83,22 @@ class OvertMCExample():
         self.recalculate = recalculate
         self.ncore = ncore
 
-        assert self.n_check_invariant == 2 or self.query_type != "simple", "simple query types only support two time steps."
-        assert self.overt_dynamics_file.split('.')[-1] == "jl"
+
+        assert self.overt_dynamics_file.split('.')[-1] == "jl" # making sure there exists a .jl file
         self.dynamic_save_file = self.overt_dynamics_file[:-3] + "_savefile.h5" # OVERT inputs/outputs will be saved here.
         self.overt_dyn_obj = None # will contain an instance of OVERTDynamics class.
         self.controller_obj = None # will contain an instance of KerasConstraint class.
         self.state_vars = None # will contain a list of variables that are assigned to model states
         self.control_vars = None # will contain a list of variables that are assigned to model controls
+        self.setup_overt_range()
+
+    def setup_overt_range(self):
+        if self.overt_range is None:
+            print("using init_range for overt_range")
+            assert self.n_check_invariant == 2 or self.query_type != "simple", "simple query  types only support two time steps."
+            self.overt_range = self.init_range
+        else:
+            print("overt_range is prespecified. Make sure the dynamics remain within this range. The program does not automatically check this.")
 
     def setup_overt_dyn_obj(self):
         if self.recalculate:
@@ -90,7 +107,7 @@ class OvertMCExample():
             fid["overt/N"] = self.N_overt
             fid["overt/states"] = self.model_states
             fid["overt/controls"] = self.model_controls
-            fid["overt/bounds/states"] = self.init_range
+            fid["overt/bounds/states"] = self.overt_range
             fid["overt/bounds/controls"] = self.controller_bounding_values
             fid.close()
             os.system("julia " + self.overt_dynamics_file)
@@ -105,6 +122,10 @@ class OvertMCExample():
                 dx_vec.append(self.state_vars[idx])
             elif indicator == 'o':
                 dx_vec.append(overt_obj.output_vars[idx])
+            elif indicator == 'c':
+                dx_vec.append(overt_obj.control_vars[idx])
+            else:
+                raise(IOError("maping is not recognized"))
         self.overt_dyn_obj = OvertDynamics(overt_obj, dx_vec, self.dt)
 
     def setup_controller_obj(self):
@@ -131,7 +152,7 @@ class OvertMCExample():
         solver = MarabouWrapper(n_worker=self.ncore)
         prop = self.setup_property()
         algo = BMC(ts=ts, prop=prop, solver=solver)
-        return algo.check_invariant_until(2)
+        return algo.check_invariant_until(self.n_check_invariant)
 
     def run(self):
         if self.query_type == "simple":
