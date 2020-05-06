@@ -25,6 +25,7 @@ class MarabouWrapper():
         self.variable_map = {} # maps string names -> integers
         self.input_vars = []
         self.constraints = [] # log of things that have been asserted, for debug/double check
+        self.num_relu = 0
 
     def assert_constraints(self, constraints):
         # add constraints to Marabou IPQ object
@@ -65,7 +66,8 @@ class MarabouWrapper():
             print("ERROR: relu.varin is not scalar! It has length", len(relu.varin))
             raise NotImplementedError
         else: # truly, the ok case
-            MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout))
+            self.num_relu += 1
+            MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout), self.num_relu)
     
     def assert_max_constraint(self, c):
         MarabouCore.addMaxConstraint(self.ipq, {self.get_new_var(c.var1in), self.get_new_var(c.var2in)}, self.get_new_var(c.varout))
@@ -131,8 +133,9 @@ class MarabouWrapper():
         if (not dnc) or (self.n_worker == 1):
             options = Marabou.createOptions(timeoutInSeconds=timeout)
         else: # dnc
-            options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0+verbose,
-                                            initialDivides=2, initialTimeout=120, numWorkers=self.n_worker)
+            options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0,
+                                            initialDivides=2, initialTimeout=120, numWorkers=self.n_worker,
+                                            biasStrategy="estimate", focusLayer=1000, lookAheadPreprocessing=True)
 
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
         self.convert_sat_vals_to_mc_vars(vals)
