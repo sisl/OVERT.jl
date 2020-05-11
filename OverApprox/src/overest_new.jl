@@ -146,13 +146,11 @@ function bound_tangent(f, df, N, aa, bb, method)
 	end
 end
 
-`
-# function bound(fexpr, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
-# 	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=true, existing_plot=nothing)
-#
-# plan: Interface to the bound function that accepts symbolic functions, not executable ones, so
+
+"""
+Interface to the bound function that accepts symbolic functions, not executable ones, so
 that symbolic differentiation can be used.
-`
+"""
 
 function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
 	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=false, existing_plot=nothing)

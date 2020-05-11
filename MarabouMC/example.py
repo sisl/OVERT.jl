@@ -1,5 +1,7 @@
 import os
 import os.path
+import warnings
+warnings.filterwarnings('ignore')
 
 #import sys
 # assert len(sys.argv) == 3, "you should pass marabou address AND number of cores used in the job"
@@ -17,6 +19,7 @@ from transition_systems import KerasController, Dynamics, TFControlledTransition
 from marabou_interface import MarabouWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
+
 
 class OvertMCExample():
     def __init__(self,
@@ -110,7 +113,13 @@ class OvertMCExample():
             fid["overt/bounds/states"] = self.overt_range
             fid["overt/bounds/controls"] = self.controller_bounding_values
             fid.close()
+
+            print("julia starting ...")
             os.system("julia " + self.overt_dynamics_file)
+            print("julia finished.")
+        else:
+            print("recalcualte is turned off. using existing overt file.")
+
         overt_obj = OvertConstraint(self.dynamic_save_file)
         self.state_vars = overt_obj.state_vars
 
@@ -141,7 +150,7 @@ class OvertMCExample():
         prop = ConstraintProperty(prop_list)
         return prop
 
-    def _simple_run(self):
+    def _simple_run(self, n_check_invariant):
         self.setup_controller_obj()
 
         self.setup_overt_dyn_obj()
@@ -152,31 +161,75 @@ class OvertMCExample():
         solver = MarabouWrapper(n_worker=self.ncore)
         prop = self.setup_property()
         algo = BMC(ts=ts, prop=prop, solver=solver)
-        return algo.check_invariant_until(self.n_check_invariant)
+        return algo.check_invariant_until(n_check_invariant)
+
+    def _iterative_run(self, itr_max=20):
+        for n in range(self.n_check_invariant-1):
+            print("time step:", n)
+            print("init_range:", self.init_range)
+            print("query_range:", self.query_range)
+            itr = 0
+            while itr < itr_max:
+                result, value, stats = self._simple_run(2)
+                if result.name == "UNSAT":
+                    break
+                else:
+                    value_dict = {k:v for (k,v) in value}
+                    self.widen_property(value_dict)
+            if itr == itr_max: raise(ValueError("iterations did not converge in %d trials"%itr_max))
+            self.update_init_range()
+
+    def update_init_range(self, EPS=1E-3):
+        for i in range(len(self.init_range)):
+            self.init_range[i] = [self.query_range[i][0]+EPS, self.query_range[i][1]-EPS]
+
+        self.recalculate = True
+
+    def widen_property(self, value, EPS=1E-3, alpha=0.2):
+        violation_found = False
+        for i in range(len(self.state_vars)):
+            x = self.state_vars[i]
+            lb, ub = self.query_range[i]
+            v = "%s@1"% x
+            k = value[v]
+            if k - lb < EPS:
+                self.query_range[i][0] = lb - (ub - lb) * alpha
+                violation_found = True
+                break
+            elif ub - k < EPS:
+                self.query_range[i][1] = ub + (ub - lb) * alpha
+                violation_found = True
+                break
+
+        assert violation_found, "violation was not found."
+        self.recalculate = False
+
 
     def run(self):
         if self.query_type == "simple":
-            self._simple_run()
+            self._simple_run(self.n_check_invariant)
+        elif self.query_type == "iterative":
+            self._iterative_run()
         else:
-            raise(NotImplementedError())
+            raise(IOError())
 
 if __name__ == "__main__":
-    # example_1 = OvertMCExample(
-    #              keras_controller_file="../OverApprox/models/single_pend_nn_controller_ilqr_data.h5",
-    #              overt_dynamics_file="../OverApprox/models/single_pendulum2.jl",
-    #              controller_bounding_values=[[-2., 2.]],
-    #              integration_map=['s1', 'o0'],
-    #              model_states=[b'th', b'dth'],
-    #              model_controls=[b'T'],
-    #              init_range=[[-0.1, 0.1], [-0.1, 0.1]],
-    #              query_range=[[-0.3, 0.3], [-0.3, 0.3]],
-    #              query_type="simple",
-    #              n_check_invariant=10,
-    #              N_overt=2,
-    #              dt=0.1,
-    #              recalculate=False
-    #              )
-   # example_1.run()
+    example_1 = OvertMCExample(
+                 keras_controller_file="../OverApprox/models/single_pend_nn_controller_ilqr_data.h5",
+                 overt_dynamics_file="../OverApprox/models/single_pendulum2.jl",
+                 controller_bounding_values=[[-2., 2.]],
+                 integration_map=['s1', 'o0'],
+                 model_states=[b'th', b'dth'],
+                 model_controls=[b'T'],
+                 init_range=[[-0.1, 0.1], [-0.1, 0.1]],
+                 query_range=[[-0.3, 0.3], [-0.3, 0.3]],
+                 query_type="iterative",
+                 n_check_invariant=10,
+                 N_overt=2,
+                 dt=0.1,
+                 recalculate=False
+                 )
+    example_1.run()
 
     example_2 = OvertMCExample(
                  keras_controller_file="../OverApprox/models/double_pend_nn_controller_ilqr_data.h5",

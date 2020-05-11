@@ -17,12 +17,12 @@ example_1 = OvertMCExample(
              model_states=[b'th', b'dth'],
              model_controls=[b'T'],
              init_range=[[-0.1, 0.1], [-0.1, 0.1]],
-             query_range=[[-0.3, 0.3], [-0.3, 0.3]],
-             query_type="simple",
+             query_range=[[-0.15, 0.15], [-0.15, 0.15]],
+             query_type= "simple", #"iterative"
              n_check_invariant=2,
              N_overt=2,
              dt=0.1,
-             recalculate=False,
+             recalculate=True,
              ncore=N_CORES
              )
 example_1.run()

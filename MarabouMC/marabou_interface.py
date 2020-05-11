@@ -67,7 +67,8 @@ class MarabouWrapper():
             raise NotImplementedError
         else: # truly, the ok case
             self.num_relu += 1
-            MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout), self.num_relu)
+            MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout))
+            #MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout), self.num_relu)
     
     def assert_max_constraint(self, c):
         MarabouCore.addMaxConstraint(self.ipq, {self.get_new_var(c.var1in), self.get_new_var(c.var2in)}, self.get_new_var(c.varout))
@@ -134,8 +135,10 @@ class MarabouWrapper():
             options = Marabou.createOptions(timeoutInSeconds=timeout)
         else: # dnc
             options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0,
-                                            initialDivides=2, initialTimeout=120, numWorkers=self.n_worker,
-                                            biasStrategy="estimate", focusLayer=1000, lookAheadPreprocessing=True)
+                                            initialDivides=2, initialTimeout=120, numWorkers=self.n_worker)
+            # options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0,
+            #                                 initialDivides=2, initialTimeout=120, numWorkers=self.n_worker,
+            #                                 biasStrategy="estimate", focusLayer=1000, lookAheadPreprocessing=True)
 
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
         self.convert_sat_vals_to_mc_vars(vals)

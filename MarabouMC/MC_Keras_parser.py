@@ -279,7 +279,7 @@ class KerasConstraint():
             sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
 
         if np.all(np.isclose(sol_parser, sol_tf)):
-            print("Keras parser: Test passed.")
+            print("Keras model: parsed successfully!")
         else:
             raise(ValueError("Keras parser: Test did not pass!"))
 
@@ -339,7 +339,7 @@ class KerasConstraint():
             sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
 
         if np.all(np.isclose(sol_parser, sol_tf)):
-            print("Keras parser: Test passed.")
+            print("Keras model: parsed successfully!")
             #print("sol_tf:", sol_tf, " sol_parser:", sol_parser)
         else:
             #print("sol_tf:", sol_tf, " sol_parser:", sol_parser)

@@ -23,6 +23,6 @@ example_1 = OvertMCExample(
             N_overt=1,
             dt=0.02,
             recalculate=False,
-             ncore=N_CORES
+            ncore=N_CORES
              )
 example_1.run()
