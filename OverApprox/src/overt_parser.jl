@@ -528,10 +528,10 @@ function write_overapproximateparser(bound_parser::OverApproximationParser,
         write_constraint(file_name, eq, i)
     end
     for (i, c) in enumerate(bound_parser.true_L_list)
-        write_constraint(file_name, c, prefix="true_fun/")
+        write_constraint(file_name, c, i, prefix="true_fun/")
     end
     for (i, c) in enumerate(bound_parser.true_NL_list)
-        write_constraint(file_name, c, prefix="true_fun/")
+        write_constraint(file_name, c, i, prefix="true_fun/")
     end
 end
 #
@@ -543,7 +543,7 @@ Tests
 """
 
 function evaluate(oAP_test::OverApproximationParser, var_dict::Dict)
-    println("Evaluate: relu")
+    println("Evaluate")
     for eq in oAP_test.relu_list
         if eq.varin in keys(var_dict)
             var_dict[eq.varout] = max(0, var_dict[eq.varin])
@@ -559,7 +559,7 @@ function evaluate(oAP_test::OverApproximationParser, var_dict::Dict)
     for c in oAP_test.true_NL_list
         if c.indep_var ∈ keys(var_dict)
             rcopy = deepcopy(c.right)
-            @assert c.R == :(==)
+            @assert c.R == :(==) # only handles equality relations right now
             var_dict[c.left] = eval(substitute!(rcopy, c.indep_var, var_dict[c.indep_var]))
         end
     end
@@ -597,12 +597,12 @@ function test_random_input(expr::Expr, oAP_test::OverApproximationParser)
     for (k, v) in zip(vars, values)
         substitute!(expr_eval, k, v)
     end
-    expr_eval_rite = simplify(expr_eval.args[3])
+    expr_eval_rite = simplify(expr_eval.args[3]) # evaluate expression directly
 
     dict_var = Dict(zip(vars, values))
     while expr.args[2] ∉ keys(dict_var)
         println("expr: ", expr)
-       evaluate(oAP_test, dict_var)
+       evaluate(oAP_test, dict_var) # evaluate expression that has been parsed into bound parser
        println(dict_var)
     end
 
