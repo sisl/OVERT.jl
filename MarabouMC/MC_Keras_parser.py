@@ -1,7 +1,7 @@
 import numpy as np
 from keras.models import load_model
 from keras.layers import Dense, SimpleRNN
-from MC_constraints import ConstraintType, Constraint, MatrixConstraint, ReluConstraint
+from MC_constraints import ConstraintType, Constraint, MatrixConstraint, ReluConstraint, Monomial, MaxConstraint
 
 import tensorflow as tf
 
@@ -279,7 +279,7 @@ class KerasConstraint():
             sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
 
         if np.all(np.isclose(sol_parser, sol_tf)):
-            print("Keras parser: Test passed.")
+            print("Keras model: parsed successfully!")
         else:
             raise(ValueError("Keras parser: Test did not pass!"))
 
@@ -339,11 +339,54 @@ class KerasConstraint():
             sol_tf = np.concatenate((sol_tf, y.reshape(-1)))
 
         if np.all(np.isclose(sol_parser, sol_tf)):
-            print("Keras parser: Test passed.")
+            print("Keras model: parsed successfully!")
             #print("sol_tf:", sol_tf, " sol_parser:", sol_parser)
         else:
             #print("sol_tf:", sol_tf, " sol_parser:", sol_parser)
             raise(ValueError("Keras parser: Test did not pass!"))
+
+    def cap(self, cap_min, cap_max):
+        # this function adds additional constraints to cap the controller between cap_min and cap_max
+        # cap_min and cap_max are both a list of size self.model_output_vars. None indicate no cap.
+        # given x, return min(max(x, cap_min), cap_max)
+        assert len(cap_min) == len(cap_max) == len(self.model_output_vars)
+        for idx in range(len(self.model_output_vars)):
+            self._cap_top(idx, cap_max[idx])
+            self._cap_bottom(idx, cap_min[idx])
+
+    def _cap_bottom(self, idx, cap_min):
+        if cap_min is None:
+            return
+
+        # x_out =  max(x, cap_min)
+        x = self.model_output_vars[idx]
+        xs1 = getNewVariable("xs")
+        x_out = getNewVariable("xs")
+        constraint1 = Constraint("EQUALITY", monomials=[Monomial(1.0, xs1)], scalar=cap_min)  # set xs1 = cap_min
+        constraint2 = MaxConstraint(varsin=[x, xs1], varout=x_out)  # x_out = max(x, xs1)
+        self.constraints += [constraint1, constraint2]
+        self.model_output_vars[idx] = x_out
+
+    def _cap_top(self, idx, cap_max):
+        if cap_max is None:
+            return
+
+        # x_out = min(x, cap_max) or equivalently x_out = -max(-x, -cap_max)
+        # x_out = -xs1, xs1 = max(-x, -cap_max) or equivalently
+        # x_out = -xs1, xs1 = max(xs2, xs3), xs2 = -x, xs3 = -cap_max
+        x = self.model_output_vars[idx]
+        xs1 = getNewVariable("xs")
+        xs2 = getNewVariable("xs")
+        xs3 = getNewVariable("xs")
+        x_out = getNewVariable("xs")
+
+        constraint1 = Constraint("EQUALITY", monomials=[Monomial(1.0, x_out), Monomial(1.0, xs1)], scalar=0)  # x_out = -xs1
+        constraint2 = MaxConstraint(varsin=[xs2, xs3], varout=xs1)  # xs1 = max(xs2, xs3)
+        constraint3 = Constraint("EQUALITY", monomials=[Monomial(1.0, xs2), Monomial(1.0, x)], scalar=0)  # set xs2 = -x
+        constraint4 = Constraint("EQUALITY", monomials=[Monomial(1.0, xs3)], scalar=-cap_max)  # set xs1 = -cap_max
+        self.constraints += [constraint1, constraint2, constraint3, constraint4]
+        self.model_output_vars[idx] = x_out
+
 
 if __name__ == "__main__":
     n_t = 1

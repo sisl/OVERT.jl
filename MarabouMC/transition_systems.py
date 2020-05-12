@@ -3,6 +3,7 @@ from MC_TF_parser import TFConstraint
 from Constraint_utils import matrix_equality_constraint
 from MC_constraints import ReluConstraint, Constraint, ConstraintType, Monomial
 from MC_Keras_parser import KerasConstraint
+from overt_to_python import OvertConstraint
 import numpy as np
 
 class TransitionRelation:
@@ -28,67 +29,99 @@ class TFController(Controller):
         self.relus = self.tfconstraintobj.relus
 
 class KerasController(Controller):
-    def __init__(self, keras_model=None):
+    def __init__(self, keras_model=None, cap_values=None):
         super().__init__()
         """
         load constraints by parsing network file
         """
         self.kerasconstraintobj = KerasConstraint(model=keras_model)
+        if cap_values is not None:
+            self.kerasconstraintobj.cap(cap_values[0], cap_values[1])
         self.constraints = self.kerasconstraintobj.constraints
         self.state_inputs = np.array(self.kerasconstraintobj.model_input_vars).reshape(-1, 1)
         self.control_outputs = np.array(self.kerasconstraintobj.model_output_vars).reshape(-1, 1)
         self.relus = [c for c in self.constraints if isinstance(c, ReluConstraint)]
 
 class Dynamics:
-    def __init__(self, fun, states, controls):
-        self.fun = fun # python function representing the dynamics
+    def __init__(self, states, controls):
         self.states = np.array(states).reshape(-1,1)
         self.control_inputs = np.array(controls).reshape(-1,1)
         self.next_states = np.array([x+"'" for x in states.flatten()]).reshape(self.states.shape) # [x,y,z] -> [x', y', z']
         self.constraints = [] # constraints over the states and next states
 
-class OVERTDynamics(Dynamics):
-    def __init__(self, fun=None, overt_objs=None, dt=0.1):
-        self.overt_objs = overt_objs
-        self.assert_overt_objs()
-        states_vars = np.array(self.overt_objs[0].state_vars).reshape(-1, 1)
-        controls_vars = np.array(self.overt_objs[0].control_vars).reshape(-1, 1)
-        super().__init__(fun, states_vars, controls_vars)
+# class OVERTDynamics(Dynamics):
+#     """
+#     This object takes two inputs:
+#     - overt_objs: a list of OvertConstraint objects.
+#     - time_update_dict: a dictionary with following key-values:
+#         - type: "continuous" : x_{t+1} = x_t + dt*dx_t
+#                 "discrete" : x_{t+1} is explicitly given
+#         - dt: dt for continuous
+#         - map: a dictionary with key-values= x_t => dx_t for continuous and x_{t+1} => x_{t+1} for discrete.
+#     """
+#     def __init__(self, overt_objs, time_update_dict):
+#         # check all overt_objs are OvertConstant objects and have same state and control variables.
+#         self.assert_overt_objs(overt_objs)
+#         super().__init__(np.array(overt_objs[0].state_vars).reshape(-1, 1),
+#                          np.array(overt_objs[0].control_vars).reshape(-1, 1))
+#
+#         # merge overt objects constrants
+#         self.overt_constraints = []
+#         for obj in overt_objs:
+#             self.overt_constraints += obj.constraints
+#
+#         # add additional constraints for time advancement
+#         self.euler_constraints = []
+#         self.setup_euler_constraint(time_update_dict) # constraints introduced by time update
+#         self.constraints = self.overt_constraints + self.euler_constraints
+#
+#     @staticmethod
+#     def assert_overt_objs(overt_objs):
+#         assert type(overt_objs) == type([]), "overt_objs has to be a list."
+#         for i in range(len(overt_objs)-1):
+#             assert set(overt_objs[i].state_vars) == set(overt_objs[i + 1].state_vars), "overt_objs should have same state variables"
+#             assert set(overt_objs[i].control_vars) == set(overt_objs[i + 1].control_vars), "overt_objs should have same control variables"
+#
+#     def setup_euler_constraint(self, time_update_dict):
+#         assert set(time_update_dict["map"].keys()) == set(self.states.reshape(-1)),  "time_update_dict[map] keys should be state variables."
+#         if time_update_dict["type"] == "continuous":
+#             dt = time_update_dict["dt"]
+#             for x, next_x in zip(self.states.reshape(-1), self.next_states.reshape(-1)):
+#                 dx = time_update_dict["map"][x]
+#                 c = Constraint(ConstraintType('EQUALITY'))
+#                 c.monomials = [Monomial(1, x), Monomial(dt, dx), Monomial(-1, next_x)]
+#                 self.euler_constraints.append(c)
+#         elif time_update_dict["type"] == "discrete":
+#             raise(NotImplementedError())
+#
+#         # fill self.abstract_constraints
+#         # add constraints matching self.next_states and what comes out of abstraction generator
 
-        self.overt_constraints = [] # constriants introduced by overt
-        self.euler_constraints = [] # constraints introduced by euler integration.
-        self.get_overt_constraints()
-        self.get_euler_constraint(dt)
+class OvertDynamics(Dynamics):
+    """
+    This object three inputs:
+    - overt_objs: an instance of OvertConstraint object.
+    - dx_vec: vector of dx
+    - dt: dt for continuous
+    """
+    def __init__(self, overt_objs, dx_vec, dt):
+        super().__init__(np.array(overt_objs.state_vars).reshape(-1, 1),
+                         np.array(overt_objs.control_vars).reshape(-1, 1))
+
+        # overt objects constrants
+        self.overt_constraints = overt_objs.constraints
+
+        # add additional constraints for time advancement
+        self.euler_constraints = []
+        self.setup_euler_constraint(dx_vec, dt) # constraints introduced by time update
         self.constraints = self.overt_constraints + self.euler_constraints
 
-    def assert_overt_objs(self):
-        for i in range(len(self.overt_objs)-1):
-            assert set(self.overt_objs[i].state_vars) == set(self.overt_objs[i + 1].state_vars), "overt_objs should have same state variables"
-            assert set(self.overt_objs[i].control_vars) == set(self.overt_objs[i + 1].control_vars), "overt_objs should have same control variables"
-            assert len(self.overt_objs) == len(self.overt_objs[i].state_vars) // 2, "with %d state variables, there should be %d overt objects" %(len(self.state_vars), len(self.overt_objs))
+    def setup_euler_constraint(self, dx_vec, dt):
+        for x, dx, next_x in zip(self.states.reshape(-1), dx_vec, self.next_states.reshape(-1)):
+                c = Constraint(ConstraintType('EQUALITY'))
+                c.monomials = [Monomial(1, x), Monomial(dt, dx), Monomial(-1, next_x)]
+                self.euler_constraints.append(c)
 
-    def get_overt_constraints(self):
-        for overt_obj in self.overt_objs:
-            self.overt_constraints += overt_obj.constraints
-
-    def get_euler_constraint(self, dt):
-        """
-        Add additional constraint for euler integration.
-        It is assumed the format of state vector is like [x1, x2, dx1, dx2]
-        """
-        ndim = len(self.states) // 2
-        for i in range(ndim):
-            # x_next = x + dt*u
-            c1 = Constraint(ConstraintType('EQUALITY'))
-            c1.monomials = [Monomial(1, self.states[i, 0]), Monomial(dt, self.states[i + ndim, 0]), Monomial(-1, self.next_states[i, 0])]
-            self.euler_constraints.append(c1)
-
-            # u_next = u + dt*a
-            c2 = Constraint(ConstraintType('EQUALITY'))
-            c2.monomials = [Monomial(1, self.states[i + ndim, 0]), Monomial(dt, self.overt_objs[i].output_vars[0]), Monomial(-1, self.next_states[i + ndim, 0])]
-            self.euler_constraints.append(c2)
-        # fill self.abstract_constraints
-        # add constraints matching self.next_states and what comes out of abstraction generator
 
 class ControlledTranstionRelation(TransitionRelation):
     """
@@ -195,3 +228,14 @@ class MyTransitionSystem(TransitionSystem):
     
     def abstract(self, epsilon, CEx=None):
         self.transition_relation.abstract(self.initial_set, epsilon, CEx=CEx)
+
+
+def constraint_variable_to_interval(variable, LB, UB):
+    p1 = Constraint(ConstraintType('GREATER'))
+    p1.monomials = [Monomial(1, variable)]
+    p1.scalar = LB # 0 #
+    #
+    p2 = Constraint(ConstraintType('LESS'))
+    p2.monomials = [Monomial(1, variable)]
+    p2.scalar = UB
+    return [p1, p2]

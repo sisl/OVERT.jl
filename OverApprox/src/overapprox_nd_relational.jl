@@ -251,7 +251,7 @@ function mul_var_sca_helper(var, constant, bound)
     return bound
 end
 
-function expand_multiplication(x, y, bound; ξ=1.0)
+function expand_multiplication(x, y, bound; ξ=0.1)
     """
         expand_multiplication(x, y, bound; ξ=1.0)
     Re write multiplication e.g. x*y using exp(log()) and affine expressions

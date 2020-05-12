@@ -10,9 +10,10 @@ class MarabouWrapper():
     """
     A class which converts to the maraboupy interface.
     """
-    def __init__(self):
+    def __init__(self, n_worker=4):
         # initialize "clean" query
         self.clear()
+        self.n_worker = n_worker
         self.eq_type_map = {ConstraintType('EQUALITY'): MarabouCore.Equation.EQ,
                             ConstraintType('LESS_EQ') : MarabouCore.Equation.LE,
                             ConstraintType('GREATER_EQ'): MarabouCore.Equation.GE}
@@ -24,6 +25,7 @@ class MarabouWrapper():
         self.variable_map = {} # maps string names -> integers
         self.input_vars = []
         self.constraints = [] # log of things that have been asserted, for debug/double check
+        self.num_relu = 0
 
     def assert_constraints(self, constraints):
         # add constraints to Marabou IPQ object
@@ -64,7 +66,9 @@ class MarabouWrapper():
             print("ERROR: relu.varin is not scalar! It has length", len(relu.varin))
             raise NotImplementedError
         else: # truly, the ok case
+            self.num_relu += 1
             MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout))
+            #MarabouCore.addReluConstraint(self.ipq, self.get_new_var(relu.varin), self.get_new_var(relu.varout), self.num_relu)
     
     def assert_max_constraint(self, c):
         MarabouCore.addMaxConstraint(self.ipq, {self.get_new_var(c.var1in), self.get_new_var(c.var2in)}, self.get_new_var(c.varout))
@@ -108,8 +112,6 @@ class MarabouWrapper():
             upper_bound = init_set[k][1] 
             self.ipq.setLowerBound(input_var, lower_bound)
             self.ipq.setUpperBound(input_var, upper_bound)
-        #
-        # mark input vars for marabou
         for i in range(len(self.input_vars)):
             self.ipq.markInputVariable(self.input_vars[i], i)
     
@@ -129,10 +131,15 @@ class MarabouWrapper():
     # inspired by MarabouNetwork.py::solve in Marabou/maraboupy
     def check_sat(self, output_filename="", timeout=0, vars_of_interest=[], verbose=True, dnc=True):
         # todo: redirect output to cwd/maraboulogs/
-        if not dnc:
+        if (not dnc) or (self.n_worker == 1):
             options = Marabou.createOptions(timeoutInSeconds=timeout)
         else: # dnc
-            options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0+verbose, initialDivides=2)
+            options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0,
+                                            initialDivides=2, initialTimeout=120, numWorkers=self.n_worker)
+            # options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0,
+            #                                 initialDivides=2, initialTimeout=120, numWorkers=self.n_worker,
+            #                                 biasStrategy="estimate", focusLayer=1000, lookAheadPreprocessing=True)
+
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
         self.convert_sat_vals_to_mc_vars(vals)
         if verbose:

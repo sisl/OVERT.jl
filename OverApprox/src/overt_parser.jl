@@ -108,6 +108,18 @@ function print_overapproximateparser(oAP::OverApproximationParser)
 end
 
 
+#Base.add_sum(x_oAP::OverApproximationParser, y_oAP::OverApproximationParser) = add_overapproximateparser(x_oAP,y_oAP)
+function add_overapproximateparser(x_oAP::OverApproximationParser, y_oAP::OverApproximationParser)
+    z_oAP = OverApproximationParser()
+    z_oAP.relu_list = vcat(x_oAP.relu_list, y_oAP.relu_list)
+    z_oAP.max_list = vcat(x_oAP.max_list, y_oAP.max_list)
+    z_oAP.eq_list = vcat(x_oAP.eq_list, y_oAP.eq_list)
+    z_oAP.ineq_list = vcat(x_oAP.ineq_list, y_oAP.ineq_list)
+    z_oAP.true_L_list = vcat(x_oAP.true_L_list, y_oAP.true_L_list)
+    z_oAP.true_NL_list = vcat(x_oAP.true_NL_list, y_oAP.true_NL_list)
+    return z_oAP
+end
+
 """
 ----------------------------------------------
 High level functions
@@ -533,6 +545,7 @@ function write_overapproximateparser(bound_parser::OverApproximationParser,
     for (i, c) in enumerate(bound_parser.true_NL_list)
         write_constraint(file_name, c, i, prefix="true_fun/")
     end
+
 end
 #
 #
@@ -544,6 +557,12 @@ Tests
 
 function evaluate(oAP_test::OverApproximationParser, var_dict::Dict)
     println("Evaluate")
+    """
+    Given a OverApproximationParser object and a dictionary of input variables
+    this function evaluate all other variables that are introduced. And the
+        variable and its value to the var_dict.
+    """
+
     for eq in oAP_test.relu_list
         if eq.varin in keys(var_dict)
             var_dict[eq.varout] = max(0, var_dict[eq.varin])
@@ -585,7 +604,24 @@ function evaluate(oAP_test::OverApproximationParser, var_dict::Dict)
 end
 
 function test_random_input(expr::Expr, oAP_test::OverApproximationParser)
-    # evaluate expr at random input values
+    """
+    for a given expr and its associated OverApproxmiationParser object, this
+        function  computes the expr and its parser at some random values,
+            and compares it together. Return true if they're almost equal (≈).
+        At everystep, function evaluate replace all variables with their values
+        given by dict_var. If a equality or a max or a relu can be solved
+        with the available values, then the will be solved, and the value will be
+        added to the dictionary. for example if you have
+        x1 = x2 + x3
+        x4 = max(x2, x1)
+        you dictionary is supposed to have the values for x2 and x3. Then in the
+        first round, x1 is solved. and then in the second round x4 is solved.
+        note that the order of the equations is not necessarily in the order
+        that you can solve them, so maybe the equations that can be reduced are
+        at the bottom of your list. With this approach, you get rid of at least
+        one equation every step of the for loop
+    """
+
     vars = find_variables(expr.args[3])
     vars = setdiff(vars, [:min, :max])
     if expr.args[1] ∈ [:max, :min, :relu]

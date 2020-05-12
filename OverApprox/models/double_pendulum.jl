@@ -1,11 +1,13 @@
 """
-file to generate single pendulum overt dynamics. Assuming g=1.0, m=L=0.5 and c=0.
+file to generate double pendulum overt dynamics. Assuming g=1.0, m=L=0.5 and c=0.
 the output is a .h5 file with a list of all equality, min, max and inequality constraints.
 """
 
 # expression of acceleration with g=1.0, m=L=0.5 and c= 0.0
-u1p = "(16*T1 - sin(2*th1 - 2*th2)*u1^2 - 2*sin(th1 - th2)*u2^2 + 2*sin(th1 - 2*th2) + 6*sin(th1) - 16*T2*cos(th1 - th2))/(3 - cos(2*th1 - 2*th2))"
-u2p = "(2*sin(th1 - th2)*u1^2 + 16*T2 + 4*sin(th2) - cos(th1 - th2)*(4*sin(th1) - sin(th1 - th2)*u2^2 + 8*T1))/(2 - cos(th1 - th2)^2)"
+u1p = "(16*T1 - sin(2*th1 - 2*th2)*u1^2 - 2*sin(th1 - th2)*u2^2 +
+       2*sin(th1 - 2*th2) + 6*sin(th1) - 16*T2*cos(th1 - th2))/(3 - cos(2*th1 - 2*th2))"
+u2p = "(2*sin(th1 - th2)*u1^2 + 16*T2 + 4*sin(th2) - cos(th1 - th2)*(4*sin(th1)
+        - sin(th1 - th2)*u2^2 + 8*T1))/(2 - cos(th1 - th2)^2)"
 
 u1p_expr = Meta.parse(u1p)
 u2p_expr = Meta.parse(u2p)

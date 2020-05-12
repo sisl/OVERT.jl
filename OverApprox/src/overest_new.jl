@@ -146,16 +146,14 @@ function bound_tangent(f, df, N, aa, bb, method)
 	end
 end
 
-`
-# function bound(fexpr, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
-# 	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=true, existing_plot=nothing)
-#
-# plan: Interface to the bound function that accepts symbolic functions, not executable ones, so
+
+"""
+Interface to the bound function that accepts symbolic functions, not executable ones, so
 that symbolic differentiation can be used.
-`
+"""
 
 function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
-	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=true, existing_plot=nothing)
+	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=false, existing_plot=nothing)
 
 	"""
 	This function over(under)-approximate function f(x).
@@ -164,7 +162,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 	[a,b]:     domain of f
 	N:         N-1 is the number of linear segments within each sub-interval.
 	           sub-intervals are regions where second derivative does not change sign.
-	conc_method: determines the concave algorithm. can take "continuous" or "optimal".
+	conc_method: determines the concave algorithm. can take continuous or optimal.
 	lowerbound:  true if you want a lower bound
 	df:        derivative of f, if available
 	d2f:       second derivative of f, if available
@@ -226,19 +224,46 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 		itr_nlsolve = 0
 		try # This may overshoot to outside of domain for log
 			z = nlsolve(obj, zGuess, autodiff = :forward)
+
+			# check zeros are within the interval
+			@assert z.zero[1] > aa
+			@assert z.zero[end] < bb
     	catch # if overshoots, change the zGuess until it works. 10 iterations allowed
+			zGuess_orig = copy(zGuess)
+			# shifting zGuess towards left
 			while itr_nlsolve <= 10
-				zGuess[2:end] = zGuess[1:end-1]
-				zGuess[1] = 0.5*(aa + zGuess[1])
+				zGuess[1:end-1] = zGuess[2:end]
+				zGuess[end] = 0.5*(bb + zGuess[end])
 				try
 					z = nlsolve(obj, zGuess, autodiff = :forward)
+					# check zeros are within the interval
+					@assert z.zero[1] > aa
+					@assert z.zero[end] < bb
 					break
 				catch
 					itr_nlsolve += 1
 				end
 				#z = mcpsolve(obj, sol_lb, sol_ub , zGuess_exp, autodiff = :forward)
 			end
-			if itr_nlsolve == 10
+
+			# reset zGuess
+			itr_nlsolve == 11 ? zGuess = zGuess_orig : nothing
+			# shifting zGuess towards right
+			while (itr_nlsolve <= 20) && (itr_nlsolve >= 11)
+				zGuess[2:end] = zGuess[1:end-1]
+				zGuess[1] = 0.5*(aa + zGuess[1])
+				try
+					z = nlsolve(obj, zGuess, autodiff = :forward)
+					# check zeros are within the interval
+					@assert z.zero[1] > aa
+					@assert z.zero[end] < bb
+					break
+				catch
+					itr_nlsolve += 1
+				end
+				#z = mcpsolve(obj, sol_lb, sol_ub , zGuess_exp, autodiff = :forward)
+			end
+			if itr_nlsolve == 21
 				error("nlsolve could not converge")
 			end
 		end

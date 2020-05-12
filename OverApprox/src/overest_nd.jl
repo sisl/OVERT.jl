@@ -30,7 +30,7 @@ function count_min_max(expr)
     return c
 end
 
-pint() = :🍺      
+pint() = :🍺
 
 function upperbound_expr_compositions(func, arg, N, range_dict, lb_local, lb_global)
     """ this function computes the linear overapproximation of func(arg)
@@ -61,7 +61,7 @@ function upperbound_expr(expr; N=2, lowerbound=false, range_dict=nothing)
     if expr is a Symbol, it is returned as is.
     if expr is an affine function, it is returned as is.
     if expr is a 1d function, it is passed into find_UB without
-        any additional composition 
+        any additional composition
 
     # This comment below is concerning because the procedure it describes doesn't sound correct:
     if expr is of the form f(a), where f is one of the special
