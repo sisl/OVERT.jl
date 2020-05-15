@@ -32,7 +32,7 @@ class OvertMCExample():
                  init_range,
                  query_range,
                  overt_range=None,
-                 query_type="simple",
+                 query_type="simple", 
                  n_check_invariant=2,  # number of timestep checked in MC
                  N_overt=2,
                  dt=0.01,
@@ -42,7 +42,7 @@ class OvertMCExample():
         """
 
         Args:
-            keras_controller_file: .h5 file address that is saved keras model.
+            keras_controller_file: .h5 file address that is saved keras model for the controller.
             overt_dynamics_file: .jl file address that includes dynamics of the problem.
             controller_bounding_values: values at which control inputs are capped. format:
                                     [[u1_min, u1_max], [u2_min, u2_max], ...]
@@ -54,20 +54,20 @@ class OvertMCExample():
                          [[x1_min, x1_max],[x2_min, x2_max], ...] for an initial set x1_min<x1<x1_max and x2_min<x2<x2_max, ...
             query_range: a list of lists that specifies property of interest. format:
                          [[x1_min, x1_max],[x2_min, x2_max], ...] for a property x1_min<x1<x1_max and x2_min<x2<x2_max, ...
-            overt_range: a list of lists that specifies the set overwhich overt is valid. format:
+            overt_range: a list of lists that specifies the set over which overt is valid. format:
                          [[x1_min, x1_max],[x2_min, x2_max], ...] for a set x1_min<x1<x1_max and x2_min<x2<x2_max, ...
                          default value is None. If overt_range is None:
                             - overt_range will be initialized to init_range.
-                            - only 1 timestep would be valid.
+                            - only 1 timestep would be guaranteed valid.
 
             query_type: can take the followings
                         "simple": this is a simple query with variables and constraints growing in each time step.
                         "iterative": this is iterative process where the query is expanded at each time step until
                                      UNSAT is achieved. The number of variables and constraints does not grow.
-            n_check_invariant: number of timesteps that should be check in the invariant property
+            n_check_invariant: number of timesteps that should be check for the invariant property
             N_overt: number of intermediate points in the overt alg.
             dt: dt of euler integration.
-            recalculate: if True, the overt is reculculated by running Julia. Otherwise, the already saved file is parsed.
+            recalculate: if True, the overt is recalculated by running Julia. Otherwise, the already saved file is parsed.
             ncore: #cpus for running marabou in parallel.
         """
         self.keras_controller_file = keras_controller_file
@@ -105,6 +105,7 @@ class OvertMCExample():
 
     def setup_overt_dyn_obj(self):
         if self.recalculate:
+            # Set some hyper parameters / initial values
             if os.path.exists(self.dynamic_save_file): os.remove(self.dynamic_save_file)
             fid = h5py.File(self.dynamic_save_file, "w")
             fid["overt/N"] = self.N_overt
@@ -114,12 +115,14 @@ class OvertMCExample():
             fid["overt/bounds/controls"] = self.controller_bounding_values
             fid.close()
 
+            # run julia to generate bounds
             print("julia starting ...")
             os.system("julia " + self.overt_dynamics_file)
             print("julia finished.")
         else:
             print("recalcualte is turned off. using existing overt file.")
 
+        # read bounds from file
         overt_obj = OvertConstraint(self.dynamic_save_file)
         self.state_vars = overt_obj.state_vars
 

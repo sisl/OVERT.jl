@@ -102,7 +102,7 @@ class OvertDynamics(Dynamics):
     This object three inputs:
     - overt_objs: an instance of OvertConstraint object.
     - dx_vec: vector of dx
-    - dt: dt for continuous
+    - dt: dt for continuous              # this is confusing 
     """
     def __init__(self, overt_objs, dx_vec, dt):
         super().__init__(np.array(overt_objs.state_vars).reshape(-1, 1),
@@ -121,6 +121,10 @@ class OvertDynamics(Dynamics):
                 c = Constraint(ConstraintType('EQUALITY'))
                 c.monomials = [Monomial(1, x), Monomial(dt, dx), Monomial(-1, next_x)]
                 self.euler_constraints.append(c)
+    
+    def setup_continuous_constraints(self):
+        # for handling continuous time
+        pass
 
 
 class ControlledTranstionRelation(TransitionRelation):
