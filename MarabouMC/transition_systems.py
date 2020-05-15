@@ -1,7 +1,8 @@
 # transition system component classes
+from MC_Keras_parser import getNewVariable
 from MC_TF_parser import TFConstraint
 from Constraint_utils import matrix_equality_constraint
-from MC_constraints import ReluConstraint, Constraint, ConstraintType, Monomial
+from MC_constraints import ReluConstraint, Constraint, ConstraintType, Monomial, MaxConstraint
 from MC_Keras_parser import KerasConstraint
 from overt_to_python import OvertConstraint
 import numpy as np
@@ -155,13 +156,13 @@ class ControlledTranstionRelation(TransitionRelation):
         c1 = matrix_equality_constraint(self.dynamics.states, self.controller.state_inputs)
         # match controller output to dynamics control input. 
         c2 = matrix_equality_constraint(self.controller.control_outputs, self.dynamics.control_inputs)
-        self.constraints.extend([c1,c2])
+        self.constraints.extend([c1, c2])
 
 class TFControlledTransitionRelation(ControlledTranstionRelation):
     """
     A transition relation with a tf controller and dynamics.
     """
-    def __init__(self, dynamics_obj=None, controller_file="", controller_obj=None,  epsilon=1-6):
+    def __init__(self, dynamics_obj=None, controller_file="", controller_obj=None,  epsilon=1-6, turn_max_to_relu=False):
         if controller_file is "":
             assert(controller_obj is not None)
             controller = controller_obj
@@ -169,7 +170,29 @@ class TFControlledTransitionRelation(ControlledTranstionRelation):
             assert(controller_obj is None)
             controller = TFController(network_file=controller_file)
         super().__init__(controller_file=controller_file, controller_obj=controller, dynamics_obj=dynamics_obj, epsilon=epsilon)
+        if turn_max_to_relu: self._turn_max_to_relu()
 
+    def _turn_max_to_relu(self):
+        new_constraints = []
+        for c in self.constraints:
+            if isinstance(c, MaxConstraint):
+                # varnew1 - varin1 + varin2 = 0
+                # varnew2 = relu(varnew1)
+                # varout - varnew2 - varin2 = 0
+                var1in = c.var1in
+                var2in = c.var2in
+                varout = c.varout
+                varnew1 = getNewVariable("max2relu")
+                varnew2 = getNewVariable("max2relu")
+                cnew1 = Constraint("EQUALITY")
+                cnew1.monomials = [Monomial(1.0, varnew1), Monomial(-1.0, var1in), Monomial(1.0, var2in)]
+                cnew2 = ReluConstraint(varin=varnew1, varout=varnew2)
+                cnew3 = Constraint("EQUALITY")
+                cnew3.monomials = [Monomial(1.0, varout), Monomial(-1.0, var2in), Monomial(-1.0, varnew2)]
+                new_constraints.extend([cnew1, cnew2, cnew3])
+            else:
+                new_constraints.append(c)
+        self.constraints = new_constraints
 
 class TFControlledOVERTTransitionRelation(TFControlledTransitionRelation):
     
@@ -179,7 +202,7 @@ class TFControlledOVERTTransitionRelation(TFControlledTransitionRelation):
         """
         # inherited constructor should call self.set_constraints()
         super().__init__(controller_file=controller_file, controller_obj=controller_obj, dynamics_obj=dynamics_obj, epsilon=epsilon)
-    
+
     def abstract(self, initial_set, epsilon, CEx=None):
         """
         Abstract dynamics.

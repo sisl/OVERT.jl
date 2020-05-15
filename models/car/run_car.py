@@ -1,11 +1,9 @@
-import warnings
-warnings.filterwarnings('ignore')
-
+import os
 import sys
 assert len(sys.argv) == 3, "you should pass marabou address AND number of cores used in the job"
 MARABOU_PATH = sys.argv[1]
 N_CORES = int(sys.argv[2])
-
+print(os.getcwd())
 sys.path.insert(0, "../../MarabouMC")
 sys.path.insert(0, MARABOU_PATH)
 
@@ -25,7 +23,7 @@ example_car = OvertMCExample(
             n_check_invariant=5,
             N_overt=2,
             dt=0.02,
-            recalculate=False,
+            recalculate=True,
             ncore=N_CORES
              )
 

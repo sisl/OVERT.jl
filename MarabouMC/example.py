@@ -14,6 +14,7 @@ warnings.filterwarnings('ignore')
 import h5py
 from keras.models import load_model
 
+from MC_constraints import MaxConstraint
 from overt_to_python import OvertConstraint
 from transition_systems import KerasController, Dynamics, TFControlledTransitionRelation, TransitionSystem, OvertDynamics, constraint_variable_to_interval
 from marabou_interface import MarabouWrapper
@@ -154,10 +155,12 @@ class OvertMCExample():
         self.setup_controller_obj()
 
         self.setup_overt_dyn_obj()
+        tr = TFControlledTransitionRelation(dynamics_obj=self.overt_dyn_obj, controller_obj=self.controller_obj, turn_max_to_relu=True)
 
-        tr = TFControlledTransitionRelation(dynamics_obj=self.overt_dyn_obj, controller_obj=self.controller_obj)
         init_set = dict(zip(self.state_vars, self.init_range))
         ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
+        for c in ts.transition_relation.constraints:
+            assert(not isinstance(c, MaxConstraint))
         solver = MarabouWrapper(n_worker=self.ncore)
         prop = self.setup_property()
         algo = BMC(ts=ts, prop=prop, solver=solver)

@@ -139,7 +139,7 @@ class MarabouWrapper():
             # options = Marabou.createOptions(timeoutInSeconds=timeout, dnc=True, verbosity=0,
             #                                 initialDivides=2, initialTimeout=120, numWorkers=self.n_worker,
             #                                 biasStrategy="estimate", focusLayer=1000, lookAheadPreprocessing=True)
-
+        MarabouCore.saveQuery(self.ipq, "query_dump")
         vals, stats = MarabouCore.solve(self.ipq, options, output_filename)
         self.convert_sat_vals_to_mc_vars(vals)
         if verbose:
