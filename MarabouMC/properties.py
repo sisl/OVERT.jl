@@ -114,8 +114,19 @@ class ConstraintProperty():
                 Z_def, Z = self.cnf_conversion_helper(c)
                 # begin disjunct train max(Z,Y) >= 0 ...
                 Q = self.get_new_var()
-                max_constraint = MaxConstraint((Y,Z), Q)
-                CNF_complements.extend([Z_def, max_constraint])
+                ###########################################################
+                # changing max to be represented with Relu
+                YmZ = self.get_new_var()
+                YmZdef = Constraint('EQUALITY', monomials=[Monomial(1, Y), Monomial(-1, Z), Monomial(-1, YmZ)], scalar=0)
+                RYmZ = self.get_new_var()
+                RYmZdef = ReluConstraint(varin=YmZ, varout=RYmZ)
+                # Q = relu(Y-Z) + Z
+                max_constraint = Constraint('EQUALITY', monomials=[Monomial(1, RYmZ), Monomial(1, Z), Monomial(-1, Q)], scalar=0)
+                ###########################################################
+                # max_constraint = MaxConstraint((Y,Z), Q) # version with max
+                # CNF_complements.extend([Z_def, max_constraint]) # version with max
+                ############################################################    
+                CNF_complements.extend([Z_def, YmZdef, RYmZdef, max_constraint])
                 Y = Q
             # Q >= 0
             geq0 = Constraint(ConstraintType('GREATER_EQ'), monomials=[Monomial(1,Q)], scalar=0)
