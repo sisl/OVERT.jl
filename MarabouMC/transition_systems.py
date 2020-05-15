@@ -126,6 +126,34 @@ class OvertDynamics(Dynamics):
         # for handling continuous time
         pass
 
+class NonlinearDynamics(Dynamics):
+    """
+    takes argument indicating true dynamics function e.g. SinglePendulum()
+    dx_vec
+    dt (or 0 for continuous)
+    """
+    def __init__(self, nonlinear_dynamics, dt):
+        super().__init__(np.array(nonlinear_dynamics.states).reshape(-1,1),
+                        np.array(nonlinear_dynamics.control_inputs).reshape(-1,1)
+                        )
+        self.dt = dt
+        self.set_dynamics(nonlinear_dynamics)
+        if dt > 0:
+            self.setup_euler_constraints()
+        else:
+            raise NotImplementedError     # continuous time not imlemented
+    
+    def set_dynamics(self, nonlinear_dynamics):
+        self.dynamics = nonlinear_dynamics # store for safekeeping
+        self.dx = nonlinear_dynamics.dx
+        self.constraints += nonlinear_dynamics.dx_constraints
+    
+    def setup_euler_constraints(self):
+        for x, dx, next_x in zip(self.states.reshape(-1), self.dx, self.next_states.reshape(-1)):
+                # next_x = x + dx*dt
+                c = Constraint(ConstraintType('EQUALITY'))
+                c.monomials = [Monomial(1, x), Monomial(self.dt, dx), Monomial(-1, next_x)]
+                self.constraints.append(c)
 
 class ControlledTranstionRelation(TransitionRelation):
     """

@@ -15,7 +15,7 @@ import h5py
 from keras.models import load_model
 
 from overt_to_python import OvertConstraint
-from transition_systems import KerasController, Dynamics, TFControlledTransitionRelation, TransitionSystem, OvertDynamics, constraint_variable_to_interval
+from transition_systems import KerasController, TFControlledTransitionRelation, TransitionSystem, OvertDynamics, constraint_variable_to_interval
 from marabou_interface import MarabouWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
