@@ -1,6 +1,7 @@
 from MC_constraints import Constraint, MatrixConstraint, MaxConstraint, ReluConstraint, Monomial
 import numpy as np
 import os
+from MC_interface import Result
 
 class SMTLibFormula:
     def __init__(self, formula):
@@ -126,6 +127,9 @@ class stateful_dreal_wrapper:
         self.convert()
         # and then call dreal!
         self.formula_object._print()
+        fake_values = dict(zip(self.input_vars, np.zeros(len(self.input_vars)))) # TODO: CHANGE
+        fake_stats = []
+        return Result.SAT, fake_values, fake_stats
 
 class FormulaConverter:
     """
