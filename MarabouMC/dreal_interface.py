@@ -1,4 +1,4 @@
-from MC_constraints import Constraint, MatrixConstraint, MaxConstraint, ReluConstraint
+from MC_constraints import Constraint, MatrixConstraint, MaxConstraint, ReluConstraint, Monomial
 import numpy as np
 import os
 
@@ -80,12 +80,52 @@ class stateful_dreal_wrapper:
     similar logic to OverApproxVerifier class. 
     """
     def __init__(self):
-        self.f = FormulaConverter() 
-    
-    def check_sat(self):
-        pass
+        self.clear() 
 
+    def clear(self):
+        """
+        Clear things to create a new query
+        """
+        self.f = FormulaConverter()
+        self.constraints = []
+        self.smtlib_formula = []
+        self.input_vars = []
     
+    def convert(self):
+        """
+        Convert constraint objects to SMTLIB2
+        """
+        self.smtlib_formula = self.f.header() + \
+                              self.f.declare_reals() + \
+                              self.f.assert_logical(self.constraints) + \
+                              self.f.footer()
+        self.formula_object = SMTLibFormula(self.smtlib_formula)
+
+    def assert_init(self, init_set):
+        """
+        assert that states are in init set
+        """
+        for k in init_set.keys():
+            self.input_vars.append(k)
+            LB = init_set[k][0]
+            UB = init_set[k][1]
+            cLB = Constraint('GREATER_EQ', monomials=[Monomial(1., k)], scalar=LB)
+            cUB = Constraint('LESS_EQ', monomials=[Monomial(1., k)], scalar=UB)
+            self.constraints += [cLB, cUB]
+
+    def assert_constraints(self, constraints):
+        """
+        Assert multiple constraints.
+        """
+        self.constraints += constraints
+
+    def check_sat(self):
+        """
+        Check whether query is satisfiable.
+        """
+        self.convert()
+        # and then call dreal!
+        self.formula_object._print()
 
 class FormulaConverter:
     """
