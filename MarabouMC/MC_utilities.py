@@ -11,7 +11,7 @@ class ControlledTRExperiment:
                 controller_bounding_values,
                 query_range, # invariant box properties
                 init_range, # starting set
-                algo='BMC',
+                algo=BMC,
                 n_steps=2,
                 dt=0.01)
         # note: dynamics not specified because this can be used
