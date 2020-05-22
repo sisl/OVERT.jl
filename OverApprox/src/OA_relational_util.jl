@@ -64,3 +64,21 @@ end
 #         return false
 #     end
 # end
+
+
+"""
+This function combines a list of OverApproximation objects and return one
+    that contains all their equality and ineqaulity constraints.
+    it is assumed the last entry of the list, is the final object, so
+    output variable and output range are set to those of the last entry.
+
+    ** for output, output_range, nvars, const, fun_eq, N and ϵ, we keep the default values
+"""
+function add_overapproximate(list_oA::Array{OverApproximation, 1})
+
+    out_oA = OverApproximation()
+    out_oA.ranges = merge([oA.ranges for oA in list_oA]...)
+    out_oA.approx_eq = vcat([oA.approx_eq for oA in list_oA]...)
+    out_oA.approx_ineq = vcat([oA.approx_ineq for oA in list_oA]...)
+    return out_oA
+end

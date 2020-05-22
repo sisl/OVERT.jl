@@ -180,6 +180,7 @@ function parse_linear_expr(expr::Expr, bound_parser::OverApproximationParser)
 end
 
 "given expr = :(2x+3y-3z+1) return [:x, :y, :c], [2, 3, -3], 1"
+get_linear_coeffs(expr::Symbol) = [expr], [1.0], 0
 function get_linear_coeffs(expr::Expr)
     vars = find_variables(expr)
     coeffs = zeros(length(vars))
@@ -308,7 +309,8 @@ low level functions: min constraints
 ----------------------------------------------
 """
 
-""" find if this expr constains min """
+""" find if this expr constains max or min"""
+is_max_expr(expr::Union{Symbol, Expr}) = :max in get_symbols(expr)
 is_min_expr(expr::Union{Symbol, Expr}) = :min in get_symbols(expr)
 
 """ parse min expression. min should already be a single min expression. """

@@ -58,7 +58,9 @@ class Pendulum():
     def step(self, actions):
         actions = np.clip(actions, -self.max_action, self.max_action).tolist()
 
-        if self.integration_method == "1st":
+        if self.integration_method == "0th":
+            u_prime = fsolve(self.setup_equation, self.current_guess, args=(self.x, actions))
+        elif self.integration_method == "1st":
             u_prime = fsolve(self.setup_equation, self.current_guess, args=(self.x, actions))
         else:
             u_prime_half = fsolve(self.setup_equation, self.current_guess, args=(self.x, actions))
@@ -67,8 +69,12 @@ class Pendulum():
             x_half = np.concatenate((th_half, u_half))
             u_prime = fsolve(self.setup_equation, self.current_guess, args=(x_half, actions))
 
-        self.x[self.n_state//2:] += self.dt * u_prime
-        self.x[:self.n_state//2] += self.dt * self.x[self.n_state//2:] - 1 / 2 * u_prime * self.dt ** 2
+        if self.integration_method == "0th":
+            self.x[:self.n_state // 2] += self.dt * self.x[self.n_state // 2:]
+            self.x[self.n_state // 2:] += self.dt * u_prime
+        else:
+            self.x[self.n_state//2:] += self.dt * u_prime
+            self.x[:self.n_state//2] += self.dt * self.x[self.n_state//2:] - 1 / 2 * u_prime * self.dt ** 2
         costs = np.linalg.norm(self.x) + np.linalg.norm(actions)
         self.history.append({"x": self.x.copy(), "r": -costs, "a": actions})
         return self.x, -costs, False, {}
@@ -195,18 +201,30 @@ class Pendulum1Env(Pendulum):
 
 class Pendulum2Env(Pendulum):
     def __init__(self, x_0=0., dt=0.001):
-        super().__init__(n_pend=2, x_0=x_0, dt=dt, c=0.0, g=1.0, m=0.5, L=0.5)
+        super().__init__(n_pend=2, x_0=x_0, dt=dt, c=0.0, g=1.0, m=0.5, L=0.5, integration_method="0th")
 
     def setup_equation(self, u_prime, x, torques):
         T1, T2 = torques
         th1, th2, u1, u2 = x
         u1_prime, u2_prime = u_prime
 
-        eq1 = 2 * u1_prime + u2_prime * cos(th2 - th1) - u2 ** 2 * sin(th2 - th1) \
-              - self.g / self.L * sin(th1) * 2 - T1 / (self.m * self.L ** 2) + self.c * u1 / (self.m * self.L ** 2)
-        eq2 = u2_prime + u1_prime * cos(th2 - th1) + u1 ** 2 * sin(th2 - th1) \
-              - self.g / self.L * sin(th2) - T2 / (
-                      self.m * self.L ** 2) + self.c * u2 / (self.m * self.L ** 2)
+        v1 = sin(th1)
+        v2 = sin(th2)
+        v3 = sin(th1-th2)
+        v4 = cos(th1-th2)
+        v5 = v3*u1**2
+        v6 = v3*u2**2
+        v7 = sin(th1-2*th2)
+        v8 = (1*v7 - v6 + 8*T1 + 3*v1 - v4 * (8 * T2 + v5)) / (2 - v4 ** 2)
+        v9 = (2*v5 + 16*T2 + 4*v2 - v4*(8*T1 - v6 + 4*v1)) / (2 - v4**2)
+        eq1 = -u1_prime + v8
+        eq2 = -u2_prime + v9
+
+        # eq1 = 2 * u1_prime + u2_prime * cos(th2 - th1) - u2 ** 2 * sin(th2 - th1) \
+        #       - self.g / self.L * sin(th1) * 2 - T1 / (self.m * self.L ** 2) + self.c * u1 / (self.m * self.L ** 2)
+        # eq2 = u2_prime + u1_prime * cos(th2 - th1) + u1 ** 2 * sin(th2 - th1) \
+        #       - self.g / self.L * sin(th2) - T2 / (
+        #               self.m * self.L ** 2) + self.c * u2 / (self.m * self.L ** 2)
         return eq1, eq2
 
 
@@ -237,13 +255,13 @@ class Pendulum3Env(Pendulum):
         return eq1, eq2, eq3
 
 if __name__ == '__main__':
-    p1 = Pendulum1Env(x_0=[2., 0.], dt =0.01)
-    p1.reset()
-
-    for _ in range(500):
-        p1.step([0.])
-        print(p1.x)
-    p1.render()
+    # p1 = Pendulum1Env(x_0=[2., 0.], dt =0.01)
+    # p1.reset()
+    #
+    # for _ in range(500):
+    #     p1.step([0.])
+    #     print(p1.x)
+    # p1.render()
 
 
     # p3 = Pendulum3Env(x_0=[3., 1., 3., 1., 0., 1.], dt=0.05)
@@ -254,9 +272,9 @@ if __name__ == '__main__':
     #     print(p3.x)
     # p3.render()
 
-    # env = make("Pendulum2-v0", dt=0.01, x_0=[1., 1.5, 0., 0.])
-    # env.reset()
-    # for _ in range(200):
-    #     env.step([0., 0.])
-    # env.render()
-    # env.animate(file_name="pend2_freefal.gif",  dpi = 90)
+    env = Pendulum2Env(dt=0.1, x_0=[1., 1.5, 0., 0.])
+    env.reset()
+    for _ in range(200):
+        env.step([0., 0.])
+    env.render()
+    #env.animate(file_name="pend2_freefal.gif",  dpi = 90)
