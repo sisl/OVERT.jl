@@ -189,7 +189,7 @@ class Pendulum():
 
 class Pendulum1Env(Pendulum):
     def __init__(self, x_0=0., dt=0.1):
-        super().__init__(n_pend=1, x_0=x_0, dt=dt, c=0.2, g=1.0, m=1.0, L=1.0)
+        super().__init__(n_pend=1, x_0=x_0, dt=dt, c=0.2, g=1.0, m=1.0, L=1.0, integration_method="0th")
 
     def setup_equation(self, u_prime, x, torques):
         T = torques[0]
