@@ -7,13 +7,13 @@ from MC_interface import BMC
 
 class ControlledTRExperiment():
     def __init__(self,
-                keras_controller_file,
-                controller_bounding_values,
-                query_range, # invariant box properties
-                init_range, # starting set
-                algo=BMC,
-                n_steps=2, 
-                dt=0.01)
+               keras_controller_file,
+               controller_bounding_values,
+               query_range, # invariant box properties
+               init_range, # starting set
+               algo=BMC,
+               n_steps=2, 
+               dt=0.01):
         # note: dynamics not specified because this can be used
         # with OVERT or with true nonlinear dynamics
         self.keras_controller_file = keras_controller_file
@@ -52,7 +52,7 @@ class NonlinearControlleTRExperiment(ControlledTRExperiment):
                 algo=BMC,
                 n_steps=2,
                 dt=0.01,
-                solver='smtlib2')
+                solver='smtlib2'):
         super().__init__(keras_controller_file,
                         controller_bounding_values,
                         query_range, # invariant box properties
