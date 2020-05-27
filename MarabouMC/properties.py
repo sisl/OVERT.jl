@@ -23,9 +23,10 @@ class ConstraintProperty():
     NOTE: For now, all properties must have constraints with strict inequalities,
     so that when they are inverted this yields non-strict inequalities.
     """
-    def __init__(self, c):
+    def __init__(self, c, outputs):
         self.constraints = c
         self.constraint_complements = []
+        self.outputs = outputs # list of the variables we are asserting constraints over
         self.next_new_var = 1
     
     def __repr__(self):
@@ -117,17 +118,15 @@ class ConstraintProperty():
                 ###########################################################
                 # changing max to be represented with Relu
                 YmZ = self.get_new_var()
-                YmZdef = Constraint('EQUALITY', monomials=[Monomial(1, Y), Monomial(-1, Z), Monomial(-1, YmZ)],
-                                    scalar=0)
+		YmZdef = Constraint('EQUALITY', monomials=[Monomial(1, Y), Monomial(-1, Z), Monomial(-1, YmZ)], scalar=0)
                 RYmZ = self.get_new_var()
                 RYmZdef = ReluConstraint(varin=YmZ, varout=RYmZ)
                 # Q = relu(Y-Z) + Z
-                max_constraint = Constraint('EQUALITY', monomials=[Monomial(1, RYmZ), Monomial(1, Z), Monomial(-1, Q)],
-                                            scalar=0)
+                max_constraint = Constraint('EQUALITY', monomials=[Monomial(1, RYmZ), Monomial(1, Z), Monomial(-1, Q)], scalar=0)
                 ###########################################################
                 # max_constraint = MaxConstraint((Y,Z), Q) # version with max
                 # CNF_complements.extend([Z_def, max_constraint]) # version with max
-                ############################################################
+                ############################################################    
                 CNF_complements.extend([Z_def, YmZdef, RYmZdef, max_constraint])
                 Y = Q
             # Q >= 0

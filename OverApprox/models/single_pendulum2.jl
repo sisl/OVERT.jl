@@ -10,6 +10,7 @@ include(OVERT_FOLDER * "OverApprox/src/overapprox_nd_relational.jl")
 include(OVERT_FOLDER * "OverApprox/src/overt_parser.jl")
 
 function run_overt(file_name)
+    # read hyperparameters / initial parameters from file
     N_overt = h5read(file_name, "overt/N")
 
     x_vars = [Meta.parse(x) for x in h5read(file_name, "overt/states")]
@@ -31,7 +32,6 @@ function run_overt(file_name)
 end
 
 function dynamics(range_dict, N_OVERT, file_name, x_vars, u_vars)
-
     # state variables are th1, th2, u1, u2
     # control variables are T1, T2
     @assert x_vars == [:th, :dth]
@@ -52,8 +52,8 @@ function dynamics(range_dict, N_OVERT, file_name, x_vars, u_vars)
     println(range_dict)
     println("range of outputs: ")
     println(v1_oA.output_range)
-    println("# relu's = $(length(oAP.relu_list))")
-    println("# max's = $(length(oAP.max_list))")
+    println("# relus = $(length(oAP.relu_list))")
+    println("# maxs = $(length(oAP.max_list))")
 
 
     return oAP
@@ -69,5 +69,5 @@ function combine_them_all(variables)
     return oAP
 end
 
-file_name = "/home/amaleki/Dropbox/stanford/Python/OverApprox/OverApprox/models/single_pendulum2_savefile.h5"
+file_name = "/home/amaleki/Dropbox/stanford/Python/OverApprox/OverApprox/models/single_pendulum2_savefile.h5" # just stores hyperparameters / init params
 run_overt(file_name)

@@ -1,5 +1,5 @@
 import numpy as np
-from check_overapprox import FormulaConverter, OverapproxVerifier
+from dreal_interface import FormulaConverter, OverapproxVerifier
 from MC_constraints import Constraint, Monomial, MaxConstraint, ReluConstraint, MatrixConstraint
 
 f = FormulaConverter()

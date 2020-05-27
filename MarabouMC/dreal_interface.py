@@ -1,6 +1,31 @@
-from MC_constraints import Constraint, MatrixConstraint, MaxConstraint, ReluConstraint
+from MC_constraints import Constraint, MatrixConstraint, MaxConstraint, ReluConstraint, Monomial
 import numpy as np
 import os
+from MC_interface import Result
+
+class SMTLibFormula:
+    def __init__(self, formula):
+        self.formula = formula
+    
+    def __repr__(self): 
+        return "\n".join(self.formula)
+
+    def _print(self, dirname="", fname=""):
+        """ 
+        Print to stdout or to file
+        """
+        if fname == "":
+            print(self.__repr__())
+        else:
+            if dirname == "":
+                # put in subdir of cwd
+                dirname = os.path.join(os.getcwd(), "smtlib_files")
+                if not os.path.isdir(dirname):
+                    os.mkdir(dirname)
+            abs_fname = os.path.join(dirname, fname)
+            fhandle = open(abs_fname+".smtlib2", 'wt')
+            fhandle.write(self.__repr__())
+
 class OverapproxVerifier:
     """
     A function to verify the validity of an overapproximation using dreal. 
@@ -38,24 +63,8 @@ class OverapproxVerifier:
                               self.f.declare_reals() + \
                               self.smtlib_formula + \
                               self.f.footer()
-        self._print()
-    
-    def _print(self, dirname="", fname=""):
-        """ 
-        Print to stdout or to file
-        """
-        txt = "\n".join(self.smtlib_formula)
-        if fname == "":
-            print(txt)
-        else:
-            if dirname == "":
-                # put in subdir of cwd
-                dirname = os.path.join(os.getcwd(), "smtlib_files")
-                if not os.path.isdir(dirname):
-                    os.mkdir(dirname)
-            abs_fname = os.path.join(dirname, fname)
-            fhandle = open(abs_fname+".smtlib2", 'wt')
-            fhandle.write(txt)
+        self.formula_object = SMTLibFormula(self.smtlib_formula)
+        self.formula_object._print()
 
     def run_dreal(self):
         """
@@ -72,7 +81,55 @@ class stateful_dreal_wrapper:
     similar logic to OverApproxVerifier class. 
     """
     def __init__(self):
-        pass
+        self.clear() 
+
+    def clear(self):
+        """
+        Clear things to create a new query
+        """
+        self.f = FormulaConverter()
+        self.constraints = []
+        self.smtlib_formula = []
+        self.input_vars = []
+    
+    def convert(self):
+        """
+        Convert constraint objects to SMTLIB2
+        """
+        self.smtlib_formula = self.f.header() + \
+                              self.f.declare_reals() + \
+                              self.f.assert_logical(self.constraints) + \
+                              self.f.footer()
+        self.formula_object = SMTLibFormula(self.smtlib_formula)
+
+    def assert_init(self, init_set):
+        """
+        assert that states are in init set
+        """
+        for k in init_set.keys():
+            self.input_vars.append(k)
+            LB = init_set[k][0]
+            UB = init_set[k][1]
+            cLB = Constraint('GREATER_EQ', monomials=[Monomial(1., k)], scalar=LB)
+            cUB = Constraint('LESS_EQ', monomials=[Monomial(1., k)], scalar=UB)
+            self.constraints += [cLB, cUB]
+
+    def assert_constraints(self, constraints):
+        """
+        Assert multiple constraints.
+        """
+        self.constraints += constraints
+
+    def check_sat(self):
+        """
+        Check whether query is satisfiable.
+        """
+        self.convert()
+        # and then call dreal!
+        self.formula_object._print()
+        fake_values = dict(zip(self.input_vars, np.zeros(len(self.input_vars)))) # TODO: CHANGE
+        fake_stats = []
+        return Result.SAT, fake_values, fake_stats
 
 class FormulaConverter:
     """

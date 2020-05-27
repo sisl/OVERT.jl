@@ -1,9 +1,10 @@
 using HDF5
+include("utilities.jl")
 
 """
 Note:
     - In Overt all max expressions are max(0, something), so they all
-turned into relu. Perhaps could've been more explicit to have relu instead of max.
+turned into relu. Perhaps could've been more explicit to have relu instead of max. < I agree.
     - Marabou accepts MaxConstraints (and not min), so all min expressions are turend
 into max expressions.
     -z = min(x,y) is equivalent to {z2 = min(x2, y2), z2=-z, x2=-x, y2=-x}
@@ -17,42 +18,60 @@ General structures
 ----------------------------------------------
 """
 
-" e.g. :(z=max(x,y)) -> MaxList([:x, :y], :z) "
-mutable struct MaxList
+" e.g. :(z=max(x,y)) -> MaxConstraint([:x, :y], :z) "
+mutable struct MaxConstraint
     varsin::Array{Symbol, 1}
     varout::Symbol
 end
 
-""" e.g. :(z=relu(x)) -> MaxList(:x, :z) """
-mutable struct ReluList
+""" e.g. :(z=relu(x)) -> ReluConstraint(:x, :z) """
+mutable struct ReluConstraint
     varin::Symbol
     varout::Symbol
 end
 
-""" e.g. :(z=a*x+b*y+c*w+d) -> MaxList([:z, :x, :y, :w], [1, -a, -b, -c], d) """
-mutable struct EqList
+""" e.g. :(z=a*x+b*y+c*w+d) -> EqConstraint([:z, :x, :y, :w], [1, -a, -b, -c], d) """
+mutable struct EqConstraint
     vars::Array{Symbol, 1}
     coeffs::Array{Real, 1}
     scalar::Real
 end
 
-""" e.g. :(x ≦ z) -> MaxList(:x, :z) """
-mutable struct IneqList
+""" e.g. :(x ≦ z) -> IneqConstraint(:x, :z) """
+mutable struct IneqConstraint
     varleft::Symbol
     varrite::Symbol
 end
 
-mutable struct OverApproximationParser
-    max_list::Array{MaxList, 1}
-    relu_list::Array{ReluList, 1}
-    eq_list::Array{EqList, 1}
-    ineq_list::Array{IneqList, 1}
+"""Nonlinear constraint: left R right ----> :y := :(5*sin(x)) , indep_var = :x """
+mutable struct NLConstraint 
+    left::Symbol 
+    R::Symbol
+    right::Expr
+    indep_var::Symbol
 end
 
-OverApproximationParser() = OverApproximationParser(Array{MaxList, 1}(),
-                                                    Array{ReluList, 1}(),
-                                                    Array{EqList, 1}(),
-                                                    Array{IneqList, 1}())
+"""Piecewise linear or linear constraints"""
+PWLoLConstraint = Union{MaxConstraint, ReluConstraint, EqConstraint, IneqConstraint}
+
+mutable struct OverApproximationParser
+    max_list::Array{MaxConstraint, 1}
+    relu_list::Array{ReluConstraint, 1}
+    eq_list::Array{EqConstraint, 1}
+    ineq_list::Array{IneqConstraint, 1}
+    # all above lists correspond to relations that make up the bound
+    # all below lists refer to the original smooth nonlinear function
+    true_L_list::Array{PWLoLConstraint,1} # list of linear or PWL constraints
+    true_NL_list::Array{NLConstraint} # list of all nonlinear consraints
+end
+
+OverApproximationParser() = OverApproximationParser(Array{MaxConstraint, 1}(),
+                                                    Array{ReluConstraint, 1}(),
+                                                    Array{EqConstraint, 1}(),
+                                                    Array{IneqConstraint, 1}(),
+                                                    Array{PWLoLConstraint, 1}(),
+                                                    Array{NLConstraint, 1}(),
+                                                    )
 
 
 Base.print(oAP::OverApproximationParser) = print_overapproximateparser(oAP)
@@ -73,10 +92,19 @@ function print_overapproximateparser(oAP::OverApproximationParser)
         str *= "= $(eq.scalar)"
         println(str)
     end
-
     for ineq in oAP.ineq_list
         println("$(ineq.varleft) ≦ $(ineq.varrite)")
     end
+
+    println("True function pieces:")
+    for item in oAP.true_L_list
+        println(item)
+    end
+
+    for item in oAP.true_NL_list
+        println(item)
+    end
+
 end
 
 
@@ -87,12 +115,14 @@ function add_overapproximateparser(x_oAP::OverApproximationParser, y_oAP::OverAp
     z_oAP.max_list = vcat(x_oAP.max_list, y_oAP.max_list)
     z_oAP.eq_list = vcat(x_oAP.eq_list, y_oAP.eq_list)
     z_oAP.ineq_list = vcat(x_oAP.ineq_list, y_oAP.ineq_list)
+    z_oAP.true_L_list = vcat(x_oAP.true_L_list, y_oAP.true_L_list)
+    z_oAP.true_NL_list = vcat(x_oAP.true_NL_list, y_oAP.true_NL_list)
     return z_oAP
 end
 
 """
 ----------------------------------------------
-High leverl functions
+High level functions
 ----------------------------------------------
 """
 
@@ -111,14 +141,31 @@ function parse_bound(bound::OverApproximation,
 
 
     # parsing equalities
+    i=0
     for eq in bound.approx_eq
         parse_eq(eq, bound_parser)
+        println("parsed ", i, "th eq constraint")
+        i+=1
     end
 
     # parsing inequalities
     for ineq in bound.approx_ineq
         parse_ineq(ineq, bound_parser)
     end
+
+    # parsing equations that represent the true function
+    tru_func_parser = OverApproximationParser() # a temporary holder
+    ordered_fun_eq = sort(collect(bound.fun_eq), by=x->parse(Int, string(x[1])[3:end]) ) # sorts pairs of fun_eq dict by keys, assuming that variables are of the form "v_XXX" where XXX is a number of any length
+    for func in ordered_fun_eq
+        eq = :($(func[1]) == $(func[2]) )
+        parse_eq(eq, tru_func_parser)
+    end
+    # put constraints from tru_func_parser into bound_parser in the right places
+    bound_parser.true_NL_list = tru_func_parser.true_NL_list
+    [push!(bound_parser.true_L_list, c) for c in tru_func_parser.eq_list]
+    [push!(bound_parser.true_L_list, c) for c in tru_func_parser.ineq_list]
+    [push!(bound_parser.true_L_list, c) for c in tru_func_parser.max_list]
+    [push!(bound_parser.true_L_list, c) for c in tru_func_parser.relu_list]
 end
 
 function parse_eq(expr::Expr, bound_parser::OverApproximationParser)
@@ -132,18 +179,18 @@ function parse_eq(expr::Expr, bound_parser::OverApproximationParser)
     elseif is_linear_expr(expr)
         parse_linear_expr(expr, bound_parser)
     else
-        raise("equation $expr is not supported.")
+        parse_nonlinear_expr(expr, bound_parser)
     end
 
     # each expression is tested here with random inpus.
-    for i = 1:10
+    for i = 1:2 #10
         @assert test_random_input(expr, bound_parser)
     end
 end
 
 function parse_ineq(expr::Expr, bound_parser::OverApproximationParser)
     assert_expr(expr, "ineq")
-    push!(bound_parser.ineq_list, IneqList(expr.args[2], expr.args[3]))
+    push!(bound_parser.ineq_list, IneqConstraint(expr.args[2], expr.args[3]))
 end
 
 """ this function turns :(w == -(x+1)) to :(w == -1(x+1)) """
@@ -164,19 +211,27 @@ low level functions: linear constraints
 """
 
 """ find if this expr is linear"""
+# TODO: Equivalence classes have been confused here.
+# This function takes equations, not expressions
+# (the type is Expr but it expects an equation).
 function is_linear_expr(expr::Expr)
-    # to be implemented
-    return true #
+    # x == 6*x + 7*y - 43
+    return is_affine(expr.args[3])
 end
 
 """ parse terms like z = a*x + b*y + c """
+# TODO note: this code mixes equivalence classes which is confusing and makes
+# maintenance more difficult. E.g. this function is called "parse linear expr"
+# but it also makes the assumption that this is an equality constraint.
+# This makes the code brittle (prone to breaking due to small changes) because
+# it relies on _implicit properties_ that are not well documented. 
 function parse_linear_expr(expr::Expr, bound_parser::OverApproximationParser)
-    #make sure the expr is of form :(z == ax + b) or :(z == a*x + b*y)
+    #make sure the expr is of form :(z == a*x + b) or :(z == a*x + b*y)
     assert_expr(expr, "linear")
     var_list, coeff_list, scalar = get_linear_coeffs(expr.args[3])
     var_list = vcat(var_list, expr.args[2])
     coeff_list = vcat(-coeff_list, 1.)
-    push!(bound_parser.eq_list, EqList(var_list, coeff_list, scalar))
+    push!(bound_parser.eq_list, EqConstraint(var_list, coeff_list, scalar))
 end
 
 "given expr = :(2x+3y-3z+1) return [:x, :y, :c], [2, 3, -3], 1"
@@ -284,7 +339,7 @@ function parse_max_expr(expr::Expr, bound_parser::OverApproximationParser)
             parse_max_expr(new_expr2, bound_parser)
         end
     end
-    push!(bound_parser.eq_list, EqList(new_var_list, new_coeff_list, 0.))
+    push!(bound_parser.eq_list, EqConstraint(new_var_list, new_coeff_list, 0.))
 end
 
 function parse_single_max_expr(expr::Expr, bound_parser::OverApproximationParser)
@@ -293,10 +348,10 @@ function parse_single_max_expr(expr::Expr, bound_parser::OverApproximationParser
     z = expr.args[2]
     x = expr.args[3].args[3]
     if x isa Symbol
-        push!(bound_parser.relu_list, ReluList(x, z))
+        push!(bound_parser.relu_list, ReluConstraint(x, z))
     else
         new_var = add_var()
-        push!(bound_parser.relu_list, ReluList(new_var, z)) # z=relu(new_var)
+        push!(bound_parser.relu_list, ReluConstraint(new_var, z)) # z=relu(new_var)
         new_expr = :($new_var == $x) # new_var = x
         parse_eq(new_expr, bound_parser)
     end
@@ -326,7 +381,7 @@ function parse_single_min_expr(expr::Expr, bound_parser::OverApproximationParser
     # define x2 = -x
     x2 = add_var()
     if x isa Symbol
-        push!(bound_parser.eq_list, EqList([x2, x], [1., 1.], 0.))
+        push!(bound_parser.eq_list, EqConstraint([x2, x], [1., 1.], 0.))
     else
         new_expr = :($x2 == $(simplify(:(-1*$x))))
         parse_eq(new_expr, bound_parser)
@@ -335,7 +390,7 @@ function parse_single_min_expr(expr::Expr, bound_parser::OverApproximationParser
     # define y2 = -y
     y2 = add_var()
     if y isa Symbol
-        push!(bound_parser.eq_list, EqList([y2, y], [1., 1.], 0.))
+        push!(bound_parser.eq_list, EqConstraint([y2, y], [1., 1.], 0.))
     else
         new_expr = :($y2 == $(simplify(:(-1*$y))))
         parse_eq(new_expr, bound_parser)
@@ -343,10 +398,25 @@ function parse_single_min_expr(expr::Expr, bound_parser::OverApproximationParser
 
     # define z2 = -z
     z2 = add_var()
-    push!(bound_parser.eq_list, EqList([z2, z], [1., 1.], 0.))
+    push!(bound_parser.eq_list, EqConstraint([z2, z], [1., 1.], 0.))
 
     # add z2 = max(x2, y2)
-    push!(bound_parser.max_list, MaxList([x2, y2], z2))
+    push!(bound_parser.max_list, MaxConstraint([x2, y2], z2))
+end
+
+"""
+----------------------------------------------
+low level functions: nonlinear constraints that are not max/min/relu
+----------------------------------------------
+"""
+function parse_nonlinear_expr(expr::Expr, bound_parser::OverApproximationParser)
+    # return a object of type NLConstraint(left, R, right,  indep_var)
+    # currently only supports a single independent variable
+    # Also assumes that expressions are of the form: v1 R sin(v3)
+    # (has a single variable on the left hand side)
+    indep_var = find_variables(expr.args[3])
+    @assert (length(indep_var) == 1) #only handles 1D functions right now
+    push!(bound_parser.true_NL_list, NLConstraint(expr.args[2], expr.args[1], expr.args[3], indep_var[1]))
 end
 
 """
@@ -360,7 +430,7 @@ function assert_expr(expr::Expr, type::String)
     @assert expr.args[2] isa Symbol
     if type == "eq"
         @assert expr.args[1] == :(==)
-        @assert is_min_expr(expr) || is_max_expr(expr) || is_linear_expr(expr)
+#        @assert is_min_expr(expr) || is_max_expr(expr) || is_linear_expr(expr)
     elseif type == "ineq"
         # make sure expr is of form (x ≦ y)
         @assert expr.args[1] == :≦
@@ -388,9 +458,10 @@ function assert_expr(expr::Expr, type::String)
         @assert expr.args[3].args[1] == :min
     elseif type == "linear"
         #make sure the expr is of form :(z == ax + b) or :(z == a*x + b*y + c*w)
-        rite_expr = expr.args[3]
+        right_expr = expr.args[3]
         @assert expr.args[1] == :(==)
-        @assert length(rite_expr.args) >= 3
+        @assert length(right_expr.args) >= 3
+        @assert is_affine(right_expr)
         # if length(rite_expr.args) == 3 #form :(z == ax + b)
         #     @assert xor(rite_expr.args[2] isa Number, rite_expr.args[3] isa Number)
         #     ax = rite_expr.args[2] isa Number ? rite_expr.args[3] : rite_expr.args[2]
@@ -416,6 +487,34 @@ end
 write to file
 ----------------------------------------------
 """
+function write_constraint(file_name, c::EqConstraint, i; prefix="")
+    h5write(file_name, prefix*"eq/vars$i", [string(v) for v in c.vars])
+    h5write(file_name, prefix*"eq/coeffs$i", [string(v) for v in c.coeffs])
+    h5write(file_name, prefix*"eq/scalar$i", [string(c.scalar)])
+end
+
+function write_constraint(file_name, c::ReluConstraint, i; prefix="")
+    h5write(file_name, prefix*"relu/varin$i", [string(c.varin)])
+    h5write(file_name, prefix*"relu/varout$i", [string(c.varout)])
+end
+
+function write_constraint(file_name, c::MaxConstraint, i; prefix="")
+    h5write(file_name, prefix*"max/varsin$i", [string(v) for v in c.varsin])
+    h5write(file_name, prefix*"max/varout$i", [string(c.varout)])
+end
+
+function write_constraint(file_name, c::IneqConstraint, i; prefix="")
+    h5write(file_name, prefix*"ineq/varleft$i", [string(c.varleft)])
+    h5write(file_name, prefix*"ineq/varright$i",[string(c.varrite)])
+end
+
+function write_constraint(file_name, c::NLConstraint, i; prefix="")
+    h5write(file_name, prefix*"nl/left$i", [string(c.left)])
+    h5write(file_name, prefix*"nl/R$i", [string(c.R)])
+    h5write(file_name, prefix*"nl/right$i", [string(c.right)])
+    h5write(file_name, prefix*"nl/indep_var$i", [string(c.indep_var)])
+end
+
 function write_overapproximateparser(bound_parser::OverApproximationParser,
                                      file_name::String,
                                      state_vars::Array{Symbol, 1},
@@ -427,23 +526,24 @@ function write_overapproximateparser(bound_parser::OverApproximationParser,
     h5write(file_name, "vars/controls", [string(v) for v in control_vars])
     h5write(file_name, "vars/outputs", [string(v) for v in output_vars])
 
-    # write constrains to file
+    # write constraints to file
     for (i, eq) in enumerate(bound_parser.eq_list)
-        h5write(file_name, "eq/vars$i", [string(v) for v in eq.vars])
-        h5write(file_name, "eq/coeffs$i", [string(v) for v in eq.coeffs])
-        h5write(file_name, "eq/scalar$i", [string(eq.scalar)])
+        write_constraint(file_name, eq, i)
     end
     for (i, eq) in enumerate(bound_parser.relu_list)
-        h5write(file_name, "relu/varin$i", [string(eq.varin)])
-        h5write(file_name, "relu/varout$i", [string(eq.varout)])
+        write_constraint(file_name, eq, i)
     end
     for (i, eq) in enumerate(bound_parser.max_list)
-        h5write(file_name, "max/varsin$i", [string(v) for v in eq.varsin])
-        h5write(file_name, "max/varout$i", [string(eq.varout)])
+        write_constraint(file_name, eq, i)
     end
     for (i, eq) in enumerate(bound_parser.ineq_list)
-        h5write(file_name, "ineq/varleft$i", [string(eq.varleft)])
-        h5write(file_name, "ineq/varright$i",[string(eq.varrite)])
+        write_constraint(file_name, eq, i)
+    end
+    for (i, c) in enumerate(bound_parser.true_L_list)
+        write_constraint(file_name, c, i, prefix="true_fun/")
+    end
+    for (i, c) in enumerate(bound_parser.true_NL_list)
+        write_constraint(file_name, c, i, prefix="true_fun/")
     end
 
 end
@@ -456,6 +556,7 @@ Tests
 """
 
 function evaluate(oAP_test::OverApproximationParser, var_dict::Dict)
+    println("Evaluate")
     """
     Given a OverApproximationParser object and a dictionary of input variables
     this function evaluate all other variables that are introduced. And the
@@ -471,6 +572,14 @@ function evaluate(oAP_test::OverApproximationParser, var_dict::Dict)
     for eq in oAP_test.max_list
         if eq.varsin ⊆ keys(var_dict)
             var_dict[eq.varout] = max(var_dict[eq.varsin[1]], var_dict[eq.varsin[2]])
+        end
+    end
+
+    for c in oAP_test.true_NL_list
+        if c.indep_var ∈ keys(var_dict)
+            rcopy = deepcopy(c.right)
+            @assert c.R == :(==) # only handles equality relations right now
+            var_dict[c.left] = eval(substitute!(rcopy, c.indep_var, var_dict[c.indep_var]))
         end
     end
 
@@ -515,17 +624,22 @@ function test_random_input(expr::Expr, oAP_test::OverApproximationParser)
 
     vars = find_variables(expr.args[3])
     vars = setdiff(vars, [:min, :max])
-    values = rand(length(vars))*10 .- 5 # random number generated between -5 and 5
+    if expr.args[1] ∈ [:max, :min, :relu]
+        values = rand(length(vars))*10 .- 5 # random number generated between -5 and 5
+    else
+        values = rand(length(vars))*10 # random number between 0 and 10, to avoid out of domain log
+    end
     expr_eval = copy(expr)
     for (k, v) in zip(vars, values)
         substitute!(expr_eval, k, v)
     end
-    expr_eval_rite = simplify(expr_eval.args[3])
+    expr_eval_rite = simplify(expr_eval.args[3]) # evaluate expression directly
 
     dict_var = Dict(zip(vars, values))
     while expr.args[2] ∉ keys(dict_var)
-        oAP_test_eval = evaluate(oAP_test, dict_var)
-        # println(dict_var)
+        println("expr: ", expr)
+       evaluate(oAP_test, dict_var) # evaluate expression that has been parsed into bound parser
+       println(dict_var)
     end
 
     # println(expr_eval_rite)

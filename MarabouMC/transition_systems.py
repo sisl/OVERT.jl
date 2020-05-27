@@ -44,11 +44,12 @@ class KerasController(Controller):
         self.relus = [c for c in self.constraints if isinstance(c, ReluConstraint)]
 
 class Dynamics:
-    def __init__(self, states, controls):
+    def __init__(self, states, controls, fun=None):
         self.states = np.array(states).reshape(-1,1)
         self.control_inputs = np.array(controls).reshape(-1,1)
         self.next_states = np.array([x+"'" for x in states.flatten()]).reshape(self.states.shape) # [x,y,z] -> [x', y', z']
         self.constraints = [] # constraints over the states and next states
+        self.fun = fun
 
 # class OVERTDynamics(Dynamics):
 #     """
@@ -103,7 +104,7 @@ class OvertDynamics(Dynamics):
     This object three inputs:
     - overt_objs: an instance of OvertConstraint object.
     - dx_vec: vector of dx
-    - dt: dt for continuous
+    - dt: dt for continuous              # this is confusing 
     """
     def __init__(self, overt_objs, dx_vec, dt):
         super().__init__(np.array(overt_objs.state_vars).reshape(-1, 1),
@@ -122,7 +123,39 @@ class OvertDynamics(Dynamics):
                 c = Constraint(ConstraintType('EQUALITY'))
                 c.monomials = [Monomial(1, x), Monomial(dt, dx), Monomial(-1, next_x)]
                 self.euler_constraints.append(c)
+    
+    def setup_continuous_constraints(self):
+        # for handling continuous time
+        pass
 
+class NonlinearDynamics(Dynamics):
+    """
+    takes argument indicating true dynamics function e.g. SinglePendulum()
+    dx_vec
+    dt (or 0 for continuous)
+    """
+    def __init__(self, nonlinear_dynamics, dt):
+        super().__init__(np.array(nonlinear_dynamics.states).reshape(-1,1),
+                        np.array(nonlinear_dynamics.control_inputs).reshape(-1,1)
+                        )
+        self.dt = dt
+        self.set_dynamics(nonlinear_dynamics)
+        if dt > 0:
+            self.setup_euler_constraints()
+        else:
+            raise NotImplementedError     # continuous time not imlemented
+    
+    def set_dynamics(self, nonlinear_dynamics):
+        self.dynamics = nonlinear_dynamics # store for safekeeping
+        self.dx = nonlinear_dynamics.dx
+        self.constraints += nonlinear_dynamics.dx_constraints
+    
+    def setup_euler_constraints(self):
+        for x, dx, next_x in zip(self.states.reshape(-1), self.dx, self.next_states.reshape(-1)):
+                # next_x = x + dx*dt
+                c = Constraint(ConstraintType('EQUALITY'))
+                c.monomials = [Monomial(1, x), Monomial(self.dt, dx), Monomial(-1, next_x)]
+                self.constraints.append(c)
 
 class ControlledTranstionRelation(TransitionRelation):
     """

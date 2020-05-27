@@ -167,6 +167,7 @@ class BMC():
         
         # assert complement(property) at time t
         self.prop.complement()
+        self.solver.mark_outputs(timer_helper(self.prop.outputs, t)) # mark the outputs 
         self.solver.assert_constraints(self.unroller.at_time_property(self.prop, t))
 
         return self.solver.check_sat() # result, values, stats
