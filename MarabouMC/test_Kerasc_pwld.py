@@ -108,7 +108,7 @@ prop_list.append(p2)
 # p4.scalar = 1.49
 # prop_list.append(p4)
 
-prop = ConstraintProperty(prop_list)
+prop = ConstraintProperty(prop_list, [states[0]])
 
 
 # algo

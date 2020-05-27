@@ -91,7 +91,7 @@ def test_marabou_interface(alpha, prop_desc, n_invar, with_relu=False, with_max=
     fake_constraint2 = [Constraint(ConstraintType('EQUALITY'), monomial_list2, 0.5)]
     overt_obj.constraints = fake_constraint2
 
-    simple_dynamics = Dynamics(None, np.array(['x']), np.array(['cd']))
+    simple_dynamics = Dynamics(np.array(['x']), np.array(['cd']))
     next_states = simple_dynamics.next_states.reshape(1,)
 
     # x_next = x + dt*dx
@@ -119,12 +119,12 @@ def test_marabou_interface(alpha, prop_desc, n_invar, with_relu=False, with_max=
     p = Constraint(ConstraintType(prop_desc["type"]))
     p.monomials = [Monomial(1, overt_obj.state_vars[0][0])]
     p.scalar = prop_desc["scalar"]  #
-    prop = ConstraintProperty([p])
+    prop = ConstraintProperty([p], [overt_obj.state_vars[0][0]])
 
     # solver
     solver = MarabouWrapper()
     algo = BMC(ts = ts, prop = prop, solver=solver)
-    result = algo.check_invariant_until(n_invar)
+    result, vals, stats = algo.check_invariant_until(n_invar)
     return result.name
 
 #print(test_marabou_interface(-1, {"type": "GREATER", "scalar":-3.}, 4) == "UNSAT")
