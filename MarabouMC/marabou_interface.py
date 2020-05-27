@@ -24,6 +24,7 @@ class MarabouWrapper():
         self.ipq.setNumberOfVariables(0)
         self.variable_map = {} # maps string names -> integers
         self.input_vars = []
+        self.output_vars = []
         self.constraints = [] # log of things that have been asserted, for debug/double check
         self.num_relu = 0
 
@@ -115,6 +116,16 @@ class MarabouWrapper():
         for i in range(len(self.input_vars)):
             self.ipq.markInputVariable(self.input_vars[i], i)
     
+    def mark_outputs(self, outputs):
+        """
+        mark the output variables
+        """
+        assert len(outputs)>0, "There are 0 outputs specified"
+        for output in outputs:
+            output_var = self.get_new_var(output)
+            self.output_vars.append(output_var)
+            self.ipq.markOutputVariable(output_var)
+
     def get_bounds(self):
         lb = {}
         ub = {}

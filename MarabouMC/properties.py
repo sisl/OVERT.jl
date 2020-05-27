@@ -23,9 +23,10 @@ class ConstraintProperty():
     NOTE: For now, all properties must have constraints with strict inequalities,
     so that when they are inverted this yields non-strict inequalities.
     """
-    def __init__(self, c):
+    def __init__(self, c, outputs):
         self.constraints = c
         self.constraint_complements = []
+        self.outputs = outputs # list of the variables we are asserting constraints over
         self.next_new_var = 1
     
     def __repr__(self):
