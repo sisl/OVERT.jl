@@ -43,11 +43,12 @@ class KerasController(Controller):
         self.relus = [c for c in self.constraints if isinstance(c, ReluConstraint)]
 
 class Dynamics:
-    def __init__(self, states, controls):
+    def __init__(self, states, controls, fun=None):
         self.states = np.array(states).reshape(-1,1)
         self.control_inputs = np.array(controls).reshape(-1,1)
         self.next_states = np.array([x+"'" for x in states.flatten()]).reshape(self.states.shape) # [x,y,z] -> [x', y', z']
         self.constraints = [] # constraints over the states and next states
+        self.fun = fun
 
 # class OVERTDynamics(Dynamics):
 #     """

@@ -124,7 +124,8 @@ class MarabouWrapper():
         for output in outputs:
             output_var = self.get_new_var(output)
             self.output_vars.append(output_var)
-            self.ipq.markOutputVariable(output_var)
+        for i in range(len(self.output_vars)):
+            self.ipq.markOutputVariable(self.output_vars[i],i)
 
     def get_bounds(self):
         lb = {}

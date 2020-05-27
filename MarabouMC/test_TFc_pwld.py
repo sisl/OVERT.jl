@@ -27,7 +27,7 @@ new_graph = smoosh_to_const(sess, output.op.name)
 controller = TFController(tf_sess=tf.Session(graph=new_graph), inputNames=[x.op.name], outputName=output.op.name)
 
 # create a super simple plant directly using constraint objects
-dynamics = Dynamics(np.sin, np.array([["x"], ["y"]]), ["u"])
+dynamics = Dynamics(states=np.array([["x"], ["y"]]), controls=["u"], fun=np.sin)
 # x' = relu(x + u)   ->   x + u - z = 0 , x' = relu(z)
 c1 = Constraint(ConstraintType('EQUALITY'))
 c1.monomials = [Monomial(1, "x"), Monomial(1,"u"), Monomial(-1,"z")]
@@ -55,7 +55,7 @@ p = Constraint(ConstraintType('GREATER'))
 # x > c (complement will be x <= c)
 p.monomials = [Monomial(1, "x")]
 p.scalar = 1. # 0 #
-prop = ConstraintProperty([p])
+prop = ConstraintProperty([p], ["x"])
 
 # algo
 algo = BMC(ts = ts, prop = prop, solver=solver)
