@@ -1,4 +1,4 @@
-from MC_constraints import Constraint, MatrixConstraint, MaxConstraint, ReluConstraint, Monomial
+from MC_constraints import Constraint, MatrixConstraint, MaxConstraint, ReluConstraint, Monomial, NLConstraint
 import numpy as np
 import os
 from MC_interface import Result
@@ -290,6 +290,8 @@ class FormulaConverter:
             expr = self.convert_ReluConstraint(item)
         elif isinstance(item, MaxConstraint):
             expr = self.convert_MaxConstraint(item)
+        elif isinstance(item, NLConstraint):
+            expr = self.convert_NLConstraint(item)
         else:
             raise NotImplementedError
         return expr
@@ -389,6 +391,20 @@ class FormulaConverter:
         left_side = self.prefix_notate("max", [c.var1in, c.var2in])
         right_side = c.varout
         return [self.prefix_notate("=", [left_side, right_side])]
+    
+    def convert_NLConstraint(self, c):
+        """
+        Convert a constraint of type NLConstraint
+        For now, they are only 1D
+        y = sin(x)  ->   (= y (sin x))
+        """
+        assert len(c.indep_var) == 1
+        self.add_real_vars([c.out, c.indep_var])
+        left_side = c.out  # aka y
+        right_side = self.prefix_notate(c.fun, c.indep_var)
+        return [self.prefix_notate(c.type.__repr__(), [left_side, right_side])]
+
+    # TODO: implement mul  and div nonlinear constraint classes
 
     def get_new_bool(self):
         self.new_var_count += 1

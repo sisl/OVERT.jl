@@ -1,6 +1,6 @@
 import numpy as np
 from dreal_interface import FormulaConverter, OverapproxVerifier
-from MC_constraints import Constraint, Monomial, MaxConstraint, ReluConstraint, MatrixConstraint
+from MC_constraints import Constraint, Monomial, MaxConstraint, ReluConstraint, MatrixConstraint, NLConstraint
 
 f = FormulaConverter()
 
@@ -23,6 +23,9 @@ print(f.convert_ReluConstraint(c3))
 
 c4 = MatrixConstraint('EQUALITY', A=np.random.rand(2,2), x=np.array([['x'],['y']], dtype='object'), b=np.zeros((2,1)) )
 print(f.convert_MatrixConstraint(c4))
+
+c5 = NLConstraint('EQUALITY', "v1", "sin", "x")
+print(f.convert_NLConstraint(c5))
 
 print(f.declare_list([c1, c1, c2, c2, c3, c3, c4]))
 

@@ -23,6 +23,7 @@ class ControlledTRExperiment():
         self.n_steps = n_steps
         self.dt = dt
         self.setup_controller_obj()
+        self.algo = algo
 
     def setup_controller_obj(self):
         model = load_model(self.keras_controller_file)
@@ -34,7 +35,7 @@ class ControlledTRExperiment():
         prop_list = []
         for i, prop_range in enumerate(self.query_range):
             prop_list += constraint_variable_to_interval(self.states[i], prop_range[0], prop_range[1])
-        prop = ConstraintProperty(prop_list)
+        prop = ConstraintProperty(prop_list, self.states)
         return prop 
 
 class NonlinearControlleTRExperiment(ControlledTRExperiment):
@@ -76,5 +77,6 @@ class NonlinearControlleTRExperiment(ControlledTRExperiment):
         """
         set self.solver. should be an object with the API of MarabouWrapper
         """
+        #self.solver = ?
         pass
     
