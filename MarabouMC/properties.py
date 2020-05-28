@@ -118,7 +118,7 @@ class ConstraintProperty():
                 ###########################################################
                 # changing max to be represented with Relu
                 YmZ = self.get_new_var()
-		YmZdef = Constraint('EQUALITY', monomials=[Monomial(1, Y), Monomial(-1, Z), Monomial(-1, YmZ)], scalar=0)
+                YmZdef = Constraint('EQUALITY', monomials=[Monomial(1, Y), Monomial(-1, Z), Monomial(-1, YmZ)], scalar=0)
                 RYmZ = self.get_new_var()
                 RYmZdef = ReluConstraint(varin=YmZ, varout=RYmZ)
                 # Q = relu(Y-Z) + Z

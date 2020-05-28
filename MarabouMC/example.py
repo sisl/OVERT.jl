@@ -149,9 +149,11 @@ class OvertMCExample():
 
     def setup_property(self):
         prop_list = []
+        prop_output = []
         for i, prop_range in enumerate(self.query_range):
             prop_list += constraint_variable_to_interval(self.state_vars[i], prop_range[0], prop_range[1])
-        prop = ConstraintProperty(prop_list)
+            prop_output.append(self.state_vars[i])
+        prop = ConstraintProperty(prop_list, prop_output)
         return prop
 
     def _simple_run(self, n_check_invariant):
