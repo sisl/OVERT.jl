@@ -101,9 +101,10 @@ class StatefulDrealWrapper:
         # I should either:
         # declare reals inside assert_logical OR parse the constraints before
         # putting things inside the smtlib_formula
+        main_formula = self.f.assert_logical(self.constraints)
         self.smtlib_formula = self.f.header() + \
                               self.f.declare_reals() + \
-                              self.f.assert_logical(self.constraints) + \
+                              main_formula + \
                               self.f.footer()
         self.formula_object = SMTLibFormula(self.smtlib_formula)
 
@@ -137,7 +138,7 @@ class StatefulDrealWrapper:
         self.formula_object._print()
         fake_values = dict(zip(self.input_vars, np.zeros(len(self.input_vars)))) # TODO: CHANGE
         fake_stats = []
-        return Result.SAT, fake_values, fake_stats
+        return Result.UNSAT, fake_values, fake_stats
 
 class FormulaConverter:
     """
@@ -367,6 +368,7 @@ class FormulaConverter:
         """
         constraints = []
         m = c.A.shape[0]
+        c.b = c.b.reshape(-1,1)
         for row in range(m):
             constraints += self.convert_constraint_helper(c.A[row,:], c.x.flatten(), c.type.__repr__(), c.b[row][0])
         return constraints
@@ -406,7 +408,7 @@ class FormulaConverter:
         For now, they are only 1D
         y = sin(x)  ->   (= y (sin x))
         """
-        assert len(c.indep_var) == 1
+        assert isinstance(c.indep_var, str) # not an array of variables
         self.add_real_vars([c.out, c.indep_var])
         left_side = c.out  # aka y
         right_side = self.prefix_notate(c.fun, c.indep_var)
