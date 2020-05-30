@@ -12,12 +12,12 @@ def f1(state, control):
 
 class SinglePendulum:   #"T + sin(theta) - 0.2*theta_dot"
     def __init__(self):
-        self.contol_inputs = ['T']
-        self.states = ['theta', 'theta_dot']
+        self.control_inputs = ['T']
+        self.states = np.array(['theta', 'theta_dot'], dtype=object)
         self.dx = ['theta_dot', 'theta_double_dot']
         # the constraints that define the dx variables. 
         # "theta_double_dot = T + sin(theta) - 0.2*theta_dot"
-        self.dx_constraints = [NLConstraint('EQUALITY', left='v1', right="sin(theta)", indep_vars = ["theta"]),
+        self.dx_constraints = [NLConstraint('EQUALITY', out='v1', fun="sin", indep_var = "theta"),
                                Constraint('EQUALITY', monomials=[Monomial(1.0, "T"), 
                                                                 Monomial(1.0, "v1"),
                                                                 Monomial(-0.2, "theta_dot"),

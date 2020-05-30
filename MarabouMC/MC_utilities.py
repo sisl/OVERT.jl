@@ -3,7 +3,8 @@
 from transition_systems import KerasController, TFControlledTransitionRelation, TransitionSystem, constraint_variable_to_interval
 from properties import ConstraintProperty
 from MC_interface import BMC
-
+from dreal_interface import StatefulDrealWrapper
+from keras.models import load_model
 
 class ControlledTRExperiment():
     def __init__(self,
@@ -17,7 +18,7 @@ class ControlledTRExperiment():
         # note: dynamics not specified because this can be used
         # with OVERT or with true nonlinear dynamics
         self.keras_controller_file = keras_controller_file
-        self.controller_bounding_values = self.controller_bounding_values
+        self.controller_bounding_values = controller_bounding_values
         self.query_range = query_range
         self.init_range = init_range
         self.n_steps = n_steps
@@ -30,13 +31,6 @@ class ControlledTRExperiment():
         min_vals = [x[0] for x in self.controller_bounding_values]
         max_vals = [x[1] for x in self.controller_bounding_values]
         self.controller_obj = KerasController(keras_model=model, cap_values=[min_vals, max_vals])
-
-    def setup_property(self):
-        prop_list = []
-        for i, prop_range in enumerate(self.query_range):
-            prop_list += constraint_variable_to_interval(self.states[i], prop_range[0], prop_range[1])
-        prop = ConstraintProperty(prop_list, self.states)
-        return prop 
 
 class NonlinearControlleTRExperiment(ControlledTRExperiment):
     """
@@ -63,20 +57,27 @@ class NonlinearControlleTRExperiment(ControlledTRExperiment):
                         dt=dt)
         self.dynamics = dynamics_object
         self.setup_solver(solver)
+    
+    def setup_property(self):
+        prop_list = []
+        for i, prop_range in enumerate(self.query_range):
+            prop_list += constraint_variable_to_interval(self.dynamics.states.flatten()[i], prop_range[0], prop_range[1])
+        prop = ConstraintProperty(prop_list, self.dynamics.states)
+        return prop 
 
     def run(self):
         tr = TFControlledTransitionRelation(dynamics_obj=self.dynamics, controller_obj=self.controller_obj)
-        init_set = dict(zip(tr.states, self.init_range))
+        init_set = dict(zip(tr.states.flatten(), self.init_range))
         ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
         solver = self.solver
         prop = self.setup_property()
         algo = self.algo(ts=ts, prop=prop, solver=solver)
-        return algo.check_invariant_until(n_check_invariant)
+        return algo.check_invariant_until(self.n_steps)
 
-    def setup_solver(self):
+    def setup_solver(self, solver):
         """
         set self.solver. should be an object with the API of MarabouWrapper
         """
-        #self.solver = ?
-        pass
+        if solver == "smtlib2":
+            self.solver = StatefulDrealWrapper()
     

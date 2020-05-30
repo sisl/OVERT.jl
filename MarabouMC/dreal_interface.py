@@ -72,7 +72,7 @@ class OverapproxVerifier:
         """
         pass
 
-class stateful_dreal_wrapper:
+class StatefulDrealWrapper:
     """
     A wrapper like the one in marabou_interface.py
     that collects constraints as they are asserted.
@@ -96,6 +96,11 @@ class stateful_dreal_wrapper:
         """
         Convert constraint objects to SMTLIB2
         """
+        # TODO: I assert_logical of constraints after "declaring reals"
+        # so there are no reals to declare yet and no reald are then declared. 
+        # I should either:
+        # declare reals inside assert_logical OR parse the constraints before
+        # putting things inside the smtlib_formula
         self.smtlib_formula = self.f.header() + \
                               self.f.declare_reals() + \
                               self.f.assert_logical(self.constraints) + \
@@ -119,6 +124,9 @@ class stateful_dreal_wrapper:
         Assert multiple constraints.
         """
         self.constraints += constraints
+    
+    def mark_outputs(self, outputs):
+        pass
 
     def check_sat(self):
         """
