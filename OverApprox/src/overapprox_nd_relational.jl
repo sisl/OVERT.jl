@@ -36,7 +36,7 @@ to collect the relations describing the bound along the way.
 """
 function overapprox_nd(expr,
                        bound::OverApproximation)
-    println(expr)
+    # println(expr)
     # all operations should have at most two arguments.
     expr = rewrite_division_by_const(expr)
     expr = reduce_args_to_2(expr)

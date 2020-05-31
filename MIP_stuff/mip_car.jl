@@ -57,7 +57,7 @@ input_set_0 = Hyperrectangle(low = [-1., -1., -2., -2.], high = [1., 1., 2., 2.]
 input_vars = [:x1, :x2, :x3, :x4]
 control_vars = [:c1, :c2]
 dynamics, update_rule = car_dynamics, car_update_rule
-network_file = "/home/amaleki/Dropbox/stanford/Python/OverApprox/MIP_stuff/controller_simple_double_pend.nnet"
+network_file = "/home/amaleki/Dropbox/stanford/Python/OverApprox/MIP_stuff/controller_simple_car.nnet"
 last_layer_activation = Id()
 all_sets = many_timestep_query(n_timesteps, update_rule, dynamics, network_file, input_set_0, input_vars, control_vars, last_layer_activation, dt, N_OVERT)
 
@@ -67,7 +67,6 @@ for s in all_sets
     end
     println()
 end
-
 
 # range_dict = Dict(:c1 => [-0.52, 0.83], :c2 => [-0.38, 0.96], :x1 => [-1., 1.],
 #                   :x2 => [-1., 1.], :x3 => [-2., 2.], :x4 => [-2., 2.])

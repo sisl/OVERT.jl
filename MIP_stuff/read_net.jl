@@ -97,3 +97,27 @@ function many_timestep_query(n_timesteps, update_rule, dynamics, network_file, i
     end
     return all_sets
 end
+
+function mip_summary(model)
+    const_types = list_of_constraint_types(model)
+    l_lin = 0
+    l_bin = 0
+
+    println("="^100)
+    println("="^20, "mip summary", "="^70)
+    println("="^100)
+    for i = 1:length(const_types)
+        var = const_types[i][1]
+        const_type = const_types[i][2]
+        l = length(all_constraints(mip_model.model, var, const_type))
+        println("there are $l constraints of type $const_type with variables type $var.")
+        if const_type != MathOptInterface.ZeroOne
+            l_lin += l
+        else
+            l_bin += l
+        end
+    end
+    println("="^25)
+    println("there are $l_lin linear constraints and $l_bin binary constraints.")
+    println("="^100)
+end
