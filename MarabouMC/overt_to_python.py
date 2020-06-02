@@ -142,7 +142,7 @@ class OvertConstraint():
         self.var_dict = var_dict
         # var_dict is a dictionary with key and values of julia and corresponding python variables.
         # when processing more than one overt function, e.g. for a double pendulum,
-        # the var_dict of the previous functions should be passed, to avoid creating dublicate variables.
+        # the var_dict of the previous functions should be passed, to avoid creating duplicate variables.
 
         self.eq_list = []
         self.max_list = []
