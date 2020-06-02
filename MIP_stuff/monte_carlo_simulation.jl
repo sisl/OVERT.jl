@@ -38,6 +38,8 @@ function plot_output_sets(output_sets; idx=[1,2], fig=nothing, color=:black)
         y = s.center[idx[2]] - s.radius[idx[2]]
         plot!(rectangle(w,h,x,y), fillalpha=0.0, fill=:blue,
                linewidth=3, legend=nothing, linecolor=color)
+        xlabel!("x_$(idx[1])")
+        ylabel!("x_$(idx[2])")
     end
     return p
 end

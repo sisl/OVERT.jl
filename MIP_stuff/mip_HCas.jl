@@ -2,7 +2,9 @@ include("../OverApprox/src/overapprox_nd_relational.jl")
 include("../OverApprox/src/overt_parser.jl")
 include("overt_to_mip.jl")
 include("read_net.jl")
+
 using LazySets
+using Dates
 
 function horizontalCAS_dynamics(state, u_own, u_int, v_own, v_int)
     x, y, ψ = state
@@ -92,6 +94,11 @@ encode_network!(mip_model.model, network, neurons, deltas, bounds, BoundedMixedI
 
 u_own_var = get_mip_var(:u_own, mip_model)
 u_own_vals = [0., 1.5, -1.5, 3.5, -3.5]
+
+c \leq u + delta
+c \geq u - delta
+
+
 
 # advisory = argmax(scores)
 # u = u_vals[advisory]

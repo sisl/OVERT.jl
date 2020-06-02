@@ -67,6 +67,8 @@ function one_timestep_query(dynamics, update_rule, network_file, input_set, inpu
     mip_control_output_vars = [get_mip_var(v, mip_model) for v in control_vars]
     controller_bound = add_controller_constraints(mip_model.model, network_file, input_set, mip_control_input_vars, mip_control_output_vars)
 
+    mip_summary(mip_model.model)
+
     # get integration map
     integration_map = update_rule(input_vars, control_vars, oA_vars)
 
@@ -99,25 +101,27 @@ function many_timestep_query(n_timesteps, update_rule, dynamics, network_file, i
 end
 
 function mip_summary(model)
+
+    MathOptInterface = MOI
     const_types = list_of_constraint_types(model)
     l_lin = 0
     l_bin = 0
 
-    println("="^100)
-    println("="^20, "mip summary", "="^70)
-    println("="^100)
+    println("="^50)
+    println("="^18 * " mip summary " * "="^19)
+    println("="^50)
     for i = 1:length(const_types)
         var = const_types[i][1]
         const_type = const_types[i][2]
-        l = length(all_constraints(mip_model.model, var, const_type))
-        println("there are $l constraints of type $const_type with variables type $var.")
+        l = length(all_constraints(model, var, const_type))
+        #println("there are $l constraints of type $const_type with variables type $var.")
         if const_type != MathOptInterface.ZeroOne
             l_lin += l
         else
             l_bin += l
         end
     end
-    println("="^25)
+    #println("="^50)
     println("there are $l_lin linear constraints and $l_bin binary constraints.")
-    println("="^100)
+    println("="^50)
 end
