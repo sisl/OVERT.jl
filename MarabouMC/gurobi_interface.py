@@ -13,7 +13,7 @@ Plan:
     - clear - DONE
     - assert init set - DONE
     - assert constraints - DONE
-    - check_sat
+    - check_sat - DONE
 
 - low level helper functions:
     - get_new_var(s) - DONE, DONE
@@ -136,7 +136,7 @@ class GurobiPyWrapper():
         else:
             raise NotImplementedError
 
-    def assert_max(self, c: MaxConstraint):
+    def assert_max_constraint(self, c: MaxConstraint):
         varsin = self.get_new_vars([c.var1in, c.var2in])
         varout = self.get_new_vars(c.varout)
         if self.PWL_encoding == 'native':
@@ -146,14 +146,46 @@ class GurobiPyWrapper():
         else:
             raise NotImplementedError
 
-    def assert_relu(self, c: ReluConstraint):
+    def assert_relu_constraint(self, c: ReluConstraint):
         if self.PWL_encoding == 'native':
             max_version = MaxConstraint(varout=c.varout, varsin=[c.varin, 0])
-            self.assert_max(max_version)
+            self.assert_max_constraint(max_version)
         elif self.PWL_encoding == 'MIPverify':
             raise NotImplementedError
         else:
             raise NotImplementedError
+    
+    def check_sat(self, output_filename="", timeout=0, vars_of_interest=[], verbose=True, dnc=True, tried=0):
+        """
+        Check if constrained problem is feasible / satisfiable. 
+        Note: has some args from marabou interface that do nothing, like dnc. 
+        will be removed later when these args are moved to solver() init call
+        """
+        self.model.setObjective(0, gp.GRB.MAXIMIZE)
+        try:
+            self.model.optimize()
+            status = self.model.status
+            
+            if status == gp.GRB.INFEASIBLE:
+                # note, can compute irreducible inconsistent subsystem...
+                return Result.UNSAT, {}, {}
+            elif status == gp.GRB.OPTIMAL:
+                vals = self.model.getVars()
+                vals_in_BMC_vars = {v.varName: v.x for v in vals}
+                return Result.SAT, vals_in_BMC_vars, {}
+            # todo: allow for suboptimal but feasible solutions?
+            elif status == gp.GRB.Status.INF_OR_UNBD and tried == 0:
+                self.model.setParam(gp.GRB.Param.DualReductions, 0)
+                return self.check_sat(output_filename=output_filename, tried=1)
+            else:
+                print('Optimization was stopped with status %d' % status)
+                return Result.ERROR, {}, {}
+
+        except gp.GurobiError as e:
+            print("Gurobi Error Caught.")
+            return Result.ERROR, {}, {}
+
+
 
 
 
