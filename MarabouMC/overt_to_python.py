@@ -131,6 +131,7 @@ from MC_Keras_parser import KerasConstraint, getNewVariable
 #
 #             self.relu_list.append(ReluConstraint(varin=new_var_in, varout=self.var_dict[var_out]))
 
+# TODO: modify this to read in ranges too
 class OvertConstraint():
     def __init__(self, file_name, var_dict={}):
         self.f = h5py.File(file_name, "r")

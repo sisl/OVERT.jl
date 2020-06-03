@@ -159,6 +159,8 @@ class MaxConstraint():
     varout = max(var1in, var2in)
     """
     def __init__(self, varsin, varout):
+        if len(varsin) > 2:
+            raise NotImplementedError
         self.var1in = varsin[0]
         self.var2in = varsin[1]
         self.varout = varout
