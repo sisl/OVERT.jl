@@ -67,7 +67,7 @@ function one_timestep_query(dynamics, update_rule, network_file, input_set, inpu
     mip_control_output_vars = [get_mip_var(v, mip_model) for v in control_vars]
     controller_bound = add_controller_constraints(mip_model.model, network_file, input_set, mip_control_input_vars, mip_control_output_vars)
 
-    mip_summary(mip_model.model)
+    #mip_summary(mip_model.model)
 
     # get integration map
     integration_map = update_rule(input_vars, control_vars, oA_vars)
@@ -99,6 +99,8 @@ function many_timestep_query(n_timesteps, update_rule, dynamics, network_file, i
     end
     return all_sets
 end
+
+
 
 function mip_summary(model)
 

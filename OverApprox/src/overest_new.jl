@@ -365,7 +365,7 @@ function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="cont
 		convex = d2f((aa + bb) / 2) > 0   # specify convexity
 		for N = 1:Nmax
 			xp_candidate, yp_candidate = bound(f, aa, bb, N; conc_method="continuous", lowerbound=lowerbound, df=df,
-			d2f=d2f, d2f_zeros=d2f_zeros, convex=convex, plot=true)
+			d2f=d2f, d2f_zeros=d2f_zeros, convex=convex, plot=plot)
 
 			itp = interpolate((xp_candidate[1],), yp_candidate[1], Gridded(Linear()))
 			xtest = range(aa, stop=bb, length=100)

@@ -2,11 +2,13 @@ include("../OverApprox/src/overapprox_nd_relational.jl")
 include("../OverApprox/src/overt_parser.jl")
 include("overt_to_mip.jl")
 include("read_net.jl")
+include("example_dynamics.jl")
+
 using LazySets
 
 dt = 0.1
 N_OVERT = -1
-n_timesteps = 5
+n_timesteps = 25
 input_set_0 = Hyperrectangle(low = [1., 1.], high = [2., 2.])
 input_vars = [:th, :dth]
 control_vars = [:T]
@@ -22,7 +24,7 @@ for s in out_sets
     println()
 end
 
-n_sim = 10000
+n_sim = 10000000
 out_sets_simulated = monte_carlo_simulate(single_pend_dynamics, network_file, Id(),
                                     input_set_0, n_sim, n_timesteps, dt)
 fig = plot_output_sets(out_sets)

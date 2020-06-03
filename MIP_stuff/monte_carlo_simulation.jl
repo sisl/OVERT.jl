@@ -1,5 +1,3 @@
-
-
 function monte_carlo_simulate(dynamics_func, controller_nnet_address, last_layer_activation, init_x, n_sim, n_timesteps, dt)
     n_states = length(init_x.center)
     min_x = [[Inf64  for n = 1:n_states] for m = 1:n_timesteps]
@@ -29,15 +27,16 @@ end
 rectangle(w, h, x, y) = Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
 
 
-function plot_output_sets(output_sets; idx=[1,2], fig=nothing, color=:black)
+function plot_output_sets(output_sets; idx=[1,2], fig=nothing, linewidth=3, linecolor=:black, linestyle=:solid)
     p = isnothing(fig) ? plot() : fig
     for s in output_sets
         w = s.radius[idx[1]] * 2
         h = s.radius[idx[2]] * 2
         x = s.center[idx[1]] - s.radius[idx[1]]
         y = s.center[idx[2]] - s.radius[idx[2]]
-        plot!(rectangle(w,h,x,y), fillalpha=0.0, fill=:blue,
-               linewidth=3, legend=nothing, linecolor=color)
+        #plot!(rectangle(w,h,x,y), fillalpha=0.0, kwargs)
+        plot!(rectangle(w,h,x,y), fillalpha=0.0, fill=:blue, legend=nothing,
+                   linewidth=linewidth, linecolor=linecolor, linestyle=linestyle)
         xlabel!("x_$(idx[1])")
         ylabel!("x_$(idx[2])")
     end

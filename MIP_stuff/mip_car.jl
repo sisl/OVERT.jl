@@ -4,17 +4,22 @@ include("overt_to_mip.jl")
 include("read_net.jl")
 include("example_dynamics.jl")
 using LazySets
+using Dates
 
 dt = 0.1
 N_OVERT = 2
-n_timesteps = 5
+n_timesteps = 10
 input_set_0 = Hyperrectangle(low = [1., 1., 1., 1.], high = [2., 2., 2., 2.])
 input_vars = [:x1, :x2, :x3, :x4]
 control_vars = [:c1, :c2]
 dynamics, update_rule = car_dynamics_overt, car_update_rule
 network_file = "/home/amaleki/Dropbox/stanford/Python/OverApprox/MIP_stuff/nnet_files/controller_simple_car.nnet"
 last_layer_activation = Id()
+
+t1 = Dates.now()
 out_sets = many_timestep_query(n_timesteps, update_rule, dynamics, network_file, input_set_0, input_vars, control_vars, last_layer_activation, dt, N_OVERT)
+t2 = Dates.now()
+print((t2-t1).value / 1000)
 
 for s in out_sets
     for j = 1:length(s.radius)
@@ -26,8 +31,8 @@ end
 n_sim = 1000000
 out_sets_simulated = monte_carlo_simulate(car_dynamics, network_file, Id(),
                                           input_set_0, n_sim, n_timesteps, dt)
-fig = plot_output_sets(out_sets)
-fig = plot_output_sets(out_sets_simulated, fig=fig, color=:red)
+fig = plot_output_sets(out_sets, linewidth=3)
+fig = plot_output_sets(out_sets_simulated, fig=fig, linecolor=:red, linewidth=1, linestyle=:dash)
 
 
 # range_dict = Dict(:c1 => [-0.52, 0.83], :c2 => [-0.38, 0.96], :x1 => [-1., 1.],
