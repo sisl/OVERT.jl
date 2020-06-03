@@ -5,7 +5,7 @@ the output is a .h5 file with a list of all equality, min, max and inequality co
 
 using HDF5
 
-OVERT_FOLDER = "/home/amaleki/Dropbox/stanford/Python/OverApprox/"
+OVERT_FOLDER = "/Users/Chelsea/Dropbox/AAHAA/src/OverApprox/" #"/home/amaleki/Dropbox/stanford/Python/OverApprox/"
 include(OVERT_FOLDER * "OverApprox/src/overapprox_nd_relational.jl")
 include(OVERT_FOLDER * "OverApprox/src/overt_parser.jl")
 
@@ -70,5 +70,6 @@ function combine_them_all(variables)
     return oAP
 end
 
-file_name = "/home/amaleki/Dropbox/stanford/Python/OverApprox/models/single_pendulum/single_pendulum_savefile.h5"
+#file_name = "/home/amaleki/Dropbox/stanford/Python/OverApprox/
+file_name = OVERT_FOLDER * "models/single_pendulum/single_pendulum_savefile.h5"
 run_overt(file_name)

@@ -233,6 +233,10 @@ function find_affine_range(expr, range_dict)
     end
 end
 
+mutable struct MyException <: Exception
+    var::String
+end
+
 function find_range(expr, range_dict)
     """
     Find range of PWL function.
@@ -244,13 +248,14 @@ function find_range(expr, range_dict)
             inner_expr = expr.args[3]
         end 
         l,u = find_range(inner_expr, range_dict)
-        return 0, max(0, u)
+        return [0, max(0, u)]
     elseif is_affine(expr)
-        return find_affine_range(expr, range_dict)
+        l,u = find_affine_range(expr, range_dict)
+        return [l,u]
     elseif is_min(expr)
-        raise('Not implemented yet')
+        throw(MyException("Not implemented yet"))
     else
-        raise('not implemented yet')
+        throw(MyException("not implemented yet"))
     end
 end
 
