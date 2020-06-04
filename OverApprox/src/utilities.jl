@@ -253,7 +253,11 @@ function find_range(expr, range_dict)
         l,u = find_affine_range(expr, range_dict)
         return [l,u]
     elseif is_min(expr)
-        throw(MyException("Not implemented yet"))
+        x = expr.args[2]
+        y = expr.args[3]
+        xl, xu = find_range(x, range_dict)
+        yl, yu = find_range(y, range_dict)
+        return [min(xl,yl), min(xu,yu)]
     else
         throw(MyException("not implemented yet"))
     end

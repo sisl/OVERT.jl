@@ -331,6 +331,7 @@ end
 
 function parse_single_min_expr(expr::Expr, bound_parser::OverApproximationParser)
     # make sure expr is of form :(z == min(x, y))
+    # MAJOR ASSUMPTION: MIN IS NEVER NESTED
     assert_expr(expr, "single min")
     z = expr.args[2]
     x = expr.args[3].args[2]
@@ -341,7 +342,7 @@ function parse_single_min_expr(expr::Expr, bound_parser::OverApproximationParser
     if x isa Symbol
         push!(bound_parser.eq_list, EqList([x2, x], [1., 1.], 0.))
         xl, xu = bound_parser.ranges[x]
-        bound_parser.ranges[x2] = (-xu, -xl)
+        bound_parser.ranges[x2] = [-xu, -xl]
     else
         e = simplify(:(-1*$x))
         new_expr = :($x2 == $(e))
@@ -365,8 +366,13 @@ function parse_single_min_expr(expr::Expr, bound_parser::OverApproximationParser
     # define z2 = -z
     z2 = add_var()
     push!(bound_parser.eq_list, EqList([z2, z], [1., 1.], 0.))
+    if ~haskey(bound_parser.ranges, z)
+        xl, xu = find_range(x, bound_parser.ranges)
+        yl, yu = find_range(y, bound_parser.ranges)
+        bound_parser.ranges[z] = [min(xl,yl), min(xu, yu)] # TODO: DOUBLE CHECK CORRECTNESS
+    end
     zl, zu = bound_parser.ranges[z]
-    bound_parser.ranges[z2] = (-zu, -zl)
+    bound_parser.ranges[z2] = [-zu, -zl]
 
     # add z2 = max(x2, y2)
     push!(bound_parser.max_list, MaxList([x2, y2], z2))
