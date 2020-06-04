@@ -3,6 +3,7 @@ import numpy as np
 from MC_interface import Result
 import gurobipy as gp
 inf = gp.GRB.INFINITY 
+continuous = gp.GRB.CONTINUOUS
 import pickle
 import os
 from MC_interface import substitute_c
@@ -63,11 +64,15 @@ class GurobiPyWrapper():
         GRB.CONTINUOUS, GRB.BINARY, GRB.INTEGER, GRB.SEMICONT, or GRB.SEMIINT
         """
         if name not in self.var_map.keys():
+            #print("name:", name ," vtype:", vtype," lb:", lb, " ub:", ub)
+            #import pdb; pdb.set_trace()
             gbv = self.model.addVar(lb=lb, ub=ub, vtype=vtype, name=name)
             self.var_map[name] = gbv
         return self.var_map[name]
     
     def handle_args(self, names, vtypes, lbs, ubs):
+        if isinstance(names, str):
+            names = [names] # prevent accidentally splitting up a string into multiple "Variables" by mistake
         if lbs is None:
             lbs = [-inf]*len(names)
         if ubs is None:
@@ -78,17 +83,16 @@ class GurobiPyWrapper():
             vtypes = vtypes*len(names)
         return names, vtypes, lbs, ubs
 
-    def get_new_vars(self, names, vtypes=None, lbs=None, ubs=None):
+    def get_new_matrix_of_vars(self, names, vtypes=None, lbs=None, ubs=None):
         names, vtypes, lbs, ubs = self.handle_args(names, vtypes, lbs, ubs)
-        new_vars = []
+        print("names:", names ," vtypes:", vtypes," lbs:", lbs, " ubs:", ubs)
+        print("len(names)=", len(names))
+        gbvs = self.model.addMVar(len(names), lb=lbs, ub=ubs, name=names) #, vtype=vtypes, )  
+        # TODO: ^ figure out why you can't pass names......
         for i in range(len(names)):
-            new_vars.append(self.get_new_var(names[i], vtypes[i], lb=lbs[i], ub=ubs[i]))
-        #
-        if isinstance(names, np.ndarray):
-            return np.array(new_vars).reshape(names.shape)
-        else:
-            return new_vars    
-
+            self.var_map[names[i]] = gbvs[i]  
+        return gbvs
+        
     def assert_constraints(self, constraints):
         for c in constraints:
             self.assert_one_constraint(c)
@@ -104,11 +108,11 @@ class GurobiPyWrapper():
             self.assert_max_constraint(constraint)
         else:
             # TODO: should min be implemented?
-            raise NotImplementedError
-    
+            raise NotImplementedError 
+
     def assert_matrix_constraint(self, c: MatrixConstraint):
         # TODO: handle 'not equal' constraint (exception)
-        x = self.get_new_vars(c.x) # get gurobi vars
+        x = self.get_new_matrix_of_vars(c.x) # get gurobi vars
         print("x shape is: ", c.x.shape, " b shape is: ", c.b.shape, " A shape is: ", c.A.shape)
         self.matrix_helper(c.A, x, c.type, c.b)
     
@@ -118,7 +122,8 @@ class GurobiPyWrapper():
         # e.g. g1 = gurobi_x + gurobi_y,  g2 = g1 + 2*z ... etc.
         A = np.array([m.coeff for m in c.monomials]).reshape(1,-1)
         b = np.array([c.scalar]) #.reshape(1,1)
-        x = np.array(self.get_new_vars([m.var for m in c.monomials])).reshape(-1,1)
+        x = self.get_new_matrix_of_vars([m.var for m in c.monomials])
+        print("x is:" , x)
         self.matrix_helper(A, x, c.type, b)
     
     def matrix_helper(self, A, x, R, b):
@@ -137,10 +142,19 @@ class GurobiPyWrapper():
             raise NotImplementedError
 
     def assert_max_constraint(self, c: MaxConstraint):
-        varsin = self.get_new_vars([c.var1in, c.var2in])
-        varout = self.get_new_vars(c.varout)
+        """
+        NOTE: For now, assumes both variables put into the max are continuous
+        """
+        # import pdb; pdb.set_trace()
+        print("varout: ", c.varout)
+        print("var1in:", c.var1in)
+        print("var2in:", c.var2in)
+        var1in = self.get_new_var(c.var1in, continuous) if isinstance(c.var1in, str) else c.var1in # allow for var1in or var2in to be integers
+        var2in = self.get_new_var(c.var2in, continuous) if isinstance(c.var2in, str) else c.var2in
+        varsin = [var1in, var2in]
+        varout = self.get_new_var(c.varout, continuous)
         if self.PWL_encoding == 'native':
-            self.model.addConstr(varout == max_(varsin))
+            self.model.addConstr(varout == gp.max_(varsin))
         elif self.PWL_encoding == 'MIPverify':
             raise NotImplementedError
         else:
