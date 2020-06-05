@@ -25,12 +25,12 @@ function plot_bound(f, a, b, xp, yp; existing_plot=nothing)
 	y = f.(x)
 	if isnothing(existing_plot)
 		p = plot(x,  y, color="red", linewidth=2, label="f(x)");
-		p = plot!(p, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=:topleft);
+		p = plot!(p, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=false);
 		display(p)
 		#return p
 	else
 		plot!(existing_plot, x,  y, color="red", linewidth=2, label="f(x)");
-		plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=:topleft);
+		plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=false);
 		display(existing_plot);
 		#return existing_plot
 	end

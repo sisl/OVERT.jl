@@ -7,19 +7,18 @@ using LazySets
 using Dates
 
 dt = 0.1
-N_OVERT = 2
+N_OVERT = 10
 n_timesteps = 10
-input_set_0 = Hyperrectangle(low = [1., 1., 1., 1.], high = [2., 2., 2., 2.])
+input_set_0 = Hyperrectangle(low = [0.5, 0.5, 0.5, 0.5], high = [1., 1., 1., 1.])
 input_vars = [:x1, :x2, :x3, :x4]
 control_vars = [:c1, :c2]
 dynamics, update_rule = car_dynamics_overt, car_update_rule
-network_file = "/home/amaleki/Dropbox/stanford/Python/OverApprox/MIP_stuff/nnet_files/controller_simple_car.nnet"
+#network_file = "/home/amaleki/Dropbox/stanford/Python/OverApprox/MIP_stuff/nnet_files/controller_simple_car.nnet"
+network_file = "/home/amaleki/Dropbox/stanford/Python/OverApprox/MIP_stuff/nnet_files/controller_complex_car.nnet"
+
 last_layer_activation = Id()
 
-t1 = Dates.now()
 out_sets = many_timestep_query(n_timesteps, update_rule, dynamics, network_file, input_set_0, input_vars, control_vars, last_layer_activation, dt, N_OVERT)
-t2 = Dates.now()
-print((t2-t1).value / 1000)
 
 for s in out_sets
     for j = 1:length(s.radius)

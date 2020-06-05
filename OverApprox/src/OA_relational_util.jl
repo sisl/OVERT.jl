@@ -69,8 +69,6 @@ end
 """
 This function combines a list of OverApproximation objects and return one
     that contains all their equality and ineqaulity constraints.
-    it is assumed the last entry of the list, is the final object, so
-    output variable and output range are set to those of the last entry.
 
     ** for output, output_range, nvars, const, fun_eq, N and ϵ, we keep the default values
 """

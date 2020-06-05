@@ -8,21 +8,21 @@ tora example
 """
 
 function tora_dynamics(x, u)
-    dx1 = x[3]
-    dx2 = 0.1*sin(x[3]) - x[1]
+    dx1 = x[2]
+    dx2 = 0.1 * sin(x[3]) - x[1]
     dx3 = x[4]
     dx4 = u[1]
     return [dx1, dx2, dx3, dx4]
 end
 
-function tora_dynamics_overt(range_dict, N_overt)
+function tora_dynamics_overt(range_dict, N_OVERT)
     v2 = :(0.1*sin(x3) - x1)
     oA_out = overapprox_nd(v2, range_dict; N=N_OVERT)
     return oA_out, [oA_out.output]
 end
 
 function tora_update_rule(input_vars, control_vars, overt_output_vars)
-    integration_map = Dict(input_vars[1] => input_vars[3],
+    integration_map = Dict(input_vars[1] => input_vars[2],
                            input_vars[2] => overt_output_vars[1],
                            input_vars[3] => input_vars[4],
                            input_vars[4] => control_vars[1])
@@ -46,7 +46,7 @@ function car_dynamics(x, u)
 end
 
 
-function car_dynamics_overt(range_dict, N_overt)
+function car_dynamics_overt(range_dict, N_OVERT)
     lr = 1.5
     lf = 1.8
 
@@ -115,7 +115,7 @@ function drone_dynamics(x, u)
     return [dx1, dx2, dx3, dx4, dx5, dx6, dx7, dx8, dx9, dx10, dx11, dx12]
 end
 
-function drone_dynamics_overt(range_dict, N_overt)
+function drone_dynamics_overt(range_dict, N_OVERT)
 
     Kphi = 1
     Ktheta = 1
@@ -181,14 +181,21 @@ ball and beam example
 
 function ball_beam_dynamics(x, u)
     dx1 = x[2]
-    dx2 = 1.6*x[3]^3 - x[3] + x[1]*x[4]^2
+    dx2 = -sin(x[3]) + x[1]*x[4]^2
     dx3 = x[4]
     dx4 = u[1]
     return [dx1, dx2, dx3, dx4]
 end
 
-function ball_beam_dynamics_overt(range_dict, N_overt)
-    v2 = :(1.6*x3^3 - x3 + x1*x4^2)
+function ball_beam_dynamics_overt(range_dict, N_OVERT)
+    v2 = :(x1 * x4^2 - sin(x3))
+    oA_out = overapprox_nd(v2, range_dict; N=N_OVERT)
+    return oA_out, [oA_out.output]
+end
+
+function ball_beam_dynamics_overt_timed(range_dict, N_OVERT, t_idx)
+    v2 = "x1_$t_idx * x4_$t_idx^2 - sin(x3_$t_idx)"
+    v2 = Meta.parse(v2)
     oA_out = overapprox_nd(v2, range_dict; N=N_OVERT)
     return oA_out, [oA_out.output]
 end
@@ -204,11 +211,19 @@ end
 """
 single pendulum example
 """
-function single_pend_dynamics_overt(range_dict, N_overt)
+function single_pend_dynamics_overt(range_dict, N_OVERT)
     v1 = :(T + sin(th) - 0.2*dth)
-    v1_oA = overapprox_nd(v1, range_dict; N=N_overt)
+    v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
     return v1_oA, [v1_oA.output]
 end
+
+function single_pend_dynamics_overt_timed(range_dict, N_OVERT, t_idx)
+    v1 = "T_$t_idx + sin(th_$t_idx) - 0.2*dth_$t_idx"
+    v1 = Meta.parse(v1)
+    v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
+    return v1_oA, [v1_oA.output]
+end
+
 
 function single_pend_dynamics(x, u)
     dx1 = x[2]
@@ -254,7 +269,7 @@ end
 #     return oA_out, [v1_oA.output, v2_oA.output]
 # end
 
-function double_pend_dynamics_overt(range_dict, N_overt)
+function double_pend_dynamics_overt(range_dict, N_OVERT)
     v1 = :(sin(th1))
     v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
     range_dict = merge(range_dict, Dict(v1_oA.output=> v1_oA.output_range))

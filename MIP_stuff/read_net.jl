@@ -67,7 +67,7 @@ function one_timestep_query(dynamics, update_rule, network_file, input_set, inpu
     mip_control_output_vars = [get_mip_var(v, mip_model) for v in control_vars]
     controller_bound = add_controller_constraints(mip_model.model, network_file, input_set, mip_control_input_vars, mip_control_output_vars)
 
-    #mip_summary(mip_model.model)
+    mip_summary(mip_model.model)
 
     # get integration map
     integration_map = update_rule(input_vars, control_vars, oA_vars)
@@ -92,8 +92,11 @@ function many_timestep_query(n_timesteps, update_rule, dynamics, network_file, i
     input_set = input_set_0
     all_sets = [input_set]
     for i = 1:n_timesteps
+        t1 = Dates.now()
         output_set = one_timestep_query(dynamics, update_rule, network_file, input_set, input_vars,
                                         control_vars, last_layer_activation, dt, N_overt)
+        t2 = Dates.now()
+        println("timestep $i computed in $((t2-t1).value/1000)")                                
         input_set = output_set
         push!(all_sets, input_set)
     end
