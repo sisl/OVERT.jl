@@ -85,13 +85,13 @@ class GurobiPyWrapper():
 
     def get_new_matrix_of_vars(self, names, vtypes=None, lbs=None, ubs=None):
         names, vtypes, lbs, ubs = self.handle_args(names, vtypes, lbs, ubs)
-        print("names:", names ," vtypes:", vtypes," lbs:", lbs, " ubs:", ubs)
-        print("len(names)=", len(names))
-        gbvs = self.model.addMVar(len(names), lb=lbs, ub=ubs, name=names) #, vtype=vtypes, )  
-        # TODO: ^ figure out why you can't pass names......
+        #print("names:", names ," vtypes:", vtypes," lbs:", lbs, " ubs:", ubs)
+        #print("len(names)=", len(names))
+        #gbvs = self.model.addMVar(len(names), lb=lbs, ub=ubs, name=names, vtype=vtypes) 
+        vars = [] 
         for i in range(len(names)):
-            self.var_map[names[i]] = gbvs[i]  
-        return gbvs
+            vars.append(self.get_new_var(name=names[i], vtype=vtypes[i], lb=lbs[i], ub=ubs[i]))
+        return gp.MVar(vars) # put into a matrix
         
     def assert_constraints(self, constraints):
         for c in constraints:
@@ -113,7 +113,7 @@ class GurobiPyWrapper():
     def assert_matrix_constraint(self, c: MatrixConstraint):
         # TODO: handle 'not equal' constraint (exception)
         x = self.get_new_matrix_of_vars(c.x) # get gurobi vars
-        print("x shape is: ", c.x.shape, " b shape is: ", c.b.shape, " A shape is: ", c.A.shape)
+        print("x shape is: ", np.array(c.x).shape, " b shape is: ", c.b.shape, " A shape is: ", c.A.shape)
         self.matrix_helper(c.A, x, c.type, c.b)
     
     def assert_simple_constraint(self, c: Constraint):
@@ -145,7 +145,7 @@ class GurobiPyWrapper():
         """
         NOTE: For now, assumes both variables put into the max are continuous
         """
-        # import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         print("varout: ", c.varout)
         print("var1in:", c.var1in)
         print("var2in:", c.var2in)
