@@ -23,7 +23,7 @@ example_1 = OvertMCExample(
              n_check_invariant=2,
              N_overt=1,
              dt=0.1,
-             recalculate=True,
+             recalculate=False,
              ncore=N_CORES
              )
 example_1.run()

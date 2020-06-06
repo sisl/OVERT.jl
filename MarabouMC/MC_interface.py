@@ -182,6 +182,8 @@ class BMC():
             if not (result == Result.UNSAT):
                 print("Property may not hold at time ", i)
                 return result, values, stats
+            else:
+                print("Property holds at time ", i)
         return Result.UNSAT, values, stats ## TODO: make sure this is correct
     
     def step_invariant_assume(self, t):

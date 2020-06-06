@@ -66,8 +66,6 @@ class GurobiPyWrapper():
         if isinstance(name, np.ndarray):
             name = name.flatten()[0]
         if name not in self.var_map.keys():
-            #print("name:", name ," vtype:", vtype," lb:", lb, " ub:", ub)
-            #import pdb; pdb.set_trace()
             gbv = self.model.addVar(lb=lb, ub=ub, vtype=vtype, name=name)
             self.var_map[name] = gbv
         return self.var_map[name]
@@ -86,10 +84,7 @@ class GurobiPyWrapper():
         return names, vtypes, lbs, ubs
 
     def get_new_matrix_of_vars(self, names, vtypes=None, lbs=None, ubs=None):
-        names, vtypes, lbs, ubs = self.handle_args(names, vtypes, lbs, ubs)
-        #print("names:", names ," vtypes:", vtypes," lbs:", lbs, " ubs:", ubs)
-        #print("len(names)=", len(names))
-        #gbvs = self.model.addMVar(len(names), lb=lbs, ub=ubs, name=names, vtype=vtypes) 
+        names, vtypes, lbs, ubs = self.handle_args(names, vtypes, lbs, ubs) 
         vars = [] 
         for i in range(len(names)):
             vars.append(self.get_new_var(name=names[i], vtype=vtypes[i], lb=lbs[i], ub=ubs[i]))
@@ -115,7 +110,6 @@ class GurobiPyWrapper():
     def assert_matrix_constraint(self, c: MatrixConstraint):
         # TODO: handle 'not equal' constraint (exception)
         x = self.get_new_matrix_of_vars(c.x) # get gurobi vars
-        #print("x shape is: ", x.shape, " b shape is: ", c.b.shape, " A shape is: ", c.A.shape)
         self.matrix_helper(c.A, x, c.type, c.b)
     
     def assert_simple_constraint(self, c: Constraint):
@@ -125,7 +119,6 @@ class GurobiPyWrapper():
         A = np.array([m.coeff for m in c.monomials]).reshape(1,-1)
         b = np.array([c.scalar]) #.reshape(1,1)
         x = self.get_new_matrix_of_vars([m.var for m in c.monomials])
-        print("x is:" , x)
         self.matrix_helper(A, x, c.type, b)
     
     def matrix_helper(self, A, x, R, b):
@@ -136,7 +129,7 @@ class GurobiPyWrapper():
         """
         
         b = b.flatten()
-        print(" A shape is: ", A.shape, "x shape is: ", x.shape, " b shape is: ", b.shape)
+        #print(" A shape is: ", A.shape, "x shape is: ", x.shape, " b shape is: ", b.shape)
         if R == ConstraintType('EQUALITY'):
             self.model.addConstr(A @ x == b)
         elif R == ConstraintType('LESS_EQ'):
@@ -150,10 +143,6 @@ class GurobiPyWrapper():
         """
         NOTE: For now, assumes both variables put into the max are continuous
         """
-        #import pdb; pdb.set_trace()
-        print("varout: ", c.varout)
-        print("var1in:", c.var1in)
-        print("var2in:", c.var2in)
         var1in = self.get_new_var(c.var1in, continuous) if isinstance(c.var1in, str) else c.var1in # allow for var1in or var2in to be integers
         var2in = self.get_new_var(c.var2in, continuous) if isinstance(c.var2in, str) else c.var2in
         varsin = [var1in, var2in]
