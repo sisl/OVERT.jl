@@ -121,7 +121,7 @@ class MatrixConstraint(AbstractConstraint):
         elif isinstance(ctype, ConstraintType):
             self.type = ctype
         # assertions for the precondition
-        assert(A.shape[1] == x.shape[0])
+        assert(A.shape[1] == np.array(x).shape[0])
         assert(A.shape[0] == b.shape[0])
         self.A = A # contains real numbers
         self.x = x # contains variables. # when parsed from tf, will be numpy arrays.

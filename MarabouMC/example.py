@@ -22,6 +22,7 @@ from gurobi_interface import GurobiPyWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
 
+julia_executable_path = "/Applications/Julia-1.2.app/Contents/Resources/julia/bin/julia"
 
 class OvertMCExample():
     def __init__(self,
@@ -117,7 +118,7 @@ class OvertMCExample():
             fid.close()
 
             print("julia starting ...")
-            os.system("julia " + self.overt_dynamics_file)
+            os.system(julia_executable_path + " " + self.overt_dynamics_file)
             print("julia finished.")
         else:
             print("recalcualte is turned off. using existing overt file.")

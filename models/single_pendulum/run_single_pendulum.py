@@ -1,3 +1,4 @@
+import colored_traceback.always
 import os
 import sys
 assert len(sys.argv) == 3, "you should pass marabou address AND number of cores used in the job"

@@ -63,6 +63,8 @@ class GurobiPyWrapper():
         type should be one of:
         GRB.CONTINUOUS, GRB.BINARY, GRB.INTEGER, GRB.SEMICONT, or GRB.SEMIINT
         """
+        if isinstance(name, np.ndarray):
+            name = name.flatten()[0]
         if name not in self.var_map.keys():
             #print("name:", name ," vtype:", vtype," lb:", lb, " ub:", ub)
             #import pdb; pdb.set_trace()
@@ -113,7 +115,7 @@ class GurobiPyWrapper():
     def assert_matrix_constraint(self, c: MatrixConstraint):
         # TODO: handle 'not equal' constraint (exception)
         x = self.get_new_matrix_of_vars(c.x) # get gurobi vars
-        print("x shape is: ", np.array(c.x).shape, " b shape is: ", c.b.shape, " A shape is: ", c.A.shape)
+        #print("x shape is: ", x.shape, " b shape is: ", c.b.shape, " A shape is: ", c.A.shape)
         self.matrix_helper(c.A, x, c.type, c.b)
     
     def assert_simple_constraint(self, c: Constraint):
@@ -132,6 +134,9 @@ class GurobiPyWrapper():
         x should be GUROBI variables
         R should be an instance of a ConstraintType
         """
+        
+        b = b.flatten()
+        print(" A shape is: ", A.shape, "x shape is: ", x.shape, " b shape is: ", b.shape)
         if R == ConstraintType('EQUALITY'):
             self.model.addConstr(A @ x == b)
         elif R == ConstraintType('LESS_EQ'):
