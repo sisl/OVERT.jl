@@ -1,5 +1,6 @@
 using JuMP
 using Gurobi
+using Crayons
 
 """
 ----------------------------------------------
@@ -245,6 +246,30 @@ function max_min_2_mip(expr::Expr, outvar::JuMP.VariableRef, overt_mip_model::Ov
     @constraint(overt_mip_model.model, outvar <= a*U3)
     @constraint(overt_mip_model.model, outvar <= x3 - L3*(1-a))
 end
+
+function mip_summary(model)
+    MathOptInterface = MOI
+    const_types = list_of_constraint_types(model)
+    l_lin = 0
+    l_bin = 0
+	println(Crayon(foreground = :yellow), "="^50)
+	println(Crayon(foreground = :yellow), "="^18 * " mip summary " * "="^19)
+    for i = 1:length(const_types)
+        var = const_types[i][1]
+        const_type = const_types[i][2]
+        l = length(all_constraints(model, var, const_type))
+        #println("there are $l constraints of type $const_type with variables type $var.")
+        if const_type != MathOptInterface.ZeroOne
+            l_lin += l
+        else
+            l_bin += l
+        end
+    end
+	println(Crayon(foreground = :yellow), "there are $l_lin linear constraints and $l_bin binary constraints.")
+	println(Crayon(foreground = :yellow), "="^50)
+    println(Crayon(foreground = :white), " ")
+end
+
 
 function overt_2_mip_test1()
     oA_test = OverApproximation()
