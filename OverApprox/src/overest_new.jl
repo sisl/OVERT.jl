@@ -34,6 +34,7 @@ function plot_bound(f, a, b, xp, yp; existing_plot=nothing)
 		display(existing_plot);
 		#return existing_plot
 	end
+	print("\u1b[1F")
 end
 
 
@@ -275,6 +276,9 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 					# check zeros are within the interval
 					@assert z.zero[1] > aa
 					@assert z.zero[end] < bb
+					for ii=1:length(z.zero)-1
+						@assert z.zero[ii] < z.zero[ii+1]
+					end
 					break
 				catch
 					itr_nlsolve += 1
