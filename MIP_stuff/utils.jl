@@ -196,6 +196,86 @@ function many_timestep_concretization(query::OvertQuery, input_set_0::Hyperrecta
     return all_sets,  all_oA, all_oA_vars
 end
 
+function symbolic_satisfiability(query, input_set)
+   """
+	This function computes whether property P is satisfiable at timestep n symbolically.
+   inputs:
+   - query: OvertQuery
+	- input_set: Hyperrectangle for the initial set of variables.
+   outputs:
+   - status (sat, unsat, error), values if sat, statistics
+	"""
+	# read some attributes
+	input_vars = query.problem.input_vars
+   control_vars = query.problem.control_vars
+   network_file = query.network_file
+   ntime = query.ntime
+	update_rule = query.problem.update_rule
+	dt = query.dt
+
+	# setup all overt constraints via bounds found by conceretization
+   all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
+   oA_tot = add_overapproximate(all_oA)
+   mip_model = OvertMIP(oA_tot)
+
+   # add controller to mip
+   for i = 1:ntime+1
+      input_set        = all_sets[i]
+      input_vars_tmp   = [Meta.parse("$(v)_$i") for v in input_vars]
+      control_vars_tmp = [Meta.parse("$(v)_$i") for v in control_vars]
+      mip_control_input_vars  = [get_mip_var(v, mip_model) for v in input_vars_tmp]
+      mip_control_output_vars = [get_mip_var(v, mip_model) for v in control_vars_tmp]
+      controller_bound = add_controller_constraints(mip_model.model, network_file, input_set, mip_control_input_vars, mip_control_output_vars)
+   end
+
+   mip_summary(mip_model.model)
+
+   last_time_step_vars = []
+   for i = 1:ntime
+      oA_vars_now = all_oA_vars[i]
+      input_vars_now = [Meta.parse("$(v)_$i") for v in input_vars]
+      input_vars_next= [Meta.parse("$(v)_$(i+1)") for v in input_vars]
+      control_vars_now = [Meta.parse("$(v)_$i") for v in control_vars]
+
+      integration_map = update_rule(input_vars_now, control_vars_now, oA_vars_now)
+      for j = 1:length(input_vars)
+         v = input_vars_now[j]
+         dv = integration_map[v]
+         next_v = input_vars_next[j]
+
+         v_mip = mip_model.vars_dict[v]
+         dv_mip = mip_model.vars_dict[dv]
+         next_v_mip = mip_model.vars_dict[next_v]
+         if i == ntime
+            push!(last_time_step_vars, next_v_mip)
+         end
+         @constraint(mip_model.model, next_v_mip == v_mip + dt * dv_mip)
+     end
+   end
+
+   #no objective makes it a feasibility problem @objective(mip_model.model, Min, 0)
+
+   input_vars_last = [Meta.parse("$(v)_$ntime") for v in input_vars]
+   lows = Array{Float64}(undef, 0)
+   highs = Array{Float64}(undef, 0)
+   
+   for v in last_time_step_vars
+      @constraint(mip_model.model, v >= 3)
+      @constraint(mip_model.model, v <= 0)
+   end
+
+   JuMP.optimize!(mip_model.model)
+
+   if termination_status(mip_model.model) == MathOptInterface.TerminationStatusCode(0)
+      # optimal
+      return "sat", value.(last_time_step_vars), Dict()
+   elseif termination_status(mip_model.model) == MathOptInterface.TerminationStatusCode(1)
+      # infeasible
+      return "unsat", Dict(), Dict()
+   else
+      return "error", Dict(), Dict()
+   return 
+end
 
 function symbolic_bound(query, input_set)
    """
