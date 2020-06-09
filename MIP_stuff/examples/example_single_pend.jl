@@ -6,13 +6,13 @@ include("../utils.jl")
 include("../models/single_pendulum/single_pend.jl")
 
 query = OvertQuery(
-	SinglePendulum,                                   # problem
-	"../nnet_files/controller_simple_single_pend.nnet",  # network file
-	Id(),                                             # last layer activation layer Id()=linear, or ReLU()=relu
-	"blah",                                           # query type, "concrete" or "symoblic"
-	20,                                                # ntime
-	0.1,                                              # dt
-	-1,                                                # N_overt
+	SinglePendulum,                                      # problem
+	"../nnet_files/controller_complex_single_pend.nnet", # network file
+	Id(),                                                # last layer activation layer Id()=linear, or ReLU()=relu
+	"blah",                                              # query type, "concrete" or "symoblic"
+	10,                                                  # ntime
+	0.1,                                                 # dt
+	-1,                                                  # N_overt
 	)
 
 input_set = Hyperrectangle(low=[1., 1.], high=[2., 2.])

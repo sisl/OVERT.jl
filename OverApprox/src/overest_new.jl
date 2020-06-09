@@ -186,7 +186,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 	"""
 
 	if N == -1 # optimally choose N
-		return bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method=conc_method,
+		return bound_optimal(f, a, b; conc_method=conc_method,
 			lowerbound=lowerbound, df=df, d2f=d2f, d2f_zeros=d2f_zeros, convex=convex,
 			plot=plot, existing_plot=existing_plot)
 	end

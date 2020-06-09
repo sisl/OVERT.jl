@@ -70,7 +70,7 @@ function setup_overt_and_controller_constraints(query::OvertQuery, input_set::Hy
 
    # read attributes
    dynamics = query.problem.overt_dynamics
-	input_vars = query.problem.input_vars
+   input_vars = query.problem.input_vars
    control_vars = query.problem.control_vars
 
    network_file = query.network_file
@@ -210,26 +210,26 @@ function symbolic_bound(query, input_set)
 	"""
 	# read some attributes
 	input_vars = query.problem.input_vars
-   control_vars = query.problem.control_vars
-   network_file = query.network_file
-   ntime = query.ntime
+	control_vars = query.problem.control_vars
+	network_file = query.network_file
+	ntime = query.ntime
 	update_rule = query.problem.update_rule
 	dt = query.dt
 
 	# setup all overt constraints via bounds found by conceretization
-   all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
-   oA_tot = add_overapproximate(all_oA)
-   mip_model = OvertMIP(oA_tot)
+	all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
+	oA_tot = add_overapproximate(all_oA)
+	mip_model = OvertMIP(oA_tot)
 
-   # add controller to mip
-   for i = 1:ntime+1
-      input_set        = all_sets[i]
-      input_vars_tmp   = [Meta.parse("$(v)_$i") for v in input_vars]
-      control_vars_tmp = [Meta.parse("$(v)_$i") for v in control_vars]
-      mip_control_input_vars  = [get_mip_var(v, mip_model) for v in input_vars_tmp]
-      mip_control_output_vars = [get_mip_var(v, mip_model) for v in control_vars_tmp]
-      controller_bound = add_controller_constraints(mip_model.model, network_file, input_set, mip_control_input_vars, mip_control_output_vars)
-   end
+	# add controller to mip
+	for i = 1:ntime+1
+		input_set        = all_sets[i]
+		input_vars_tmp   = [Meta.parse("$(v)_$i") for v in input_vars]
+		control_vars_tmp = [Meta.parse("$(v)_$i") for v in control_vars]
+		mip_control_input_vars  = [get_mip_var(v, mip_model) for v in input_vars_tmp]
+		mip_control_output_vars = [get_mip_var(v, mip_model) for v in control_vars_tmp]
+		controller_bound = add_controller_constraints(mip_model.model, network_file, input_set, mip_control_input_vars, mip_control_output_vars)
+	end
 
    mip_summary(mip_model.model)
 
