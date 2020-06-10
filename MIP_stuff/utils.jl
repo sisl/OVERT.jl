@@ -6,8 +6,9 @@ using Parameters
 using Interpolations
 using Gurobi
 using Dates
+using MathOptInterface
 
-NEURAL_VERIFICATION_PATH = "/home/amaleki/Downloads/NeuralVerification.jl"
+NEURAL_VERIFICATION_PATH = "/Users/Chelsea/Dropbox/AAHAA/src/NeuralVerification.jl"
 
 include("$NEURAL_VERIFICATION_PATH/src/utils/activation.jl")
 include("$NEURAL_VERIFICATION_PATH/src/utils/network.jl")
@@ -274,7 +275,7 @@ function symbolic_satisfiability(query, input_set)
       return "unsat", Dict(), Dict()
    else
       return "error", Dict(), Dict()
-   return 
+   end
 end
 
 function symbolic_bound(query, input_set)
