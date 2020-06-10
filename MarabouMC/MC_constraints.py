@@ -182,28 +182,30 @@ def matrix_to_scalar(c : MatrixConstraint):
     return scalar_constraints
 
 class NLConstraint(AbstractConstraint):
-    def __init__(self, ctype: ConstraintType, left, right, indep_vars):
+    def __init__(self, ctype: ConstraintType, out, fun, indep_var):
         """
-        A class to represent 1-D nonlinear constraints.
-        ~~ left R right ~~
-        left is a variable string and right is a string holding a nonlinear expression.
-        e.g. left = "x56"
-             right = "sin(x86)"
-        indep_vars are the independent variables in the string / nonlinear expression.
+        A class to represent 1-D nonlinear unary constraints.
+        ~~ out R fun(indep_var) ~~
+        left is a variable string and right is a string holding a 1D nonlinear expression.
+        e.g. out = "x56"
+             fun = "sin"
+        indep_var is the independent variable in the nonlinear expression.
         where R is a relation in the set: <, <=, >, >=, =
+        together:
+        x56 R sin(indep_var)
         """
         super().__init__()
         if isinstance(ctype, str):
             self.type = ConstraintType(ctype)
         elif isinstance(ctype, ConstraintType):
             self.type = ctype
-        self.left = left
-        self.right = right
-        self.indep_vars = indep_vars
+        self.out = out
+        self.fun = fun
+        self.indep_var = indep_var
     
     def complement(self):
         return NLConstraint(self.type_complement[self.type], self.left, self.right, self.indep_vars)
     
     def __repr__(self):
-        s = "<Non Linear Constraint: left " + self.type.__repr__() + " right\n"
+        s = "<Non Linear Constraint: out " + self.type.__repr__() + " fun(indep_var)\n"
         return s

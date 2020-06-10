@@ -1,7 +1,7 @@
 from enum import Enum
 #import tensorflow as tf
 # from maraboupy import *
-from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint, MaxConstraint
+from MC_constraints import Constraint, ConstraintType, MatrixConstraint, ReluConstraint, MaxConstraint, NLConstraint
 from Constraint_utils import matrix_equality_constraint, equality_constraint
 from properties import Property, ConstraintProperty
 from transition_systems import TransitionRelation
@@ -61,6 +61,12 @@ def substitute_max(c: MaxConstraint, mapping):
     new_c.varout = mapping[c.varout]
     return new_c
 
+def substitue_NL(c: NLConstraint, mapping):
+    new_c = deepcopy(c)
+    new_c.out = mapping[c.out]
+    new_c.indep_var = mapping[c.indep_var]
+    return new_c
+
 def timer_helper(var_list, t):
     return [v+"@"+str(t) if not isprimed(v) else v[:-1]+"@"+str(t+1) for v in var_list]
 
@@ -97,6 +103,10 @@ class Unroller():
             vars_in_c = np.array([c.var1in, c.var2in, c.varout]).flatten()
             timed_vars = timer_helper(vars_in_c, t)
             return substitute_max(c, dict(zip(vars_in_c, timed_vars)))
+        elif isinstance(c, NLConstraint):
+            vars_in_c = np.array([c.out, c.indep_var]).flatten()
+            timed_vars = timer_helper(vars_in_c, t)
+            return substitue_NL(c, dict(zip(vars_in_c, timed_vars)))
         else:
             raise NotImplementedError
 

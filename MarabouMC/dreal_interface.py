@@ -1,4 +1,4 @@
-from MC_constraints import Constraint, MatrixConstraint, MaxConstraint, ReluConstraint, Monomial
+from MC_constraints import Constraint, MatrixConstraint, MaxConstraint, ReluConstraint, Monomial, NLConstraint
 import numpy as np
 import os
 from MC_interface import Result
@@ -72,7 +72,7 @@ class OverapproxVerifier:
         """
         pass
 
-class stateful_dreal_wrapper:
+class StatefulDrealWrapper:
     """
     A wrapper like the one in marabou_interface.py
     that collects constraints as they are asserted.
@@ -96,9 +96,15 @@ class stateful_dreal_wrapper:
         """
         Convert constraint objects to SMTLIB2
         """
+        # TODO: I assert_logical of constraints after "declaring reals"
+        # so there are no reals to declare yet and no reald are then declared. 
+        # I should either:
+        # declare reals inside assert_logical OR parse the constraints before
+        # putting things inside the smtlib_formula
+        main_formula = self.f.assert_logical(self.constraints)
         self.smtlib_formula = self.f.header() + \
                               self.f.declare_reals() + \
-                              self.f.assert_logical(self.constraints) + \
+                              main_formula + \
                               self.f.footer()
         self.formula_object = SMTLibFormula(self.smtlib_formula)
 
@@ -119,6 +125,9 @@ class stateful_dreal_wrapper:
         Assert multiple constraints.
         """
         self.constraints += constraints
+    
+    def mark_outputs(self, outputs):
+        pass
 
     def check_sat(self):
         """
@@ -129,7 +138,7 @@ class stateful_dreal_wrapper:
         self.formula_object._print()
         fake_values = dict(zip(self.input_vars, np.zeros(len(self.input_vars)))) # TODO: CHANGE
         fake_stats = []
-        return Result.SAT, fake_values, fake_stats
+        return Result.UNSAT, fake_values, fake_stats
 
 class FormulaConverter:
     """
@@ -290,6 +299,8 @@ class FormulaConverter:
             expr = self.convert_ReluConstraint(item)
         elif isinstance(item, MaxConstraint):
             expr = self.convert_MaxConstraint(item)
+        elif isinstance(item, NLConstraint):
+            expr = self.convert_NLConstraint(item)
         else:
             raise NotImplementedError
         return expr
@@ -357,6 +368,7 @@ class FormulaConverter:
         """
         constraints = []
         m = c.A.shape[0]
+        c.b = c.b.reshape(-1,1)
         for row in range(m):
             constraints += self.convert_constraint_helper(c.A[row,:], c.x.flatten(), c.type.__repr__(), c.b[row][0])
         return constraints
@@ -389,6 +401,20 @@ class FormulaConverter:
         left_side = self.prefix_notate("max", [c.var1in, c.var2in])
         right_side = c.varout
         return [self.prefix_notate("=", [left_side, right_side])]
+    
+    def convert_NLConstraint(self, c):
+        """
+        Convert a constraint of type NLConstraint
+        For now, they are only 1D
+        y = sin(x)  ->   (= y (sin x))
+        """
+        assert isinstance(c.indep_var, str) # not an array of variables
+        self.add_real_vars([c.out, c.indep_var])
+        left_side = c.out  # aka y
+        right_side = self.prefix_notate(c.fun, c.indep_var)
+        return [self.prefix_notate(c.type.__repr__(), [left_side, right_side])]
+
+    # TODO: implement mul  and div nonlinear constraint classes
 
     def get_new_bool(self):
         self.new_var_count += 1
