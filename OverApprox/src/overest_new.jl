@@ -25,13 +25,16 @@ function plot_bound(f, a, b, xp, yp; existing_plot=nothing)
 	y = f.(x)
 	if isnothing(existing_plot)
 		p = plot(x,  y, color="red", linewidth=2, label="f(x)");
-		plot!(p, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=:topleft);
+		p = plot!(p, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=false);
 		display(p)
+		#return p
 	else
 		plot!(existing_plot, x,  y, color="red", linewidth=2, label="f(x)");
-		plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=:topleft);
-		display(existing_plot)
+		plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=false);
+		display(existing_plot);
+		#return existing_plot
 	end
+	print("\u1b[1F")
 end
 
 
@@ -52,7 +55,9 @@ function give_interval(d2f_zeros, a, b)
 			d2f_zeros = vcat(d2f_zeros, b)
 		end
 		for i in 1:length(d2f_zeros)-1
-			push!(intervals, (d2f_zeros[i], d2f_zeros[i+1]))
+			if !myapprox(d2f_zeros[i], d2f_zeros[i+1])
+				push!(intervals, (d2f_zeros[i], d2f_zeros[i+1]))
+			end
 		end
 		return intervals
 	end
@@ -179,6 +184,13 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 		overest(sin, -π/2, π, 3, d2f_zero=[0])
 		overest(x-> x^3-sin(x), 0, 2, 3, out=points)
 	"""
+
+	if N == -1 # optimally choose N
+		return bound_optimal(f, a, b; conc_method=conc_method,
+			lowerbound=lowerbound, df=df, d2f=d2f, d2f_zeros=d2f_zeros, convex=convex,
+			plot=plot, existing_plot=existing_plot)
+	end
+
 	try
 		f(a)
 		f(b)
@@ -201,7 +213,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
         intervals = give_interval(d2f_zeros, a, b)  # find subintervals.
     end
 
-	println("OVERT applied on $f within ranges [$a, $b]")
+	# println("OVERT applied on $f within ranges [$a, $b]")
     xp = []
     yp = []
     for interval in intervals
@@ -264,6 +276,9 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 					# check zeros are within the interval
 					@assert z.zero[1] > aa
 					@assert z.zero[end] < bb
+					for ii=1:length(z.zero)-1
+						@assert z.zero[ii] < z.zero[ii+1]
+					end
 					break
 				catch
 					itr_nlsolve += 1
@@ -319,7 +334,64 @@ function overapprox(f,a,b,N; conc_method="continuous", df=nothing, d2f=nothing,
 
 	UB = bound(f, a, b, N; conc_method=conc_method, lowerbound=false, df=df, d2f=d2f,
 	d2f_zeros=d2f_zeros, convex=convex, plot=plot, reuse=true)
-
 	return LB, UB
+end
 
+function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="continuous",
+	lowerbound=false, df=nothing, d2f=nothing, d2f_zeros=nothing, convex=nothing,
+	plot=false, existing_plot=nothing)
+
+	try
+		f(a)
+		f(b)
+	catch
+		error("$a or $b is not in the domanin of $f")
+	end
+
+	if isnothing(df)
+		df = Calculus.derivative(f)
+	end
+	if ! isnothing(convex) # if convexity is specified, no sub-intervals necessary.
+		intervals = [(a,b)]
+	else
+		if isnothing(d2f)
+			d2f = Calculus.second_derivative(f)
+		end
+		if isnothing(d2f_zeros) # calculate zeros of second derivative, if not given.
+			d2f_zeros = fzeros(d2f, a, b)
+		end
+		intervals = give_interval(d2f_zeros, a, b)  # find subintervals.
+	end
+	xp = []
+	yp = []
+	for interval in intervals
+		aa, bb = interval
+		convex = d2f((aa + bb) / 2) > 0   # specify convexity
+		for N = 1:Nmax
+			xp_candidate, yp_candidate = bound(f, aa, bb, N; conc_method="continuous", lowerbound=lowerbound, df=df,
+			d2f=d2f, d2f_zeros=d2f_zeros, convex=convex, plot=plot)
+
+			itp = interpolate((xp_candidate[1],), yp_candidate[1], Gridded(Linear()))
+			xtest = range(aa, stop=bb, length=100)
+			ytest = [itp(xt) for xt in xtest]
+			ftest = [f(xt)   for xt in xtest]
+			sc = maximum(ftest) - minimum(ftest)
+			error = [abs(itp(xt) - f(xt))/sc for xt in xtest]
+			if (maximum(error) < rel_error_tol) || (N == Nmax)
+				xp = vcat(xp, xp_candidate)
+				yp = vcat(yp, yp_candidate)
+				break
+			end
+		end
+	end
+
+	xp = unique(xp)
+	yp = unique(yp)
+
+	if plot
+		plot_bound(f, a, b, xp, yp; existing_plot=existing_plot);
+		return xp, yp
+	else
+		return xp, yp
+	end
 end

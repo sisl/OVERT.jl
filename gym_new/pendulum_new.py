@@ -201,7 +201,8 @@ class Pendulum1Env(Pendulum):
 
 class Pendulum2Env(Pendulum):
     def __init__(self, x_0=0., dt=0.001):
-        super().__init__(n_pend=2, x_0=x_0, dt=dt, c=0.0, g=1.0, m=0.5, L=0.5, integration_method="0th")
+        super().__init__(n_pend=2, x_0=x_0, dt=dt, c=0.0, g=1.0, m=0.5, L=0.5,
+                         integration_method="1st")
 
     def setup_equation(self, u_prime, x, torques):
         T1, T2 = torques
@@ -271,10 +272,16 @@ if __name__ == '__main__':
     #     p3.step([1., 0.5, 0.])
     #     print(p3.x)
     # p3.render()
+    import os
+    print(os.getcwd())
+    from keras.models import load_model
+    #model = load_model("../models/double_pendulum/double_pend_nn_controller_lqr_data.h5")
+    model = load_model("../../gym_new/controler/model_ilqr.h5")
 
-    env = Pendulum2Env(dt=0.1, x_0=[1., 1.5, 0., 0.])
+    env = Pendulum2Env(dt=0.01, x_0=[1., 1.5, 0., 0.])
     env.reset()
     for _ in range(200):
+        u = model.predict(env.x.reshape(1,-1))
         env.step([0., 0.])
     env.render()
     #env.animate(file_name="pend2_freefal.gif",  dpi = 90)

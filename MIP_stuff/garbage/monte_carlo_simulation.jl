@@ -55,7 +55,7 @@ function plot_output_hist(data, ntime; fig=nothing, idx=[1,2], nbins=:notspecifi
     if nbins == :notspecified
         fig = histogram2d!(x, y, legend=false)
     else
-        fig = histogram2d!(x, y, nbins=nbins, legend=false)
+        fig = histogram2d!(x, y, nbins=nbins)
     end
     return fig
 end
