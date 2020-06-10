@@ -1,3 +1,4 @@
+import colored_traceback.always
 import os
 import sys
 assert len(sys.argv) == 3, "you should pass marabou address AND number of cores used in the job"
@@ -22,7 +23,7 @@ example_1 = OvertMCExample(
              n_check_invariant=2,
              N_overt=1,
              dt=0.1,
-             recalculate=True,
+             recalculate=False,
              ncore=N_CORES
              )
 example_1.run()

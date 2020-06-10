@@ -233,6 +233,47 @@ function find_affine_range(expr, range_dict)
     end
 end
 
+mutable struct MyException <: Exception
+    var::String
+end
+
+function find_range(expr, range_dict)
+    """
+    Find range of PWL function.
+    """
+    if is_relu(expr)
+        if expr.args[1] == :relu
+            inner_expr = expr.args[2]
+        elseif expr.args[1] == :max # max with 0
+            inner_expr = expr.args[3]
+        end 
+        l,u = find_range(inner_expr, range_dict)
+        return [0, max(0, u)]
+    elseif is_affine(expr)
+        l,u = find_affine_range(expr, range_dict)
+        return [l,u]
+    elseif is_min(expr)
+        x = expr.args[2]
+        y = expr.args[3]
+        xl, xu = find_range(x, range_dict)
+        yl, yu = find_range(y, range_dict)
+        return [min(xl,yl), min(xu,yu)]
+    else
+        throw(MyException("not implemented yet"))
+    end
+end
+
+function is_relu(expr)
+    if length(expr.args) < 2
+        return false
+    end
+    return (expr.args[1] == :max && expr.args[2] == 0.) || expr.args[1] == :relu
+end
+
+function is_min(expr)
+    return expr.args[1] == :min
+end
+
 # todo: pretty sure we can use SymEngine.subs.
 # maybe better tested? but subs is also overly complicated...
 function substitute!(expr, old, new)
