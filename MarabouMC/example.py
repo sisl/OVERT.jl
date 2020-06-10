@@ -18,9 +18,11 @@ from MC_constraints import MaxConstraint
 from overt_to_python import OvertConstraint
 from transition_systems import KerasController, TFControlledTransitionRelation, TransitionSystem, OvertDynamics, constraint_variable_to_interval
 from marabou_interface import MarabouWrapper
+from gurobi_interface import GurobiPyWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
 
+julia_executable_path = "/Applications/Julia-1.2.app/Contents/Resources/julia/bin/julia"
 
 class OvertMCExample():
     def __init__(self,
@@ -118,7 +120,7 @@ class OvertMCExample():
 
             # run julia to generate bounds
             print("julia starting ...")
-            os.system("julia " + self.overt_dynamics_file)
+            os.system(julia_executable_path + " " + self.overt_dynamics_file)
             print("julia finished.")
         else:
             print("recalcualte is turned off. using existing overt file.")
@@ -166,7 +168,8 @@ class OvertMCExample():
         ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
         for c in ts.transition_relation.constraints:
             assert(not isinstance(c, MaxConstraint))
-        solver = MarabouWrapper(n_worker=self.ncore)
+        #solver = MarabouWrapper(n_worker=self.ncore)
+        solver = GurobiPyWrapper()
         prop = self.setup_property()
         algo = BMC(ts=ts, prop=prop, solver=solver)
         return algo.check_invariant_until(n_check_invariant)

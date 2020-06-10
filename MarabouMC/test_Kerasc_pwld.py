@@ -5,9 +5,10 @@ sys.path.append('..')
 import numpy as np
 from keras.models import load_model
 from overt_to_python import OvertConstraint
-from transition_systems import KerasController, Dynamics, TFControlledTransitionRelation, TransitionSystem, OVERTDynamics
+from transition_systems import KerasController, Dynamics, TFControlledTransitionRelation, TransitionSystem, OvertDynamics
 from MC_constraints import Constraint, ConstraintType, ReluConstraint, Monomial, MaxConstraint, ReluConstraint
 from marabou_interface import MarabouWrapper
+from gurobi_interface import GurobiPyWrapper
 from properties import ConstraintProperty
 from MC_interface import BMC
 from MC_simulate import simulate
@@ -16,7 +17,7 @@ from funs import single_pendulum
 
 # create controller object with a keras model
 # good controller
-model = load_model("../OverApprox/models/single_pend_nn_controller_ilqr_data.h5")
+model = load_model("../models/single_pendulum/single_pend_nn_controller_ilqr_data.h5")
 #model = load_model("../OverApprox/models/single_pend_nn_controller_lqr_data.h5")
 # bad controller
 # model = load_model("../OverApprox/models/single_pend_controller_nn_not_trained.h5")
@@ -35,7 +36,7 @@ print(controller.constraints)
 # controller.relus = []
 
 # create overt dynamics objects
-overt_obj = OvertConstraint("../OverApprox/models/single_pend_acceleration_overt.h5")
+overt_obj = OvertConstraint("../OverApprox/models/single_pendulum_overt.h5")
 for c in overt_obj.constraints:
     print(c)
 
@@ -52,7 +53,7 @@ time_update_dict = {"dt": dt,
                     "map": {states[0]: states[1], states[1]: acceleration}
                     }
 
-single_pendulum_dynamics = OVERTDynamics([overt_obj], time_update_dict)
+single_pendulum_dynamics = OvertDynamics([overt_obj], time_update_dict)
 
 # single_pendulum_dynamics = Dynamics(None, np.array(states).reshape(-1, 1), np.array(controls).reshape(-1, 1))
 # single_pendulum_dynamics.constraints = overt_obj.constraints.copy()
@@ -85,7 +86,7 @@ init_set = {states[0]: x1_init_set, states[1]: x2_init_set}
 ts = TransitionSystem(states=tr.states, initial_set=init_set, transition_relation=tr)
 
 # solver
-solver = MarabouWrapper()
+solver = GurobiPyWrapper() #MarabouWrapper()
 
 prop_list =[]
 p1 = Constraint(ConstraintType('GREATER'))

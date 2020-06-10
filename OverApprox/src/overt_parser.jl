@@ -63,6 +63,7 @@ mutable struct OverApproximationParser
     # all below lists refer to the original smooth nonlinear function
     true_L_list::Array{PWLoLConstraint,1} # list of linear or PWL constraints
     true_NL_list::Array{NLConstraint} # list of all nonlinear consraints
+    ranges
 end
 
 OverApproximationParser() = OverApproximationParser(Array{MaxConstraint, 1}(),
@@ -71,6 +72,7 @@ OverApproximationParser() = OverApproximationParser(Array{MaxConstraint, 1}(),
                                                     Array{IneqConstraint, 1}(),
                                                     Array{PWLoLConstraint, 1}(),
                                                     Array{NLConstraint, 1}(),
+                                                    Dict(),
                                                     )
 
 
@@ -117,6 +119,7 @@ function add_overapproximateparser(x_oAP::OverApproximationParser, y_oAP::OverAp
     z_oAP.ineq_list = vcat(x_oAP.ineq_list, y_oAP.ineq_list)
     z_oAP.true_L_list = vcat(x_oAP.true_L_list, y_oAP.true_L_list)
     z_oAP.true_NL_list = vcat(x_oAP.true_NL_list, y_oAP.true_NL_list)
+    # TODO: add range_dicts together
     return z_oAP
 end
 
@@ -139,7 +142,7 @@ parse_bound: parses every eq and ineq in bound.
 function parse_bound(bound::OverApproximation,
                      bound_parser::OverApproximationParser)
 
-
+    bound_parser.ranges = bound.ranges
     # parsing equalities
     i=0
     for eq in bound.approx_eq
@@ -235,6 +238,7 @@ function parse_linear_expr(expr::Expr, bound_parser::OverApproximationParser)
 end
 
 "given expr = :(2x+3y-3z+1) return [:x, :y, :c], [2, 3, -3], 1"
+get_linear_coeffs(expr::Symbol) = [expr], [1.0], 0
 function get_linear_coeffs(expr::Expr)
     vars = find_variables(expr)
     coeffs = zeros(length(vars))
@@ -287,12 +291,13 @@ function parse_max_expr(expr::Expr, bound_parser::OverApproximationParser)
     if rite_expr.args[1] == :+  # all max in one sum
         for arg in rite_expr.args[2:end]
             if number_of_max(arg) == 1
-                new_var = add_var()
+                new_var = add_var() # e.g. new_var = max(0, -1.6666666666666667 * (x2 - 0.0))
                 new_coeff = -arg.args[2]
                 push!(new_var_list, new_var)
                 push!(new_coeff_list, new_coeff)
                 new_expr = :($new_var == $(arg.args[3]))
-                parse_single_max_expr(new_expr, bound_parser)
+                parse_single_max_expr(new_expr, bound_parser) 
+                bound_parser.ranges[new_var] = find_range(arg.args[3], bound_parser.ranges)
             else
                 new_var = add_var()
                 new_coeff = -1.
@@ -300,6 +305,7 @@ function parse_max_expr(expr::Expr, bound_parser::OverApproximationParser)
                 push!(new_coeff_list, new_coeff)
                 new_expr = :($new_var == $arg)
                 parse_max_expr(new_expr, bound_parser)
+                bound_parser.ranges[new_var] = find_range(arg.args[3], bound_parser.ranges)
             end
         end
     else # rite_expr.args == :- two argument, each could include multiple max's.
@@ -312,6 +318,7 @@ function parse_max_expr(expr::Expr, bound_parser::OverApproximationParser)
             push!(new_coeff_list, new_coeff1)
             new_expr1 = :($new_var1 == $(first_arg.args[3]))
             parse_single_max_expr(new_expr1, bound_parser)
+            bound_parser.ranges[new_var1] = find_range(first_arg.args[3], bound_parser.ranges)
         else
             new_var1 = add_var()
             new_coeff1 = -1.
@@ -319,6 +326,7 @@ function parse_max_expr(expr::Expr, bound_parser::OverApproximationParser)
             push!(new_coeff_list, new_coeff1)
             new_expr1 = :($new_var1 == $first_arg)
             parse_max_expr(new_expr1, bound_parser)
+            bound_parser.ranges[new_var1] = find_range(first_arg.args[3], bound_parser.ranges)
         end
 
         # second max
@@ -330,6 +338,7 @@ function parse_max_expr(expr::Expr, bound_parser::OverApproximationParser)
             push!(new_coeff_list, new_coeff2)
             new_expr2 = :($new_var2 == $(second_arg.args[3]))
             parse_single_max_expr(new_expr2, bound_parser)
+            bound_parser.ranges[new_var2] = find_range(second_arg.args[3], bound_parser.ranges)
         else
             new_var2 = add_var()
             new_coeff2 = 1.
@@ -337,12 +346,14 @@ function parse_max_expr(expr::Expr, bound_parser::OverApproximationParser)
             push!(new_coeff_list, new_coeff2)
             new_expr2 = :($new_var2 == $second_arg)
             parse_max_expr(new_expr2, bound_parser)
+            bound_parser.ranges[new_var2] = find_range(second_arg.args[3], bound_parser.ranges)
         end
     end
     push!(bound_parser.eq_list, EqConstraint(new_var_list, new_coeff_list, 0.))
 end
 
 function parse_single_max_expr(expr::Expr, bound_parser::OverApproximationParser)
+    # truly for parsing relus
     # make sure expr is of form :(z == max(0, x)) or :(z == max(0, min(x,y)))
     assert_expr(expr, "single max")
     z = expr.args[2]
@@ -354,6 +365,7 @@ function parse_single_max_expr(expr::Expr, bound_parser::OverApproximationParser
         push!(bound_parser.relu_list, ReluConstraint(new_var, z)) # z=relu(new_var)
         new_expr = :($new_var == $x) # new_var = x
         parse_eq(new_expr, bound_parser)
+        bound_parser.ranges[new_var] = find_range(x, bound_parser.ranges)
     end
 end
 
@@ -363,7 +375,8 @@ low level functions: min constraints
 ----------------------------------------------
 """
 
-""" find if this expr constains min """
+""" find if this expr constains max or min"""
+is_max_expr(expr::Union{Symbol, Expr}) = :max in get_symbols(expr)
 is_min_expr(expr::Union{Symbol, Expr}) = :min in get_symbols(expr)
 
 """ parse min expression. min should already be a single min expression. """
@@ -373,6 +386,7 @@ end
 
 function parse_single_min_expr(expr::Expr, bound_parser::OverApproximationParser)
     # make sure expr is of form :(z == min(x, y))
+    # MAJOR ASSUMPTION: MIN IS NEVER NESTED
     assert_expr(expr, "single min")
     z = expr.args[2]
     x = expr.args[3].args[2]
@@ -382,23 +396,38 @@ function parse_single_min_expr(expr::Expr, bound_parser::OverApproximationParser
     x2 = add_var()
     if x isa Symbol
         push!(bound_parser.eq_list, EqConstraint([x2, x], [1., 1.], 0.))
+        xl, xu = bound_parser.ranges[x]
+        bound_parser.ranges[x2] = [-xu, -xl]
     else
-        new_expr = :($x2 == $(simplify(:(-1*$x))))
+        e = simplify(:(-1*$x))
+        new_expr = :($x2 == $(e))
         parse_eq(new_expr, bound_parser)
+        bound_parser.ranges[x2] = find_range(e, bound_parser.ranges)
     end
 
     # define y2 = -y
     y2 = add_var()
     if y isa Symbol
         push!(bound_parser.eq_list, EqConstraint([y2, y], [1., 1.], 0.))
+        yl, yu = bound_parser.ranges[y]
+        bound_parser.ranges[y2] = (-yu, -yl)
     else
-        new_expr = :($y2 == $(simplify(:(-1*$y))))
+        e = simplify(:(-1*$y))
+        new_expr = :($y2 == $(e))
         parse_eq(new_expr, bound_parser)
+        bound_parser.ranges[y2] = find_range(e, bound_parser.ranges)
     end
 
     # define z2 = -z
     z2 = add_var()
     push!(bound_parser.eq_list, EqConstraint([z2, z], [1., 1.], 0.))
+    if ~haskey(bound_parser.ranges, z)
+        xl, xu = find_range(x, bound_parser.ranges)
+        yl, yu = find_range(y, bound_parser.ranges)
+        bound_parser.ranges[z] = [min(xl,yl), min(xu, yu)] # TODO: DOUBLE CHECK CORRECTNESS
+    end
+    zl, zu = bound_parser.ranges[z]
+    bound_parser.ranges[z2] = [-zu, -zl]
 
     # add z2 = max(x2, y2)
     push!(bound_parser.max_list, MaxConstraint([x2, y2], z2))
@@ -544,6 +573,9 @@ function write_overapproximateparser(bound_parser::OverApproximationParser,
     end
     for (i, c) in enumerate(bound_parser.true_NL_list)
         write_constraint(file_name, c, i, prefix="true_fun/")
+    end
+    for (v, vrange) in bound_parser.ranges
+        h5write(file_name, "ranges/$v", [string(vrange)])
     end
 
 end

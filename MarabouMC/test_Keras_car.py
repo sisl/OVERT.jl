@@ -1,10 +1,8 @@
-# test TF network controller and pwl plant
-
 
 import os
 import sys
 sys.path.insert(0, "..")
-sys.path.insert(0, "/home/amaleki/Downloads/Marabou/")
+#sys.path.insert(0, "/home/amaleki/Downloads/Marabou/")
 print(sys.path)
 
 import numpy as np

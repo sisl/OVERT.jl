@@ -228,6 +228,9 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 			# check zeros are within the interval
 			@assert z.zero[1] > aa
 			@assert z.zero[end] < bb
+			for ii=1:length(z.zero)-1
+				@assert z.zero[ii] < z.zero[ii+1]
+			end
     	catch # if overshoots, change the zGuess until it works. 10 iterations allowed
 			zGuess_orig = copy(zGuess)
 			# shifting zGuess towards left
@@ -236,9 +239,13 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 				zGuess[end] = 0.5*(bb + zGuess[end])
 				try
 					z = nlsolve(obj, zGuess, autodiff = :forward)
-					# check zeros are within the interval
+
+					# check zeros are within the interval, unique, and in ascending order
 					@assert z.zero[1] > aa
 					@assert z.zero[end] < bb
+					for ii=1:length(z.zero)-1
+						@assert z.zero[ii] < z.zero[ii+1]
+					end
 					break
 				catch
 					itr_nlsolve += 1
