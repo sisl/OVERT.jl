@@ -7,20 +7,21 @@ include("../models/drone/drone.jl")
 
 query = OvertQuery(
 	Drone,                                         # problem
-	"../nnet_files/controller_complex_drone.nnet", # network file
+	"../nnet_files/controller_medium_drone.nnet", # network file
 	Id(),                                          # last layer activation layer Id()=linear, or ReLU()=relu
 	"blah",                                        # query type, "concrete" or "symoblic"
 	10,                                            # ntime
 	0.1,                                           # dt
-	-1,                                            # N_overt
+	-1,                                             # N_overt
 	)
 
 input_set = Hyperrectangle(low=[0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
                            high=[1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.])
 
 
-all_sets, all_sets_symbolic = symbolic_bound(query, input_set)
-output_sets, xvec = monte_carlo_simulate(query, input_set)
+all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set)
+#all_sets, all_sets_symbolic = symbolic_bound(query, input_set)
+output_sets, xvec = monte_carlo_simulate(query, input_set; n_sim=10000000)
 
 fig = plot_output_sets(all_sets)
 fig = plot_output_sets([all_sets_symbolic]; linecolor=:red, fig=fig)
