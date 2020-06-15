@@ -1,6 +1,7 @@
-include("OverApprox/src/overapprox_nd_relational.jl")
 using Debugger
 using Revise
+
+N_VARS = 0
 
 @assert add_var(OverApproximation()) == :v_1
 
@@ -18,7 +19,7 @@ function affine_tests()
     @assert is_affine(:(-x+(2y-z)))
     @assert !is_affine(:(log(x)))
     @assert !is_affine(:(x + x*z))
-    @assert is_affine(:(x/6)) 
+    @assert is_affine(:(x/6))
     @assert is_affine(:(5*x))
     @assert is_affine(:((1 / 6) * x))
     @assert is_affine(:(log(2)*x))
@@ -58,13 +59,10 @@ expand_multiplication(:A, :B, b1; ξ=0.1)
 
 bound_binary_functions(:*, :A, :B, b1)
 
-function test_reduce_args_to_2()
-    x = 0; y = 1; z = 2; k = -10;
-    e1 = :(x + y + z + k - x - y - z - k)
-    e2 = reduce_args_to_2(e1)
-    eval(e1) == eval(e2)
-end
-@assert test_reduce_args_to_2()
+xxx = 0; yyy = 1; zzz = 2; kkk = -10;
+e1 = :(xxx + yyy + zzz + kkk - xxx - yyy - zzz - kkk)
+e2 = reduce_args_to_2(e1)
+eval(e1) == eval(e2)
 
 overapprox_nd(:(x*y), Dict(:x=>[1,2], :y=>[-10,-9]))
 
@@ -95,9 +93,9 @@ overapprox_nd(:((x+sin(y))^3), Dict(:x=>[2,3], :y=>[1,2]))
 
 overapprox_nd(:(2^x), Dict(:x=>[2,3]))
 
-overapprox_nd(:(-sin(x+y)), Dict(:x=>[2,3]))
+overapprox_nd(:(-sin(x+y)), Dict(:x=>[2,3], :y=>[1,2]))
 
-overapprox_nd(:(log(x)), Dict(:x => [1.0, 166.99205596346707]))
+overapprox_nd(:(log(x)), Dict(:x => [1.0, 166.99205596346707]); N=-1)
 
 
 
@@ -106,4 +104,3 @@ overapprox_nd(:(log(x)), Dict(:x => [1.0, 166.99205596346707]))
 # quantitative validation: dreal
 # analytical (symbolic) differentiation in overest_new.jl
 # handle division by scalars (multiplication really of 1/the_scalar...)
-
