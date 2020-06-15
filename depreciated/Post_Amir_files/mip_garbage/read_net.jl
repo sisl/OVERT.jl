@@ -18,6 +18,14 @@ include("$NEURAL_VERIFICATION_PATH/src/optimization/utils/variables.jl")
 include("$NEURAL_VERIFICATION_PATH/src/optimization/mipVerify.jl")
 include("$NEURAL_VERIFICATION_PATH/src/reachability/maxSens.jl")
 
+mutable struct ConcretizationExample
+    dynamics
+    input_vars
+    control_vars
+    input_set
+end
+
+
 function add_controller_constraints(model, network_nnet_address, input_set, input_vars, output_vars; last_layer_activation=Id())
     network = read_nnet(network_nnet_address, last_layer_activation=last_layer_activation)
     neurons = init_neurons(model, network)
@@ -88,7 +96,7 @@ function many_timestep_query(n_timesteps, update_rule, dynamics, network_file, i
         output_set = one_timestep_query(dynamics, update_rule, network_file, input_set, input_vars,
                                         control_vars, last_layer_activation, dt, N_overt)
         t2 = Dates.now()
-        println("timestep $i computed in $((t2-t1).value/1000)")
+        println("timestep $i computed in $((t2-t1).value/1000)")                                
         input_set = output_set
         push!(all_sets, input_set)
     end

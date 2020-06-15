@@ -8,17 +8,15 @@ using Gurobi
 using Dates
 using MathOptInterface
 
-NEURAL_VERIFICATION_PATH = "/Users/Chelsea/Dropbox/AAHAA/src/NeuralVerification.jl"
-
-include("$NEURAL_VERIFICATION_PATH/src/utils/activation.jl")
-include("$NEURAL_VERIFICATION_PATH/src/utils/network.jl")
-include("$NEURAL_VERIFICATION_PATH/src/utils/problem.jl")
-include("$NEURAL_VERIFICATION_PATH/src/utils/util.jl")
-include("$NEURAL_VERIFICATION_PATH/src/optimization/utils/constraints.jl")
-include("$NEURAL_VERIFICATION_PATH/src/optimization/utils/objectives.jl")
-include("$NEURAL_VERIFICATION_PATH/src/optimization/utils/variables.jl")
-include("$NEURAL_VERIFICATION_PATH/src/optimization/mipVerify.jl")
-include("$NEURAL_VERIFICATION_PATH/src/reachability/maxSens.jl")
+include("nv/utils/activation.jl")
+include("nv/utils/network.jl")
+include("nv/utils/problem.jl")
+include("nv/utils/util.jl")
+include("nv/optimization/utils/constraints.jl")
+include("nv/optimization/utils/objectives.jl")
+include("nv/optimization/utils/variables.jl")
+#include("nv/optimization/mipVerify.jl")
+include("nv/reachability/maxSens.jl")
 
 """
 ----------------------------------------------
@@ -259,7 +257,7 @@ function symbolic_satisfiability(query, input_set)
    input_vars_last = [Meta.parse("$(v)_$ntime") for v in input_vars]
    lows = Array{Float64}(undef, 0)
    highs = Array{Float64}(undef, 0)
-   
+
    for v in last_time_step_vars
       @constraint(mip_model.model, v >= 3)
       @constraint(mip_model.model, v <= 0)
