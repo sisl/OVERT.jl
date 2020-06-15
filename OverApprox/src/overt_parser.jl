@@ -1,5 +1,5 @@
 using HDF5
-include("utilities.jl")
+include("overt_utils.jl")
 
 """
 Note:
@@ -44,8 +44,8 @@ mutable struct IneqConstraint
 end
 
 """Nonlinear constraint: left R right ----> :y := :(5*sin(x)) , indep_var = :x """
-mutable struct NLConstraint 
-    left::Symbol 
+mutable struct NLConstraint
+    left::Symbol
     R::Symbol
     right::Expr
     indep_var::Symbol
@@ -227,7 +227,7 @@ end
 # maintenance more difficult. E.g. this function is called "parse linear expr"
 # but it also makes the assumption that this is an equality constraint.
 # This makes the code brittle (prone to breaking due to small changes) because
-# it relies on _implicit properties_ that are not well documented. 
+# it relies on _implicit properties_ that are not well documented.
 function parse_linear_expr(expr::Expr, bound_parser::OverApproximationParser)
     #make sure the expr is of form :(z == a*x + b) or :(z == a*x + b*y)
     assert_expr(expr, "linear")
@@ -296,7 +296,7 @@ function parse_max_expr(expr::Expr, bound_parser::OverApproximationParser)
                 push!(new_var_list, new_var)
                 push!(new_coeff_list, new_coeff)
                 new_expr = :($new_var == $(arg.args[3]))
-                parse_single_max_expr(new_expr, bound_parser) 
+                parse_single_max_expr(new_expr, bound_parser)
                 bound_parser.ranges[new_var] = find_range(arg.args[3], bound_parser.ranges)
             else
                 new_var = add_var()

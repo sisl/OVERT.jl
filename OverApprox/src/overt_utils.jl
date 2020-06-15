@@ -246,7 +246,7 @@ function find_range(expr, range_dict)
             inner_expr = expr.args[2]
         elseif expr.args[1] == :max # max with 0
             inner_expr = expr.args[3]
-        end 
+        end
         l,u = find_range(inner_expr, range_dict)
         return [0, max(0, u)]
     elseif is_affine(expr)

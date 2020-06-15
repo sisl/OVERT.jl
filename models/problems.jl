@@ -16,7 +16,7 @@ struct OvertQuery
 	problem::OvertProblem
 	network_file::String
 	last_layer_activation ##::ActivationFunction
-	type::String
+	solver::String
 	ntime::Int64
 	dt::Float64
 	N_overt::Int64
