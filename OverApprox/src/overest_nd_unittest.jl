@@ -14,12 +14,18 @@ include("overest_nd.jl")
 @assert is_affine(:(x+ x*z)) == false
 @assert is_affine(:(x + y*log(2))) == true
 
+# test for is_1d
+@assert is_1d(:(x*log(2))) == true
+@assert is_1d(:(x^2.5)) == true
+
 # test for is_unary
 @assert is_unary(:(x+y)) == false
-@assert is_unary(:(x^2.5)) == true
+@assert is_unary(:(x^2.5)) == false # this is like pow(x, 2.5), hence not unary. is taken care of in is_1d
 @assert is_unary(:(sin(x))) == true
 @assert is_unary(:(x*y)) == false
-@assert is_unary(:(x*log(2))) == true
+
+#TODO: investigate this one.
+#
 
 
 # test find_UB (really tests for overest_new.jl)
@@ -41,6 +47,6 @@ include("overest_nd.jl")
 # need clarity on precise purpose and signature of the function
 
 # test reduce_args_to_2!
-@assert reduce_args_to_2!(:(x+y+z)) == :((x+y)+z)
-@assert reduce_args_to_2!(:(sin(x*y*z))) == :(sin((x*y)*z))
+@assert reduce_args_to_2(:(x+y+z)) == :(x+(y+z))
+@assert reduce_args_to_2(:(sin(x*y*z))) == :(sin(x*(y*z)))
 # bug ^ doesn't seem to modify sin(x*y*z)

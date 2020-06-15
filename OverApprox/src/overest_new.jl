@@ -9,6 +9,7 @@ using Calculus
 using NLsolve
 using Roots
 using Plots
+using Interpolations
 #plotly()
 
 
