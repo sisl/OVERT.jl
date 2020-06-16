@@ -4,7 +4,7 @@ export
     OvertQuery
 
 
-struct OvertProblem
+mutable struct OvertProblem
 	true_dynamics
 	overt_dynamics
 	update_rule
@@ -12,7 +12,7 @@ struct OvertProblem
 	control_vars
 end
 
-struct OvertQuery
+mutable struct OvertQuery
 	problem::OvertProblem
 	network_file::String
 	last_layer_activation ##::ActivationFunction

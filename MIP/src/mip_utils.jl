@@ -89,7 +89,7 @@ function setup_overt_and_controller_constraints(query::OvertQuery, input_set::Hy
                                    input_set.center[i] + input_set.radius[i]]
    end
 
-   # read controler and add bounds to range dictionary
+   # read controller and add bounds to range dictionary
    cntr_bound = find_controller_bound(network_file, input_set, last_layer_activation)
    for i = 1:length(control_vars)
      range_dict[control_vars[i]] = [cntr_bound.center[i] - cntr_bound.radius[i],
@@ -197,6 +197,25 @@ end
 
 function symbolic_satisfiability(query, input_set)
    """
+   Checks whether a property P is satisfied at timesteps 1 to n symbolically.
+   """
+   n = query.ntime
+   SATus, vals, stats = "", Dict(), Dict() # "init" values...
+   for i = 1:n
+      println("checking timestep ", i)
+      query.ntime = i
+      SATus, vals, stats = symbolic_satisfiability_nth(query, input_set)
+      if SATus == "sat"
+         println("Property violated at timestep", i)
+         return SATus, vals, stats
+      end
+   end
+   println("Property holds for ", n, " timesteps.")
+   return SATus, vals, stats
+end
+
+function symbolic_satisfiability_nth(query, input_set)
+   """
 	This function computes whether property P is satisfiable at timestep n symbolically.
    inputs:
    - query: OvertQuery
@@ -248,7 +267,7 @@ function symbolic_satisfiability(query, input_set)
          if i == ntime
             push!(last_time_step_vars, next_v_mip)
          end
-         @constraint(mip_model.model, next_v_mip == v_mip + dt * dv_mip)
+         @constraint(mip_model.model, next_v_mip == v_mip + dt * dv_mip) # euler integration. we should probably make room for more flexible integration schemes.
      end
    end
 
