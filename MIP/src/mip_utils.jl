@@ -490,3 +490,62 @@ function plot_output_hist(data, ntime; fig=nothing, idx=[1,2], nbins=:notspecifi
     end
     return fig
 end
+
+
+function plot_output_sets_pgfplot(output_sets; idx=[1,2], fig=nothing, linewidth=3,
+    linecolor=:black, linestyle=:solid, fillalpha=0, fill=:red, labels=nothing)
+
+    if isnothing(fig)
+		fig = PGFPlots.Axis(style="width=10cm, height=10cm")
+	end
+
+	if !isnothing(labels)
+		fig.xlabel = labels[1]
+		fig.ylabel = labels[2]
+	end
+
+
+	line_style = "$linestyle, $linecolor, very thick, mark=none"
+    for s in output_sets
+		s1, s2 = s.center[idx[1]], s.center[idx[2]]
+		r1, r2 = s.radius[idx[1]], s.radius[idx[2]]
+		push!(fig, PGFPlots.Plots.Linear([s1-r1, s1+r1], [s2+r2, s2+r2], style=line_style))
+		push!(fig, PGFPlots.Plots.Linear([s1-r1, s1+r1], [s2-r2, s2-r2], style=line_style))
+		push!(fig, PGFPlots.Plots.Linear([s1-r1, s1-r1], [s2-r2, s2+r2], style=line_style))
+		push!(fig, PGFPlots.Plots.Linear([s1+r1, s1+r1], [s2-r2, s2+r2], style=line_style))
+    end
+
+    return fig
+end
+
+function plot_output_hist_pgfplot(data, ntime; fig=nothing, idx=[1,2],
+	     inner_points=false, labels=nothing)
+    if isnothing(fig)
+		fig = PGFPlots.Axis(style="width=10cm, height=10cm")
+	end
+
+    # x = data[:, ntime, idx[1]]
+    # y = data[:, ntime, idx[2]]
+	# push!(fig, PGFPlots.Plots.Histogram2(x, y, density=true,
+	#                                    colormap=PGFPlots.ColorMaps.Named("Jet")))
+
+	points = data[:, ntime, idx]
+	if inner_points
+		dx = floor(size(points)[1] / 10000)
+		dx = max(1, Int(dx))
+		pp = PGFPlots.Plots.Scatter(points[1:dx:end, 1], points[1:dx:end, 2], style="mark=o, orange")
+		push!(fig, pp)
+	end
+
+	border_idx = chull(points).vertices
+	p = PGFPlots.Plots.Linear(points[border_idx, 1], points[border_idx, 2],
+	                         style="solid, orange, line width=3pt, mark=none")
+	push!(fig, p)
+
+	if !isnothing(labels)
+		fig.xlabel = labels[1]
+		fig.ylabel = labels[2]
+	end
+
+    return fig
+end
