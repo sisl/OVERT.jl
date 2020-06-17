@@ -177,7 +177,7 @@ function many_timestep_concretization(query::OvertQuery, input_set_0::Hyperrecta
     all_sets = [input_set_0]
     all_oA = Array{OverApproximation}(undef, 0)
     all_oA_vars = []
-    for i = 1:query.ntime + 1
+    for i = 1:query.ntime
         t1 = Dates.now()
         if timed
            output_set, oA, oA_vars = one_timestep_concretization(query, input_set; t_idx=i)
@@ -195,104 +195,131 @@ function many_timestep_concretization(query::OvertQuery, input_set_0::Hyperrecta
     return all_sets,  all_oA, all_oA_vars
 end
 
-function symbolic_satisfiability(query, input_set)
-   """
-   Checks whether a property P is satisfied at timesteps 1 to n symbolically.
-   """
-   n = query.ntime
-   SATus, vals, stats = "", Dict(), Dict() # "init" values...
-   for i = 1:n
-      println("checking timestep ", i)
-      query.ntime = i
-      SATus, vals, stats = symbolic_satisfiability_nth(query, input_set)
-      if SATus == "sat"
-         println("Property violated at timestep", i)
-         return SATus, vals, stats
-      end
+function symbolic_satisfiability(query, input_set, target_set; unsat_problem=false)
+	"""
+	Checks whether a property P is satisfied at timesteps 1 to n symbolically.
+	inputs:
+	- query: OvertQuery
+	- input_set: Hyperrectangle for the initial set of variables.
+	- target_set: Hyperrectangle for the targe set of variables.
+	- unsat_problem: if true, it solves an unsatisfiability problem. i.e. the first
+	                timestep at which state does not include in target set.
+	outputs:
+	- status (sat, unsat, error), values if sat, statistics
+	"""
+	n = query.ntime
+	SATus, vals, stats = "", Dict(), Dict() # "init" values...
+	problem_type = unsat_problem ? "unsat" : "sat"
+	for i = 1:n
+		println("checking timestep ", i)
+		query.ntime = i
+		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set)
+		if SATus == problem_type
+			println("Property violated at timestep $i")
+			return SATus, vals, stats
+	 	elseif SATus == "error"
+		 	throw("some error occured at timestep $i")
+		end
    end
-   println("Property holds for ", n, " timesteps.")
+   println("Property holds for $n timesteps.")
    return SATus, vals, stats
 end
 
-function symbolic_satisfiability_nth(query, input_set)
+function symbolic_satisfiability_nth(query, input_set, target_set)
    """
 	This function computes whether property P is satisfiable at timestep n symbolically.
-   inputs:
-   - query: OvertQuery
+    inputs:
+    - query: OvertQuery
 	- input_set: Hyperrectangle for the initial set of variables.
-   outputs:
-   - status (sat, unsat, error), values if sat, statistics
+	- target_set: Hyperrectangle for the targe set of variables.
+    outputs:
+    - status (sat, unsat, error), values if sat, statistics
 	"""
 	# read some attributes
 	input_vars = query.problem.input_vars
-   control_vars = query.problem.control_vars
-   network_file = query.network_file
-   ntime = query.ntime
+	control_vars = query.problem.control_vars
+	network_file = query.network_file
+	ntime = query.ntime
 	update_rule = query.problem.update_rule
 	dt = query.dt
 
 	# setup all overt constraints via bounds found by conceretization
-   all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
-   oA_tot = add_overapproximate(all_oA)
-   mip_model = OvertMIP(oA_tot)
+	all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
+	oA_tot = add_overapproximate(all_oA)
+	mip_model = OvertMIP(oA_tot)
 
-   # add controller to mip
-   for i = 1:ntime+1
-      input_set        = all_sets[i]
-      input_vars_tmp   = [Meta.parse("$(v)_$i") for v in input_vars]
-      control_vars_tmp = [Meta.parse("$(v)_$i") for v in control_vars]
-      mip_control_input_vars  = [get_mip_var(v, mip_model) for v in input_vars_tmp]
-      mip_control_output_vars = [get_mip_var(v, mip_model) for v in control_vars_tmp]
-      controller_bound = add_controller_constraints(mip_model.model, network_file, input_set, mip_control_input_vars, mip_control_output_vars)
-   end
+    # add controller to mip
+    for i = 1:ntime
+		input_set        = all_sets[i]
+		input_vars_tmp   = [Meta.parse("$(v)_$i") for v in input_vars]
+		control_vars_tmp = [Meta.parse("$(v)_$i") for v in control_vars]
+		mip_control_input_vars  = [get_mip_var(v, mip_model) for v in input_vars_tmp]
+		mip_control_output_vars = [get_mip_var(v, mip_model) for v in control_vars_tmp]
+		controller_bound = add_controller_constraints(mip_model.model, network_file, input_set, mip_control_input_vars, mip_control_output_vars)
+    end
 
-   mip_summary(mip_model.model)
+    mip_summary(mip_model.model)
 
-   last_time_step_vars = []
-   for i = 1:ntime
-      oA_vars_now = all_oA_vars[i]
-      input_vars_now = [Meta.parse("$(v)_$i") for v in input_vars]
-      input_vars_next= [Meta.parse("$(v)_$(i+1)") for v in input_vars]
-      control_vars_now = [Meta.parse("$(v)_$i") for v in control_vars]
+    for i = 1:ntime - 1
+		oA_vars_now = all_oA_vars[i]
+		input_vars_now = [Meta.parse("$(v)_$i") for v in input_vars]
+		input_vars_next= [Meta.parse("$(v)_$(i+1)") for v in input_vars]
+		control_vars_now = [Meta.parse("$(v)_$i") for v in control_vars]
 
-      integration_map = update_rule(input_vars_now, control_vars_now, oA_vars_now)
-      for j = 1:length(input_vars)
-         v = input_vars_now[j]
-         dv = integration_map[v]
-         next_v = input_vars_next[j]
+		integration_map = update_rule(input_vars_now, control_vars_now, oA_vars_now)
+		for j = 1:length(input_vars)
+			v = input_vars_now[j]
+			dv = integration_map[v]
+			next_v = input_vars_next[j]
 
-         v_mip = mip_model.vars_dict[v]
-         dv_mip = mip_model.vars_dict[dv]
-         next_v_mip = mip_model.vars_dict[next_v]
-         if i == ntime
-            push!(last_time_step_vars, next_v_mip)
-         end
-         @constraint(mip_model.model, next_v_mip == v_mip + dt * dv_mip) # euler integration. we should probably make room for more flexible integration schemes.
-     end
-   end
+			v_mip = mip_model.vars_dict[v]
+			dv_mip = mip_model.vars_dict[dv]
+			next_v_mip = mip_model.vars_dict[next_v]
 
-   #no objective makes it a feasibility problem @objective(mip_model.model, Min, 0)
+			@constraint(mip_model.model, next_v_mip == v_mip + dt * dv_mip) # euler integration. we should probably make room for more flexible integration schemes.
+		end
+    end
 
-   input_vars_last = [Meta.parse("$(v)_$ntime") for v in input_vars]
-   lows = Array{Float64}(undef, 0)
-   highs = Array{Float64}(undef, 0)
+	# no objective makes it is a feasibility problem
+	timestep_nplus1_vars = []
+	input_vars_last = [Meta.parse("$(v)_$ntime") for v in input_vars]
+	control_vars_last = [Meta.parse("$(v)_$ntime") for v in control_vars]
+	oA_vars_last = all_oA_vars[ntime]
+	integration_map = update_rule(input_vars_last, control_vars_last, oA_vars_last)
+	for (i, v) in enumerate(input_vars_last)
+		v_mip = mip_model.vars_dict[v]
+		dv = integration_map[v]
+		dv_mip = mip_model.vars_dict[dv]
+		next_v_mip = v_mip + dt * dv_mip
+		push!(timestep_nplus1_vars, next_v_mip)
+		v_min = target_set.center[i] - target_set.radius[i]
+		v_max = target_set.center[i] + target_set.radius[i]
+		@constraint(mip_model.model, next_v_mip >= v_min)
+		@constraint(mip_model.model, next_v_mip <= v_max)
+	end
 
-   for v in last_time_step_vars
-      @constraint(mip_model.model, v >= 3)
-      @constraint(mip_model.model, v <= 0)
-   end
+	JuMP.optimize!(mip_model.model)
 
-   JuMP.optimize!(mip_model.model)
 
-   if termination_status(mip_model.model) == MathOptInterface.TerminationStatusCode(0)
-      # optimal
-      return "sat", value.(last_time_step_vars), Dict()
-   elseif termination_status(mip_model.model) == MathOptInterface.TerminationStatusCode(1)
-      # infeasible
-      return "unsat", Dict(), Dict()
-   else
-      return "error", Dict(), Dict()
-   end
+
+
+	if termination_status(mip_model.model) == MathOptInterface.OPTIMAL
+		# optimal
+		vals = value.(timestep_nplus1_vars)
+		stats = Dict()
+		for i = 1:ntime
+			input_vars_now = [Meta.parse("$(v)_$i") for v in input_vars]
+			tmp_dict = Dict((v, value(mip_model.vars_dict[v])) for v in input_vars_now)
+			stats = merge(stats, tmp_dict)
+		end
+
+		return "sat", vals, stats
+	elseif termination_status(mip_model.model) == MathOptInterface.INFEASIBLE
+		# infeasible
+		return "unsat", Dict(), Dict()
+	else
+  		return "error", Dict(), Dict()
+	end
 end
 
 function symbolic_bound(query, input_set)
@@ -320,7 +347,7 @@ function symbolic_bound(query, input_set)
 	mip_model = OvertMIP(oA_tot)
 
 	# add controller to mip
-	for i = 1:ntime+1
+	for i = 1:ntime
 		input_set        = all_sets[i]
 		input_vars_tmp   = [Meta.parse("$(v)_$i") for v in input_vars]
 		control_vars_tmp = [Meta.parse("$(v)_$i") for v in control_vars]
@@ -329,45 +356,50 @@ function symbolic_bound(query, input_set)
 		controller_bound = add_controller_constraints(mip_model.model, network_file, input_set, mip_control_input_vars, mip_control_output_vars)
 	end
 
-   mip_summary(mip_model.model)
+    mip_summary(mip_model.model)
 
-   last_time_step_vars = []
-   for i = 1:ntime
-      oA_vars_now = all_oA_vars[i]
-      input_vars_now = [Meta.parse("$(v)_$i") for v in input_vars]
-      input_vars_next= [Meta.parse("$(v)_$(i+1)") for v in input_vars]
-      control_vars_now = [Meta.parse("$(v)_$i") for v in control_vars]
+	# connect outputs of timestep i to inputs of timestep i-1
+	for i = 1:ntime - 1
+		oA_vars_now = all_oA_vars[i]
+		input_vars_now = [Meta.parse("$(v)_$i") for v in input_vars]
+		input_vars_next= [Meta.parse("$(v)_$(i+1)") for v in input_vars]
+		control_vars_now = [Meta.parse("$(v)_$i") for v in control_vars]
 
-      integration_map = update_rule(input_vars_now, control_vars_now, oA_vars_now)
-      for j = 1:length(input_vars)
-         v = input_vars_now[j]
-         dv = integration_map[v]
-         next_v = input_vars_next[j]
+		integration_map = update_rule(input_vars_now, control_vars_now, oA_vars_now)
+		for j = 1:length(input_vars)
+			v = input_vars_now[j]
+			dv = integration_map[v]
+			next_v = input_vars_next[j]
 
-         v_mip = mip_model.vars_dict[v]
-         dv_mip = mip_model.vars_dict[dv]
-         next_v_mip = mip_model.vars_dict[next_v]
-         if i == ntime
-            push!(last_time_step_vars, next_v_mip)
-         end
-         @constraint(mip_model.model, next_v_mip == v_mip + dt * dv_mip)
-     end
-   end
+			v_mip = mip_model.vars_dict[v]
+			dv_mip = mip_model.vars_dict[dv]
+			next_v_mip = mip_model.vars_dict[next_v]
 
+			@constraint(mip_model.model, next_v_mip == v_mip + dt * dv_mip)
+     	end
+   	end
 
-   input_vars_last = [Meta.parse("$(v)_$ntime") for v in input_vars]
-   lows = Array{Float64}(undef, 0)
-   highs = Array{Float64}(undef, 0)
-   for v in last_time_step_vars
-      @objective(mip_model.model, Min, v)
-      JuMP.optimize!(mip_model.model)
-      push!(lows, objective_value(mip_model.model))
-      @objective(mip_model.model, Max, v)
-      JuMP.optimize!(mip_model.model)
-      push!(highs, objective_value(mip_model.model))
-   end
-   all_sets_symbolic = Hyperrectangle(low=lows, high=highs)
-   return all_sets[1:end-1], all_sets_symbolic
+	# optimize for the output of timestep ntime.
+	lows = Array{Float64}(undef, 0)
+	highs = Array{Float64}(undef, 0)
+	input_vars_last = [Meta.parse("$(v)_$ntime") for v in input_vars]
+	control_vars_last = [Meta.parse("$(v)_$ntime") for v in control_vars]
+	oA_vars_last = all_oA_vars[ntime]
+	integration_map = update_rule(input_vars_last, control_vars_last, oA_vars_last)
+	for v in input_vars_last
+	   	v_mip = mip_model.vars_dict[v]
+		dv = integration_map[v]
+		dv_mip = mip_model.vars_dict[dv]
+		next_v_mip = v_mip + dt * dv_mip
+		@objective(mip_model.model, Min, next_v_mip)
+		JuMP.optimize!(mip_model.model)
+		push!(lows, objective_value(mip_model.model))
+		@objective(mip_model.model, Max, next_v_mip)
+		JuMP.optimize!(mip_model.model)
+		push!(highs, objective_value(mip_model.model))
+   	end
+	all_sets_symbolic = Hyperrectangle(low=lows, high=highs)
+	return all_sets, all_sets_symbolic
 end
 
 """
