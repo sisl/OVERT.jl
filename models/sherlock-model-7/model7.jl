@@ -10,7 +10,6 @@ end
 function model7_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real},
 	                              N_OVERT::Int,
 							      t_idx::Union{Int, Nothing}=nothing)
-	g = 1.0
 	if isnothing(t_idx)
 		v1 = :(x3^2 - x2)
 	else

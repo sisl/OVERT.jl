@@ -1,19 +1,19 @@
 function single_pend_dynamics(x::Array{T, 1} where {T <: Real},
 	                          u::Array{T, 1} where {T <: Real})
-	g, c = 1., - 0.2
+	m, l, g, c = 0.5, 0.5, 1., 0.
     dx1 = x[2]
-    dx2 = u[1] + g * sin(x[1]) - c * x[2]
+    dx2 = g/l * sin(x[1]) + 1 / (m*l^2) * (u[1] - c * x[2])
     return [dx1, dx2]
 end
 
 function single_pend_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real},
 	                                N_OVERT::Int,
 									t_idx::Union{Int, Nothing}=nothing)
-	g, c = 1., - 0.2
+	m, l, g, c = 0.5, 0.5, 1., 0.
 	if isnothing(t_idx)
-		v1 = :(u + $g * sin(x1) - $c * x2)
+		v1 = :($(g/l) * sin(x1) + $(1/(m*l^2)) * u - $(c/(m*l^2)) * x2)
 	else
-    	v1 = "u_$t_idx + $g * sin(x1_$t_idx) - $c * x2_$t_idx"
+    	v1 = "$(g/l) * sin(x1_$t_idx) + $(1/(m*l^2)) * u_$t_idx - $(c/(m*l^2)) * x2_$t_idx"
     	v1 = Meta.parse(v1)
 	end
     v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)

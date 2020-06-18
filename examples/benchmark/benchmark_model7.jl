@@ -8,9 +8,9 @@ include("../../models/sherlock-model-7/model7.jl")
 query = OvertQuery(
 	Model7,                                   # problem
 	"nnet_files/controller_model7.nnet",      # network file
-	Id(),                                     # last layer activation layer Id()=linear, or ReLU()=relu
+	ReLU(),                                   # last layer activation layer Id()=linear, or ReLU()=relu
 	"MIP",                                    # query solver, "MIP" or "ReluPlex"
-	4,                                        # ntime
+	5,                                        # ntime
 	0.5,                                      # dt
 	-1,                                       # N_overt
 	)
