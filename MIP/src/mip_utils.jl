@@ -393,21 +393,6 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_set)
 	update_rule = query.problem.update_rule
 	dt = query.dt
 
-<<<<<<< HEAD
-	# setup all overt constraints via bounds found by conceretization
-	all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true) # all_... are lists
-	oA_tot = add_overapproximate(all_oA)
-	mip_model = OvertMIP(oA_tot)
-
-	# add controller to mip
-	for i = 1:ntime+1
-		input_set        = all_sets[i]
-		input_vars_tmp   = [Meta.parse("$(v)_$i") for v in input_vars]
-		control_vars_tmp = [Meta.parse("$(v)_$i") for v in control_vars]
-		mip_control_input_vars  = [get_mip_var(v, mip_model) for v in input_vars_tmp]
-		mip_control_output_vars = [get_mip_var(v, mip_model) for v in control_vars_tmp]
-		controller_bound = add_controller_constraints(mip_model.model, network_file, input_set, mip_control_input_vars, mip_control_output_vars)
-=======
 	# setup variables current timestep
 	timestep_nplus1_vars = []
 	input_vars_last = [Meta.parse("$(v)_$ntime") for v in input_vars]
@@ -426,7 +411,6 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_set)
 		v_max = target_set.center[i] + target_set.radius[i]
 		@constraint(mip_model.model, next_v_mip >= v_min)
 		@constraint(mip_model.model, next_v_mip <= v_max)
->>>>>>> 793512813a12c9958851e93f9ac51c5b948aaddb
 	end
 	return timestep_nplus1_vars
 end
