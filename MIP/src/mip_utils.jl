@@ -315,7 +315,7 @@ function symbolic_bound(query, input_set)
 	dt = query.dt
 
 	# setup all overt constraints via bounds found by conceretization
-	all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
+	all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true) # all_... are lists
 	oA_tot = add_overapproximate(all_oA)
 	mip_model = OvertMIP(oA_tot)
 
