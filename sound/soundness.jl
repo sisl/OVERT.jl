@@ -6,6 +6,16 @@ include("../models/problems.jl")
 include("../models/car/car.jl")
 include("../models/car/simple_car.jl")
 
+""" Types """
+mutable struct SoundnessQuery
+    ϕ # the original 
+    ϕ̂ # the approximate
+    domain # the domain over which to check if: phi => phihat   is valid.
+end
+
+
+"""High Level Functions"""
+
 """
 # for the given problem, compare the soundness of approximating
 # the dynamics using a neural network vs approximating the 
@@ -21,12 +31,6 @@ function compare_soundness(problem::string)
     println(OVERT_result)
 end
 
-mutable struct SoundnessQuery
-    phi # the original 
-    phihat # the approximate
-    domain # the domain over which to check if: phi => phihat   is valid.
-end
-
 function check_soundness(problem::string; approx="OVERT")
     # construct SoundnessQuery
     query = construct_soundness_query(problem, approx)
@@ -36,9 +40,55 @@ function check_soundness(problem::string; approx="OVERT")
     return result
 end
 
+mutable struct SMTLibFormula
+    formula # arraylike
+    bools # arraylike
+    reals # arraylike
+    new_var_count::Int
+end
+SMTLibFormula() = SMTLibFormula([], [], [], 0)
+function Base.show(io::IO, f::SMTLibFormula)
+    s = "SMTLibFormula: "
+    s *= "new_var_count = " * string(f.new_var_count)
+    s *= ", bools: " * string(f.bools)
+    s *= ", reals: " * string(f.reals)
+    println(io, s)
+end
+
+function write_to_file(f::SMTLibFormula)
+    # print expressions to file
+end
+
+"""
+The soundness of the approximation query asks if 
+    ϕ ⟹ ϕ̂ 
+is valid (read: always true) (where ϕ is the original function and ϕ̂ is the approximation)
+over the domain d, 
+(meaning: anything that satisfies ϕ also satisfies ϕ̂, the definition of an overapproximation)
+and we can encode this by asking if the negation: 
+    ¬(ϕ ⟹ ϕ̂) 
+is unsatisfiable.
+
+Implication can be written: 
+    a⟹b == ¬a ∨ b 
+and so we can rewrite 
+    ¬(ϕ ⟹ ϕ̂)
+as 
+    ¬(¬ϕ ∨ ϕ̂)
+and again as
+    ϕ ∧ ¬ϕ̂
+which is the final formula that we will encode. 
+"""
+function soundnessquer2smt(query::SoundnessQuery)
+
+end
+
 function check(solver::string, query::SoundnessQuery)
     if solver == "dreal"
-        arg = convert_to_smtlib(query)
+        smtlibscript = soundnessquery2smt(query)
+        write_to_file(smtlibscript)
+        # call dreal from command line to execute on smtlibscript
+        # read results file? and return result?
     else
         throw(MyError("Not implemented"))
     end
