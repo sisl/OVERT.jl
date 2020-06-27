@@ -1,3 +1,6 @@
+"""
+A function to compute dx/dt as a function of x and u
+"""
 function simple_car_dynamics(x::Array{T, 1} where {T <: Real},
 	                         u::Array{T, 1} where {T <: Real})
 
@@ -8,6 +11,9 @@ function simple_car_dynamics(x::Array{T, 1} where {T <: Real},
   return [dx1, dx2, dx3, dx4]
 end
 
+"""
+A function to constructs OVERT approximation of the simple car dynamics.
+"""
 function simple_car_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real},
 		                           N_OVERT::Int,
 							       t_idx::Union{Int, Nothing}=nothing)
@@ -27,9 +33,12 @@ function simple_car_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {
 		v2_oA = overapprox_nd(v2, range_dict; N=N_OVERT)
 	end
     oA_out = add_overapproximate([v1_oA, v2_oA])
-    return oA_out, [v1_oA.output, v2_oA.output]
+    return oA_out::OverApproximation, [v1_oA.output, v2_oA.output]
 end
 
+"""
+Creates the mapping that is used in discrete time dynamics.
+"""
 function simple_car_update_rule(input_vars::Array{Symbol, 1},
 		                        control_vars::Array{Symbol, 1},
 								overt_output_vars::Array{Symbol, 1})
