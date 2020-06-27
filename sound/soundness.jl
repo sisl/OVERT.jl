@@ -15,11 +15,16 @@ end
 
 mutable struct SMTLibFormula
     formula # arraylike
+    stats::FormulaStats
+end
+SMTLibFormula() = SMTLibFormula([], FormulaStats())
+
+mutable struct FormulaStats
     bools # arraylike
     reals # arraylike
     new_var_count::Int
 end
-SMTLibFormula() = SMTLibFormula([], [], [], 0)
+FormulaStats() = FormulaStats([],[],0)
 
 mutable struct MyError
     message:string
@@ -162,32 +167,33 @@ end
 f is an array representing a conjunction.
 Returns an array
 """
-function assert_conjunction(f::Array)
+function assert_conjunction(f::Array, fs::FormulaStats)
     if length(f) == 1
-        return [assert_literal(f[1])]
+        return [assert_literal(f[1], fs)]
     elseif length(f) > 1
         # assert conjunction
-        return assert_actual_conjunction(f)::Array
+        return assert_actual_conjunction(f, fs)::Array
     else # empty list
         return []
     end
 end
 
-function assert_literal(l)
-    return assert_statement(convert_any_constraint(l)[1])
+function assert_literal(l, fs::FormulaStats)
+    return assert_statement(convert_any_constraint(l, fs::FormulaStats)[1])
 end
 
-function assert_negated_literal(l)
-    return assert_statement(negate(convert_any_constraint(l)[1]))
+function assert_negated_literal(l, fs::FormulaStats)
+    return assert_statement(negate(convert_any_constraint(l, fs::FormulaStats)[1]))
 end
 
-function assert_negated_conjunction(f::Array)
+function assert_negated_conjunction(f::Array, fs::FormulaStats)
     if length(f) == 1
-        return [assert_negated_literal(f[1])]
+        return [assert_negated_literal(f[1], fs)]
     elseif length(f) >= 1
-        return assert_actual_negated_conjunction(f)::Array
+        return assert_actual_negated_conjunction(f, fs)::Array
     else # empty list
         return []
     end
 end
+
 
