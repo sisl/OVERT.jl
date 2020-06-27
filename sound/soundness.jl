@@ -13,8 +13,41 @@ mutable struct SoundnessQuery
     domain # the domain over which to check if: phi => phihat   is valid.
 end
 
+mutable struct SMTLibFormula
+    formula # arraylike
+    bools # arraylike
+    reals # arraylike
+    new_var_count::Int
+end
+SMTLibFormula() = SMTLibFormula([], [], [], 0)
 
-"""High Level Functions"""
+mutable struct MyError
+    message:string
+end
+
+mutable struct Problem
+    name::string
+    executable_fcn
+    symbolic_fcn # may be a list of relational expressions representing the true function
+    overt_problem::OvertProblem
+    oa::OverApproximation
+    domain
+end
+
+"""Printing/Writing Functions"""
+function Base.show(io::IO, f::SMTLibFormula)
+    s = "SMTLibFormula: "
+    s *= "new_var_count = " * string(f.new_var_count)
+    s *= ", bools: " * string(f.bools)
+    s *= ", reals: " * string(f.reals)
+    println(io, s)
+end
+
+function write_to_file(f::SMTLibFormula)
+    # print expressions to file
+end
+
+"""High Level Soundness Verification Functions"""
 
 """
 # for the given problem, compare the soundness of approximating
@@ -38,25 +71,6 @@ function check_soundness(problem::string; approx="OVERT")
     solver = "dreal"
     result = check(solver, query)
     return result
-end
-
-mutable struct SMTLibFormula
-    formula # arraylike
-    bools # arraylike
-    reals # arraylike
-    new_var_count::Int
-end
-SMTLibFormula() = SMTLibFormula([], [], [], 0)
-function Base.show(io::IO, f::SMTLibFormula)
-    s = "SMTLibFormula: "
-    s *= "new_var_count = " * string(f.new_var_count)
-    s *= ", bools: " * string(f.bools)
-    s *= ", reals: " * string(f.reals)
-    println(io, s)
-end
-
-function write_to_file(f::SMTLibFormula)
-    # print expressions to file
 end
 
 """
@@ -92,19 +106,6 @@ function check(solver::string, query::SoundnessQuery)
     else
         throw(MyError("Not implemented"))
     end
-end
-
-mutable struct MyError
-    message:string
-end
-
-mutable struct Problem
-    name::string
-    executable_fcn
-    symbolic_fcn # may be a list of relational expressions representing the true function
-    overt_problem::OvertProblem
-    oa::OverApproximation
-    domain
 end
 
 function create_OP_for_dummy_sin()
@@ -154,3 +155,39 @@ function fit_NN(problem::Problem)
     # TODO
     # some code where I call flux and stuff
 end
+
+"""Low level functions for converting ϕ and ϕ̂ to smtlib2"""
+
+"""
+f is an array representing a conjunction.
+Returns an array
+"""
+function assert_conjunction(f::Array)
+    if length(f) == 1
+        return [assert_literal(f[1])]
+    elseif length(f) > 1
+        # assert conjunction
+        return assert_actual_conjunction(f)::Array
+    else # empty list
+        return []
+    end
+end
+
+function assert_literal(l)
+    return assert_statement(convert_any_constraint(l)[1])
+end
+
+function assert_negated_literal(l)
+    return assert_statement(negate(convert_any_constraint(l)[1]))
+end
+
+function assert_negated_conjunction(f::Array)
+    if length(f) == 1
+        return [assert_negated_literal(f[1])]
+    elseif length(f) >= 1
+        return assert_actual_negated_conjunction(f)::Array
+    else # empty list
+        return []
+    end
+end
+
