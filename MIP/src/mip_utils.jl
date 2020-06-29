@@ -367,6 +367,113 @@ end
 
 """
 ----------------------------------------------
+symbolic queries, reachability with splitting.
+----------------------------------------------
+"""
+
+function split_hyperrectangle(input_set::Hyperrectangle, splits_idx)
+	"""
+ 	This function splits the input_set into halves based on indices given in splits_idx
+ 	- input_set: Hyperrectangle for the initial set of variables.
+	- splits_idx: indeces for splitting.
+    outputs:
+    - input_sets_splitted: an array of hyperrectangles which are splits of
+	the original input_set.
+ 	"""
+	if length(splits_idx) == 0
+		return input_set
+	else
+		input_sets_splitted = []
+		idx = splits_idx[1]
+		center = input_set.center
+		radius = input_set.radius
+
+		left_center = copy(center)
+		left_center[idx] -= radius[idx] / 2
+		left_radius = copy(radius)
+		left_radius[idx] /= 2
+		left = Hyperrectangle(left_center, left_radius)
+
+		right_center = copy(center)
+		right_center[idx] += radius[idx] / 2
+		right_radius = copy(radius)
+		right_radius[idx] /= 2
+		right = Hyperrectangle(right_center, right_radius)
+
+		push!(input_sets_splitted, split_hyperrectangle(left, splits_idx[2:end]))
+
+		push!(input_sets_splitted, split_hyperrectangle(right, splits_idx[2:end]))
+	end
+	input_sets_splitted = vcat(input_sets_splitted...)
+	return input_sets_splitted
+end
+
+function symbolic_reachability_with_splitting(query::OvertQuery, input_set::Hyperrectangle, splits_idx)
+	"""
+ 	This function splits the input_set into halves based on indices given in splits_idx
+		and then computes the reachable set after n timestep symbolically
+    inputs:
+    - query: OvertQuery
+ 	- input_set: Hyperrectangle for the initial set of variables.
+	- splits_idx: indeces for splitting.
+    outputs:
+    - all_sets: an array of hyperrectangle of all reachable sets, starting from the init set
+                computed with concretization
+    - all_sets_symbolic: a hyperrectangle for the reachable set at t=n, computed symbolically.
+ 	"""
+	input_sets_splitted = split_hyperrectangle(input_set, splits_idx)
+	all_concrete_sets = []
+	all_symbolic_sets = []
+	for this_set in input_sets_splitted
+		concrete_sets, symbolic_set = symbolic_reachability(query, this_set)
+		push!(all_concrete_sets, concrete_sets)
+		push!(all_symbolic_sets, symbolic_set)
+	end
+	return all_concrete_sets, all_symbolic_sets
+end
+
+"""
+----------------------------------------------
+symbolic queries, reachability with concretizsation in between.
+----------------------------------------------
+"""
+
+function symbolic_reachability_with_concretization(query::OvertQuery, input_set::Hyperrectangle, concretize_every::Int)
+   """
+	This function computes the reachable set after n timestep symbolically by
+		concretizing after every concretize_every timesteps.
+
+   inputs:
+   - query: OvertQuery
+   - input_set: Hyperrectangle for the initial set of variables.
+   - concretize_every: concretization period.
+   outputs:
+   - all_sets: an array of hyperrectangle of all reachable sets, starting from the init set
+               computed with concretization
+   - all_sets_symbolic: a hyperrectangle for the reachable set at t=n, computed symbolically.
+	"""
+	ntime = query.ntime
+	@assert ntime % concretize_every == 0
+	n_loops = Int(query.ntime / concretize_every)
+	query.ntime = concretize_every
+
+	all_concrete_sets = []
+	all_symbolic_sets = []
+	this_set = copy(input_set)
+	for n = 1:n_loops
+		concrete_sets, symbolic_set = symbolic_reachability(query, this_set)
+		push!(all_concrete_sets, concrete_sets)
+		push!(all_symbolic_sets, symbolic_set)
+		this_set = copy(symbolic_set)
+	end
+
+	query.ntime = ntime
+	return all_concrete_sets, all_symbolic_sets
+end
+
+
+"""
+----------------------------------------------
 symbolic queries, satisfiability (feasibility).
 ----------------------------------------------
 """

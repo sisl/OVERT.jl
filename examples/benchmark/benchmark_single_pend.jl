@@ -19,5 +19,15 @@ input_set = Hyperrectangle(low=[1., 0.], high=[1.2, 0.2])
 
 all_sets, all_sets_symbolic = symbolic_reachability(query, input_set)
 
+all_sets2, all_sets_symbolic2 = symbolic_reachability_with_concretization(query, input_set, 10)
 
-#satus, values, stats = symbolic_satisfiability(query, input_set)
+output_sets, xvec, x0 = monte_carlo_simulate(query, input_set)
+
+idx = [1,2]
+fig = plot_output_sets(all_sets; idx=idx)
+fig = plot_output_sets([all_sets_symbolic]; idx=idx, linecolor=:red, fig=fig)
+
+fig = plot_output_sets(vcat(all_sets2...); idx=idx, linecolor=:blue, fig=fig)
+fig = plot_output_sets(vcat(all_sets_symbolic2...); idx=idx, linecolor=:green, fig=fig)
+
+fig = plot_output_hist(xvec, query.ntime; fig=fig, nbins=100)
