@@ -162,7 +162,7 @@ class FormulaConverter:
         s += "\n~~~~~~~~~~\n"
         return s
     
-    def assert_logical(self, f):
+    def assert_logical(self, f): # changed to: assert_conjunction in julia
         """
         Assert expression. f is a list.
         Returns a list.
@@ -175,7 +175,7 @@ class FormulaConverter:
         else: # empty list
             return []
     
-    def assert_negated_logical(self, f):
+    def assert_negated_logical(self, f): # changed to: assert_negated_conjunction in julia
         """
         Assert the negation of an expression. f is a list.
         Returns a list.
