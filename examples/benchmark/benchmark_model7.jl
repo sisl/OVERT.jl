@@ -17,4 +17,5 @@ query = OvertQuery(
 
 input_set = Hyperrectangle(low=[0.35, 0.45, 0.25], high=[0.45, 0.55, 0.35])
 
-all_sets, all_sets_symbolic = symbolic_bound(query, input_set)
+output_sets, xvec, x0 = monte_carlo_simulate(query, input_set)
+#all_sets, all_sets_symbolic = symbolic_bound(query, input_set)

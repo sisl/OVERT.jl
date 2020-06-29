@@ -7,7 +7,7 @@ include("../../models/single_pendulum/single_pend.jl")
 
 query = OvertQuery(
 	SinglePendulum,                                   # problem
-	"nnet_files/controller_single_pendulum.nnet",     # network file
+	"nnet_files/ARCH_COMP/controller_single_pendulum.nnet",     # network file
 	Id(),                                             # last layer activation layer Id()=linear, or ReLU()=relu
 	"MIP",                                            # query solver, "MIP" or "ReluPlex"
 	20,                                               # ntime
