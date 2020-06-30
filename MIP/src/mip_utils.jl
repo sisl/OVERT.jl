@@ -523,7 +523,93 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_set)
 end
 
 
-function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangle, target_set::Hyperrectangle)
+# function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangle,
+# 	target_set::Hyperrectangle)
+# 	"""
+# 	This function computes the reachable set after n timestep symbolically.
+# 	inputs:
+# 	- query: OvertQuery
+# 	- input_set: Hyperrectangle for the initial set of states.
+# 	- target_set: Hyperrectangle for the target set of states.
+# 	outputs:
+# 	- status: status of query which can be sat, unsat or error,
+# 	- vals: if sat, returns the counter example at timestep n+1. else returns empty dictionary.
+# 	- stats: if sat, returns the counter example at timestep 1 to n. else returns empty dictionary.
+# 	"""
+# 	vals, stats = Dict(), Dict()
+#
+# 	# setup all overt cosntraints
+#
+# 	mip_model, all_sets, all_oA_vars = setup_mip_with_overt_constraints(query, input_set)
+#
+# 	# read neural network and add controller constraints
+# 	add_controllers_constraints!(mip_model, query, all_sets)
+#
+# 	# mip summary of constaints
+#     mip_summary(mip_model.model)
+#
+# 	# connect outputs of timestep i to inputs of timestep i-1
+# 	match_io!(mip_model, query, all_oA_vars)
+#
+# 	# add feasibility constraints that n+1 timestep intersects target set.
+# 	timestep_nplus1_vars = add_feasibility_constraints!(mip_model, query, all_oA_vars[end], target_set)
+#
+# 	JuMP.optimize!(mip_model.model)
+# 	if termination_status(mip_model.model) == MathOptInterface.OPTIMAL
+# 		# optimal
+# 		status = "sat"
+# 		vals = value.(timestep_nplus1_vars)
+# 		stats = Dict()
+# 		for i = 1:query.ntime
+# 			input_vars_now = [Meta.parse("$(v)_$i") for v in query.problem.input_vars]
+# 			tmp_dict = Dict((v, value(mip_model.vars_dict[v])) for v in input_vars_now)
+# 			stats = merge(stats, tmp_dict)
+# 		end
+# 	elseif termination_status(mip_model.model) == MathOptInterface.INFEASIBLE
+# 		# infeasible
+# 		status = "unsat"
+# 	else
+#   		status = "error"
+# 	end
+# 	return status, vals, stats
+# end
+#
+#
+# function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set::Hyperrectangle; unsat_problem::Bool=false)
+# 	"""
+# 	Checks whether a property P is satisfied at timesteps 1 to n symbolically.
+# 	inputs:
+# 	- query: OvertQuery
+# 	- input_set: Hyperrectangle for the initial set of variables.
+# 	- target_set: Hyperrectangle for the targe set of variables.
+# 	- unsat_problem: if true, it solves an unsatisfiability problem. i.e. the first
+# 	                timestep at which state does not include in target set.
+# 	outputs:
+# 	- status: status of query which can be sat, unsat or error,
+# 	- vals: if sat, returns the counter example at timestep n+1. else returns empty dictionary.
+# 	- stats: if sat, returns the counter example at timestep 1 to n. else returns empty dictionary.
+# 	"""
+# 	n = query.ntime
+# 	SATus, vals, stats = "", Dict(), Dict() # "init" values...
+# 	problem_type = unsat_problem ? "unsat" : "sat"
+# 	for i = 1:n
+# 		println("checking timestep ", i)
+# 		query.ntime = i
+# 		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set)
+# 		if SATus == problem_type
+# 			println("Property violated at timestep $i")
+# 			return SATus, vals, stats
+# 	 	elseif SATus == "error"
+# 		 	throw("some error occured at timestep $i")
+# 		end
+#    end
+#    println("Property holds for $n timesteps.")
+#    return SATus, vals, stats
+# end
+
+
+function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangle,
+	target_set::Hyperrectangle, all_sets, all_oA, all_oA_vars)
 	"""
 	This function computes the reachable set after n timestep symbolically.
 	inputs:
@@ -536,9 +622,12 @@ function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangl
 	- stats: if sat, returns the counter example at timestep 1 to n. else returns empty dictionary.
 	"""
 	vals, stats = Dict(), Dict()
+	ntime = query.ntime
+	@assert ntime == length(all_oA)
 
-	# setup all overt cosntraints
-	mip_model, all_sets, all_oA_vars = setup_mip_with_overt_constraints(query, input_set)
+	# combine overt cosntraints
+	oA_tot = add_overapproximate(all_oA)
+	mip_model = OvertMIP(oA_tot)
 
 	# read neural network and add controller constraints
 	add_controllers_constraints!(mip_model, query, all_sets)
@@ -590,10 +679,13 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 	n = query.ntime
 	SATus, vals, stats = "", Dict(), Dict() # "init" values...
 	problem_type = unsat_problem ? "unsat" : "sat"
+
+	all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
+
 	for i = 1:n
 		println("checking timestep ", i)
 		query.ntime = i
-		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set)
+		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets[1:i], all_oA[1:i], all_oA_vars[1:i])
 		if SATus == problem_type
 			println("Property violated at timestep $i")
 			return SATus, vals, stats
@@ -604,8 +696,6 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
    println("Property holds for $n timesteps.")
    return SATus, vals, stats
 end
-
-
 
 
 

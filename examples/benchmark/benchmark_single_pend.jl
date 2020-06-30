@@ -10,7 +10,7 @@ query = OvertQuery(
 	"nnet_files/ARCH_COMP/controller_single_pendulum.nnet",     # network file
 	Id(),                                             # last layer activation layer Id()=linear, or ReLU()=relu
 	"MIP",                                            # query solver, "MIP" or "ReluPlex"
-	20,                                               # ntime
+	50,                                               # ntime
 	0.1,                                              # dt
 	-1,                                                # N_overt
 	)
