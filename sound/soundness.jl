@@ -98,7 +98,7 @@ and again as
     ϕ ∧ ¬ϕ̂
 which is the final formula that we will encode. 
 """
-function soundnessquer2smt(query::SoundnessQuery)
+function soundnessquery2smt(query::SoundnessQuery)
 
 end
 
@@ -196,4 +196,84 @@ function assert_negated_conjunction(f::Array, fs::FormulaStats)
     end
 end
 
+function not(atom)
+    return ~atom::Bool
+end
 
+function add_real_var(v, fs::FormulaStats)
+    if not(v in fs.reals)
+        push!(fs.reals, v)
+    end
+end
+
+function add_real_vars(vlist::Array, fs::FormulaStats)
+    for v in vlist
+        add_real_var(v, fs)
+    end
+end
+
+"""
+Creates prefix notation syntax of smtlib2.
+Turn an op into its prefix form: (op arg1 arg2 ...).
+A 'pure' style function that doesn't modify state. 
+"""
+function prefix_notate(op, args)
+    expr = "(" * op * " "
+    for elem in args
+        expr *= string(elem) * " "
+    end
+    expr = expr[1:end-1]
+    expr *= ")"
+    return expr
+end
+
+function declare_const(constname, consttype)
+    return prefix_notate("declare-const", [constname, consttype])
+end
+
+function declare_reals(fs::FormulaStats)
+    real_decls = []
+    for v in fs.reals
+        push!(real_decls, declare_const(v, "Real"))
+    end
+    return real_decls
+end
+
+function define_atom(atomname, atomvalue)
+    eq_expr = prefix_notate("=", [atomname, atomvalue])
+    return assert_statement(eq_expr)
+end
+
+function assert_statement(expr)
+    return prefix_notate("assert", [expr])
+end
+
+function negate(expr)
+    return prefix_notate("not", [expr])
+end
+
+function footer()
+    return ["(check-sat)", "(get-model)"]
+end
+
+function header()
+    h = [set_logic(), produce_models()]
+    push!(h, [define_max(), define_relu()])
+    return h
+end
+
+function set_logic()
+    return "(set-logic ALL)"
+end
+
+function produce_models()
+    return "(set-option :produce-models true)"
+end
+
+function define_max(self)
+    return "(define-fun max ((x Real) (y Real)) Real (ite (< x y) y x))"
+end
+
+function define_relu(self)
+    return "(define-fun relu ((x Real)) Real (max x 0))"
+end
