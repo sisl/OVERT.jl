@@ -514,10 +514,14 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_set)
 		dv_mip = mip_model.vars_dict[dv]
 		next_v_mip = v_mip + dt * dv_mip
 		push!(timestep_nplus1_vars, next_v_mip)
-		v_min = target_set.center[i] - target_set.radius[i]
-		v_max = target_set.center[i] + target_set.radius[i]
-		@constraint(mip_model.model, next_v_mip >= v_min)
-		@constraint(mip_model.model, next_v_mip <= v_max)
+		v_min = low(target_set)[i] #target_set.center[i] - target_set.radius[i]
+		v_max = high(target_set)[i] #target_set.center[i] + target_set.radius[i]
+		if isfinite(v_min)
+			@constraint(mip_model.model, next_v_mip >= v_min)
+		end
+		if isfinite(v_max)
+			@constraint(mip_model.model, next_v_mip <= v_max)
+		end
 	end
 	return timestep_nplus1_vars
 end
@@ -609,7 +613,7 @@ end
 
 
 function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangle,
-	target_set::Hyperrectangle, all_sets, all_oA, all_oA_vars)
+	target_set, all_sets, all_oA, all_oA_vars)
 	"""
 	This function computes the reachable set after n timestep symbolically.
 	inputs:
@@ -662,7 +666,43 @@ function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangl
 end
 
 
-function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set::Hyperrectangle; unsat_problem::Bool=false)
+# function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set::Hyperrectangle; unsat_problem::Bool=false)
+# 	"""
+# 	Checks whether a property P is satisfied at timesteps 1 to n symbolically.
+# 	inputs:
+# 	- query: OvertQuery
+# 	- input_set: Hyperrectangle for the initial set of variables.
+# 	- target_set: Hyperrectangle for the targe set of variables.
+# 	- unsat_problem: if true, it solves an unsatisfiability problem. i.e. the first
+# 	                timestep at which state does not include in target set.
+# 	outputs:
+# 	- status: status of query which can be sat, unsat or error,
+# 	- vals: if sat, returns the counter example at timestep n+1. else returns empty dictionary.
+# 	- stats: if sat, returns the counter example at timestep 1 to n. else returns empty dictionary.
+# 	"""
+# 	n = query.ntime
+# 	SATus, vals, stats = "", Dict(), Dict() # "init" values...
+# 	problem_type = unsat_problem ? "unsat" : "sat"
+#
+# 	all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
+#
+# 	for i = 1:n
+# 		println("checking timestep ", i)
+# 		query.ntime = i
+# 		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets[1:i], all_oA[1:i], all_oA_vars[1:i])
+# 		if SATus == problem_type
+# 			println("Property violated at timestep $i")
+# 			return SATus, vals, stats
+# 	 	elseif SATus == "error"
+# 		 	throw("some error occured at timestep $i")
+# 		end
+#    end
+#    println("Property holds for $n timesteps.")
+#    return SATus, vals, stats
+# end
+
+
+function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set; unsat_problem::Bool=false)
 	"""
 	Checks whether a property P is satisfied at timesteps 1 to n symbolically.
 	inputs:
@@ -680,12 +720,21 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 	SATus, vals, stats = "", Dict(), Dict() # "init" values...
 	problem_type = unsat_problem ? "unsat" : "sat"
 
-	all_sets,  all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
+	input_set_tmp = copy(input_set)
+	all_sets = [input_set]
+	all_oA = Array{OverApproximation}(undef, 0)
+	all_oA_vars = []
 
 	for i = 1:n
 		println("checking timestep ", i)
+		output_set, oA, oA_vars = one_timestep_concretization(query, input_set_tmp; t_idx=i)
+		input_set_tmp = output_set
+		push!(all_sets, output_set)
+		push!(all_oA, oA)
+		push!(all_oA_vars, oA_vars)
+
 		query.ntime = i
-		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets[1:i], all_oA[1:i], all_oA_vars[1:i])
+		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets, all_oA, all_oA_vars)
 		if SATus == problem_type
 			println("Property violated at timestep $i")
 			return SATus, vals, stats
@@ -696,6 +745,8 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
    println("Property holds for $n timesteps.")
    return SATus, vals, stats
 end
+
+
 
 
 
@@ -882,6 +933,25 @@ end
 monte carlo simulation
 ----------------------------------------------
 """
+function monte_carlo_one_simulate(query, x0)
+	dynamics_func = query.problem.true_dynamics
+	controller_nnet_address  = query.network_file
+	last_layer_activation = query.last_layer_activation
+	ntime = query.ntime
+	dt = query.dt
+	controller = read_nnet(controller_nnet_address, last_layer_activation=last_layer_activation)
+	xvec = zeros(ntime+1, length(x0))
+	xvec[1, :] = x0
+	x = x0
+	for j = 1:ntime
+		u = compute_output(controller, x)
+		dx = dynamics_func(x, u)
+		x = x + dx*dt
+		xvec[j+1, :] = x
+	end
+	return xvec
+end
+
 
 function monte_carlo_simulate(query::OvertQuery, input_set::Hyperrectangle; n_sim::Int64=1000000)
 	"""

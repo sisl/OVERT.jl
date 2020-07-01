@@ -5,8 +5,7 @@ include("../../MIP/src/overt_to_mip.jl")
 include("../../MIP/src/mip_utils.jl")
 include("../../models/tora/tora.jl")
 
-#controller = "nnet_files/sherlock/tora_bigger_controller_offset_10_scale_1.nnet"
-controller = "nnet_files/sherlock/tora_smaller_controller.nnet"
+controller = "nnet_files/jair/tora_smallest_controller.nnet"
 
 query = OvertQuery(
 	Tora,      # problem
@@ -19,9 +18,11 @@ query = OvertQuery(
 	)
 
 input_set = Hyperrectangle(low=[0.6, -0.7, -0.4, 0.5], high=[0.7, -0.6, -0.3, 0.6])
-target_set = Hyperrectangle([-1., 0.1, -0.1, -0.6], [0.1, 0.1, 0.1, 0.1])
-
+target_set = Hyperrectangle([-1., 0.1, -0.1, -0.6], [0.3, 0.3, 0.3, 0.3])
 t1 = Dates.time()
 SATus, vals, stats = symbolic_satisfiability(query, input_set, target_set)
 t2 = Dates.time()
-print("elapsed time= $((t2-t1)/1000) seconds")
+dt = (t2-t1)
+
+using JLD2
+JLD2.@save "examples/jair/data/tora_satisfiability_smallest_controller_data.jld2" query input_set target_set SATus vals stats dt

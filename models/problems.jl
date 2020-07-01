@@ -1,7 +1,8 @@
 using LazySets
 export
     OvertProblem,
-    OvertQuery
+    OvertQuery,
+	InfiniteHyperrectangle
 
 
 mutable struct OvertProblem
@@ -31,3 +32,19 @@ Base.copy(x::OvertQuery) = OvertQuery(
 	x.dt,
 	x.N_overt
 	)
+
+# this datastructure allows the hyperrectnagle to have inifinite length.
+# used for satisfiability target.
+struct InfiniteHyperrectangle
+	low
+	high
+	function InfiniteHyperrectangle(low, high)
+		@assert all(low .≤	high) "low must not be greater than high"
+		return new(low, high)
+	end
+end
+
+import LazySets.low
+import LazySets.high
+low(x::InfiniteHyperrectangle) = x.low
+high(x::InfiniteHyperrectangle) = x.high
