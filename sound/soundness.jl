@@ -144,14 +144,21 @@ function read_result(fname)
 end
 
 function define_domain(d)
-    # d is a dictionary denoting the domain
-    
+    # d is a dictionary denoting the domain, e.g. {"x" => [-.3, 5.6], ...}
+    assertions = []
+    for (k,v) in d
+        lb = v[1]
+        ub = v[2]
+        box = assert_statement(define_box(k,lb, ub))
+        push!(assertions, box)
+    end
+    return assertions
 end
 
-function assert_box(v, lb, ub)
+function define_box(v::String, lb, ub)
     lb_e = prefix_notate("<=", [v, ub])
     ub_e = prefix_notate(">=", [v, lb])
-
+    return prefix_notate("and", [lb_e, ub_e])
 end
 
 function create_OP_for_dummy_sin()
@@ -220,11 +227,11 @@ function assert_conjunction(f::Array, fs::FormulaStats; conjunct_name=nothing)
 end
 
 function assert_literal(l, fs::FormulaStats)
-    return assert_statement(convert_any_constraint(l, fs::FormulaStats)[1])
+    return assert_statement(convert_any_constraint(l, fs::FormulaStats))
 end
 
 function assert_negated_literal(l, fs::FormulaStats)
-    return assert_statement(negate(convert_any_constraint(l, fs::FormulaStats)[1]))
+    return assert_statement(negate(convert_any_constraint(l, fs::FormulaStats)))
 end
 
 function assert_negation_of_conjunction(f::Array, fs::FormulaStats; conjunct_name=nothing)
