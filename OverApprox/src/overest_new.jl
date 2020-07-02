@@ -372,8 +372,15 @@ function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="cont
 			xp_candidate, yp_candidate = bound(f, aa, bb, N; conc_method="continuous", lowerbound=lowerbound, df=df,
 			d2f=d2f, d2f_zeros=d2f_zeros, convex=convex, plot=plot)
 
+			# interpolate can sometimes give an error because it thinks the
+			# points are outside the domain.
+			# see this issue https://github.com/JuliaMath/Interpolations.jl/issues/158
+			# hence shorten the range of xtest by epsilon
+			ϵ_itp = 1E-8
+
+
 			itp = interpolate((xp_candidate[1],), yp_candidate[1], Gridded(Linear()))
-			xtest = range(aa, stop=bb, length=100)
+			xtest = range(aa + ϵ_itp, stop=bb - ϵ_itp, length=100)
 			ytest = [itp(xt) for xt in xtest]
 			ftest = [f(xt)   for xt in xtest]
 			sc = maximum(ftest) - minimum(ftest)
