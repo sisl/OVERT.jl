@@ -20,9 +20,11 @@ end
 SMTLibFormula() = SMTLibFormula([], FormulaStats())
 
 mutable struct FormulaStats
-    bools # arraylike
-    reals # arraylike
-    new_var_count::Int
+    bools # boolean vars. arraylike
+    reals # real vars. arraylike
+    bool_macros #arraylike
+    new_bool_var_count::Int
+    bool_macro_count::Int
 end
 FormulaStats() = FormulaStats([],[],0)
 
@@ -42,7 +44,7 @@ end
 """Printing/Writing Functions"""
 function Base.show(io::IO, f::SMTLibFormula)
     s = "SMTLibFormula: "
-    s *= "new_var_count = " * string(f.new_var_count)
+    s *= "new_bool_var_count = " * string(f.new_bool_var_count)
     s *= ", bools: " * string(f.bools)
     s *= ", reals: " * string(f.reals)
     println(io, s)
@@ -212,6 +214,14 @@ function add_real_vars(vlist::Array, fs::FormulaStats)
     end
 end
 
+function get_new_bool(fs::FormulaStats)
+    fs.new_bool_var_count += 1
+    v = "b"*string(fs.new_bool_var_count) # b for boolean
+    @assert not(v in fs.bools)
+    push!(fs.bools, v)
+    return v
+end
+
 """
 Creates prefix notation syntax of smtlib2.
 Turn an op into its prefix form: (op arg1 arg2 ...).
@@ -219,16 +229,28 @@ A 'pure' style function that doesn't modify state.
 """
 function prefix_notate(op, args)
     expr = "(" * op * " "
-    for elem in args
-        expr *= string(elem) * " "
-    end
-    expr = expr[1:end-1]
+    expr *= print_args(args)
     expr *= ")"
     return expr
 end
 
+function print_args(args::Array)
+    s = ""
+    for a in args
+        s *= string(a) * " "
+    end
+    s = s[1:end-1] # chop trailing whitespace
+    return s
+end
+
 function declare_const(constname, consttype)
     return prefix_notate("declare-const", [constname, consttype])
+end
+
+# e.g. (define-fun _def1 () Bool (<= x 2.0))
+function define_fun(name, args, return_type, body)
+    arg_string = "("*print_args(args)*")"
+    return prefix_notate("define-fun", [name, arg_string, return_type, body])
 end
 
 function declare_reals(fs::FormulaStats)
@@ -242,6 +264,15 @@ end
 function define_atom(atomname, atomvalue)
     eq_expr = prefix_notate("=", [atomname, atomvalue])
     return assert_statement(eq_expr)
+end
+
+function define_bool_macro(macro_name, expr)
+    return define_macro(macro_name, expr; return_type="Bool")
+end
+
+# (define-fun _def1 () Bool (<= x 2.0))
+function define_macro(macro_name, expr; return_type="Bool")
+    return define_fun(macro_name, [], return_type, expr)
 end
 
 function assert_statement(expr)
@@ -270,10 +301,99 @@ function produce_models()
     return "(set-option :produce-models true)"
 end
 
-function define_max(self)
+function define_max()
     return "(define-fun max ((x Real) (y Real)) Real (ite (< x y) y x))"
 end
 
-function define_relu(self)
+function define_relu()
     return "(define-fun relu ((x Real)) Real (max x 0))"
 end
+
+function assert_conjunction(constraint_list; conjunct_name=None)
+    formula, conjunct_name = declare_conjunction(constraint_list, conjunct_name=conjunct_name) # declare conjunction
+    push!(formula, assert_statement(conjunct_name)) # assert conjunction
+    return formula
+end
+
+function assert_negated_conjunction(constraint_list; conjunct_name=None)
+    """
+    Assert the negation of conjunction of the constraints passed in constraint_list.
+    not (A and B and C and ...)
+    """
+    # BOOKMARK
+    formula, conjunct_name = self.declare_conjunction(constraint_list, conjunct_name=conjunct_name) # declare conjunction
+    formula += [self.assert_statement(self.negate(conjunct_name))] # assert NEGATED conjunction
+    return formula
+end
+
+function declare_conjunction(constraint_list, conjunct_name=nothing)
+    """
+    Given a list of constraints, declare their conjunction but DO NOT
+    assert their conjunction.
+    e.g. 
+    (define-fun _def1 () Bool (<= x 2.0))
+    (define-fun _def2 () Bool (>= y 3.0))
+    ...
+    (declare ... phi)
+    (assert (= phi (and A B)))
+    But notice we are just _defining_ phi, we are not asserting that
+    phi _holds_, which would be: (assert phi) [not doing that tho!]
+    """
+    macro_defs, macro_names = declare_list(constraint_list) # bookmark
+    if isnothing(conjunct_name):
+        conjunct_name = self.get_new_bool()
+    assert(len(bool_var_names) > 1)
+    conjunct = self.prefix_notate("and", bool_var_names)
+    conjunct_decl = [self.declare_const(conjunct_name, "Bool")]
+    conjunct_def = [self.define_atom(conjunct_name, conjunct)]
+    formula = bool_var_defs + conjunct_decl + conjunct_def
+    return formula, conjunct_name
+end
+
+def assert_disjunction(self, constraint_list, disjunct_name=None):
+raise NotImplementedError
+
+def convert_any_constraint(self, item):
+if isinstance(item, Constraint):
+    expr = self.convert_Constraint(item)
+elif isinstance(item, MatrixConstraint):
+    expr = self.convert_MatrixConstraint(item)
+elif isinstance(item, ReluConstraint):
+    expr = self.convert_ReluConstraint(item)
+elif isinstance(item, MaxConstraint):
+    expr = self.convert_MaxConstraint(item)
+elif isinstance(item, NLConstraint):
+    expr = self.convert_NLConstraint(item)
+else:
+    raise NotImplementedError
+return expr
+
+function declare_list(constraint_list::Array, fs::FormulaStats)
+    """
+    turn a list of some type of AbstractConstraint <: into 
+    smtlib macro declarations/definitions:
+    (define-fun _def1 () Bool (<= x 2.0))
+    But DON'T assert either true or false for the macro (e.g. (assert _def1()) )
+    """
+    macro_defs = [] # definitions + declarations
+    macro_names = [] # names
+    for item in constraint_list 
+        expr = convert_any_constraint(item, fs) # may return a list of constraints when converted
+        for e in expr
+            macro_name = get_new_macro(fs)
+            push!(macro_names, macro_name)
+            push!(macro_defs, define_bool_macro(macro_name, e))
+        end
+    end
+    return macro_defs, macro_names
+end
+
+function get_new_macro(fs::FormulaStats)
+    """ Get new macro name """
+    fs.bool_macro_count += 1
+    v = "_def"*string(fs.bool_macro_count) 
+    @assert not(v in fs.bool_macros)
+    push!(fs.bool_macros, v)
+    return v
+end
+
