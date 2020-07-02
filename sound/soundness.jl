@@ -6,6 +6,8 @@ include("../models/problems.jl")
 include("../models/car/car.jl")
 include("../models/car/simple_car.jl")
 
+global DEBUG = true
+
 """ Types """
 mutable struct SoundnessQuery
     ϕ # the original 
@@ -26,7 +28,7 @@ mutable struct FormulaStats
     new_bool_var_count::Int
     bool_macro_count::Int
 end
-FormulaStats() = FormulaStats([],[],0)
+FormulaStats() = FormulaStats([],[],[],0,0)
 
 mutable struct MyError
     message:string
@@ -50,8 +52,16 @@ function Base.show(io::IO, f::SMTLibFormula)
     println(io, s)
 end
 
-function write_to_file(f::SMTLibFormula)
+function write_to_file(f::SMTLibFormula, fname; dirname="smtlibfiles/")
     # print expressions to file
+    if DEBUG
+        println(join(f.formula, "/n"))
+    end
+    full_fname = pwd() * dirname * fname
+    file = open(full_fname, "w")
+    write(file, join(f.formula, "/n"))
+    close(file)
+    return full_fname
 end
 
 """High Level Soundness Verification Functions"""
@@ -76,7 +86,7 @@ function check_soundness(problem::string; approx="OVERT")
     query = construct_soundness_query(problem, approx)
     # check soundness query
     solver = "dreal"
-    result = check(solver, query)
+    result = check(solver, query, fname=approx*".smtlib2")
     return result
 end
 
@@ -101,18 +111,36 @@ and again as
 which is the final formula that we will encode. 
 """
 function soundnessquery2smt(query::SoundnessQuery)
-
+    stats = FormulaStats()
+    ϕ = assert_conjunction(query.ϕ, stats)
+    notϕ̂ = assert_negation_of_conjunction(query.ϕ̂, stats)
+    main_formula = vcat(["; assert phi"], ϕ, ["; assert not phi hat"], notϕ̂) 
+    #
+    whole_formula = vcat(header(), declare_reals(), define_domain(), main_formula, footer())
+    return SMTLibFormula(whole_formula, stats)
 end
 
-function check(solver::string, query::SoundnessQuery)
+function check(solver::string, query::SoundnessQuery, fname::string)
+    result = nothing
     if solver == "dreal"
         smtlibscript = soundnessquery2smt(query)
-        write_to_file(smtlibscript)
+        full_fname = write_to_file(smtlibscript, fname)
         # call dreal from command line to execute on smtlibscript
+        run(`dreal $full_fname`)
         # read results file? and return result?
+        result = read_result(full_fname)
     else
         throw(MyError("Not implemented"))
     end
+    return result
+end
+
+function read_result(fname)
+    # results will be put in a txt  file of the same name but with "result" appended
+    io = open(fname[1:end-4]*"_result.txt", "r")
+    result = read(io, String)
+    close(io)
+    return result
 end
 
 function create_OP_for_dummy_sin()
@@ -122,7 +150,7 @@ end
 """
 problem::string -> problem::Problem
 """
-function get_problem(string)
+function get_problem(problem::string)
     if problem == "dummy_sin"
         domain = Dict(:x => [-π, π])
         return Problem("dummy_sin", 
@@ -188,11 +216,11 @@ function assert_negated_literal(l, fs::FormulaStats)
     return assert_statement(negate(convert_any_constraint(l, fs::FormulaStats)[1]))
 end
 
-function assert_negated_conjunction(f::Array, fs::FormulaStats)
+function assert_negation_of_conjunction(f::Array, fs::FormulaStats)
     if length(f) == 1
         return [assert_negated_literal(f[1], fs)]
     elseif length(f) >= 1
-        return assert_actual_negated_conjunction(f, fs)::Array
+        return assert_actual_negation_of_conjunction(f, fs)::Array
     else # empty list
         return []
     end
@@ -315,7 +343,7 @@ function assert_actual_conjunction(constraint_list, fs::FormulaStats; conjunct_n
     return formula
 end
 
-function assert_actual_negated_conjunction(constraint_list, fs::FormulaStats; conjunct_name=nothing)
+function assert_actual_negation_of_conjunction(constraint_list, fs::FormulaStats; conjunct_name=nothing)
     """
     Assert the negation of conjunction of the constraints passed in constraint_list.
     not (A and B and C and ...)
