@@ -15,6 +15,7 @@ declare_list([:(x <= max(5,y)), :(y>= 6 * relu(x-y+log(6)))], f1)
 f = assert_negation_of_conjunction([:(x <= max(5,y)), :(y>= 6 * relu(x-y+log(6)))], f1; conjunct_name="phihat")
 print(join(f,"\n"))
 
+check_soundness("dummy_sin")
 
 
 # high level testing

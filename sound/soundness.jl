@@ -42,6 +42,17 @@ mutable struct Problem
     oa::OverApproximation
     domain
 end
+function Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, domain)
+    oa, oa_outputvar = overt_problem.overt_dynamics(domain, -1)
+    return Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, oa, domain)
+end
+
+function Problem(name::String, executable, overt_problem::OvertProblem, domain)
+    oa, oa_outputvar = overt_problem.overt_dynamics(domain, -1)
+    sym_dict = oa.fun_eq
+    sym_funs = [:(k=v) for (k,v) in sym_dict]
+    return Problem(name::String, executable, sym_funs, overt_problem::OvertProblem, oa, domain)
+end
 
 """Printing/Writing Functions"""
 function Base.show(io::IO, f::SMTLibFormula)
@@ -55,11 +66,12 @@ end
 function write_to_file(f::SMTLibFormula, fname; dirname="smtlibfiles/")
     # print expressions to file
     if DEBUG
-        println(join(f.formula, "/n"))
+        println(join(f.formula, "\n"))
     end
+    # TODO: make dir before writing to file in it
     full_fname = pwd() * dirname * fname
     file = open(full_fname, "w")
-    write(file, join(f.formula, "/n"))
+    write(file, join(f.formula, "\n"))
     close(file)
     return full_fname
 end
@@ -149,7 +161,7 @@ function define_domain(d)
     for (k,v) in d
         lb = v[1]
         ub = v[2]
-        box = assert_statement(define_box(k,lb, ub))
+        box = assert_statement(define_box(string(k),lb, ub))
         push!(assertions, box)
     end
     return assertions
@@ -162,7 +174,20 @@ function define_box(v::String, lb, ub)
 end
 
 function create_OP_for_dummy_sin()
-    return OvertProblem()
+    return OvertProblem(
+        x->sin(x),
+        overt_sin,
+        nothing,
+        nothing,
+        nothing
+    )
+end
+
+function overt_sin(range_dict, N_OVERT::Int)
+    v1 = :(sin(x))
+    v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
+    range_dict[v1_oA.output] = v1_oA.output_range
+    return v1_oA, v1_oA.output
 end
 
 """
@@ -172,13 +197,18 @@ function get_problem(problem::String)
     if problem == "dummy_sin"
         domain = Dict(:x => [-π, π])
         return Problem("dummy_sin", 
-                        x->sin(x), 
+                        x->sin(x),
                         create_OP_for_dummy_sin(), 
                         domain)
+        # NOTE: there may be a small problem in that 
+        # the symbolic function needs to match symbolic expressions in OVERT...
+        # also i think the desired form of the symbolic dynamics will be different
+        # depending on whether we are dealing with the NN approx or the OVERT approx...
     elseif problem == "simple_car"
         domain = Dict(:x1 =>[-1,1], :x2=>[-1,1], :x3=>[-1,1], :x4=>[-1,1])
         return Problem("simple_car", 
                         SimpleCar.true_dynamics, 
+                        nothing,
                         SimpleCar, 
                         domain)
     else
@@ -335,7 +365,7 @@ end
 
 function header()
     h = [set_logic(), produce_models()]
-    push!(h, [define_max(), define_relu()])
+    push!(h, define_max(), define_relu())
     return h
 end
 
