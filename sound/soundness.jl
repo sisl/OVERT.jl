@@ -309,24 +309,23 @@ function define_relu()
     return "(define-fun relu ((x Real)) Real (max x 0))"
 end
 
-function assert_conjunction(constraint_list; conjunct_name=None)
-    formula, conjunct_name = declare_conjunction(constraint_list, conjunct_name=conjunct_name) # declare conjunction
+function assert_actual_conjunction(constraint_list, fs::FormulaStats; conjunct_name=nothing)
+    formula, conjunct_name = declare_conjunction(constraint_list, fs; conjunct_name=conjunct_name) # declare conjunction
     push!(formula, assert_statement(conjunct_name)) # assert conjunction
     return formula
 end
 
-function assert_negated_conjunction(constraint_list; conjunct_name=None)
+function assert_actual_negated_conjunction(constraint_list, fs::FormulaStats; conjunct_name=nothing)
     """
     Assert the negation of conjunction of the constraints passed in constraint_list.
     not (A and B and C and ...)
     """
-    # BOOKMARK
-    formula, conjunct_name = self.declare_conjunction(constraint_list, conjunct_name=conjunct_name) # declare conjunction
-    formula += [self.assert_statement(self.negate(conjunct_name))] # assert NEGATED conjunction
+    formula, conjunct_name = declare_conjunction(constraint_list, fs; conjunct_name=conjunct_name) # declare conjunction
+    formula += [assert_statement(negate(conjunct_name))] # assert NEGATED conjunction
     return formula
 end
 
-function declare_conjunction(constraint_list, conjunct_name=nothing)
+function declare_conjunction(constraint_list, fs::FormulaStats; conjunct_name=nothing)
     """
     Given a list of constraints, declare their conjunction but DO NOT
     assert their conjunction.
@@ -339,34 +338,43 @@ function declare_conjunction(constraint_list, conjunct_name=nothing)
     But notice we are just _defining_ phi, we are not asserting that
     phi _holds_, which would be: (assert phi) [not doing that tho!]
     """
-    macro_defs, macro_names = declare_list(constraint_list) # bookmark
-    if isnothing(conjunct_name):
-        conjunct_name = self.get_new_bool()
-    assert(len(bool_var_names) > 1)
-    conjunct = self.prefix_notate("and", bool_var_names)
-    conjunct_decl = [self.declare_const(conjunct_name, "Bool")]
-    conjunct_def = [self.define_atom(conjunct_name, conjunct)]
-    formula = bool_var_defs + conjunct_decl + conjunct_def
+    macro_defs, macro_names = declare_list(constraint_list, fs)
+    if isnothing(conjunct_name)
+        conjunct_name = get_new_bool(fs)
+    end
+    @assert length(macro_names) > 1
+    conjunct = prefix_notate("and", macro_names)
+    conjunct_decl = [declare_const(conjunct_name, "Bool")]
+    conjunct_def = [define_atom(conjunct_name, conjunct)]
+    formula = vcat(macro_defs + conjunct_decl + conjunct_def)
     return formula, conjunct_name
 end
 
-def assert_disjunction(self, constraint_list, disjunct_name=None):
-raise NotImplementedError
+function assert_disjunction(constraint_list, fs::FormulaStats; disjunct_name=nothing)
+    throw(MyError("NotImplementedError"))
+end
 
-def convert_any_constraint(self, item):
-if isinstance(item, Constraint):
-    expr = self.convert_Constraint(item)
-elif isinstance(item, MatrixConstraint):
-    expr = self.convert_MatrixConstraint(item)
-elif isinstance(item, ReluConstraint):
-    expr = self.convert_ReluConstraint(item)
-elif isinstance(item, MaxConstraint):
-    expr = self.convert_MaxConstraint(item)
-elif isinstance(item, NLConstraint):
-    expr = self.convert_NLConstraint(item)
-else:
-    raise NotImplementedError
-return expr
+function convert_any_constraint(c::Expr, fs::FormulaStats)
+    # basically just prefix notate the constraint and take from expr -> string
+    # base case: numerical number
+    try
+        constant = eval(c)
+        return string(constant)
+    catch e
+    end
+    # recursive case
+    f = c.args[1]
+    args = c.args[2:end]
+    converted_args = []
+    for a in args
+        push!(converted_args, convert_any_constraint(a, fs))
+    end
+    return prefix_notate(string(f), converted_args)
+end
+# base cases:
+function convert_any_constraint(s::Symbol, fs::FormulaStats)
+    return string(s)
+end
 
 function declare_list(constraint_list::Array, fs::FormulaStats)
     """
