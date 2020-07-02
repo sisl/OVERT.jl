@@ -15,12 +15,6 @@ mutable struct SoundnessQuery
     domain # the domain over which to check if: phi => phihat   is valid.
 end
 
-mutable struct SMTLibFormula
-    formula # arraylike
-    stats::FormulaStats
-end
-SMTLibFormula() = SMTLibFormula([], FormulaStats())
-
 mutable struct FormulaStats
     bools # boolean vars. arraylike
     reals # real vars. arraylike
@@ -30,12 +24,18 @@ mutable struct FormulaStats
 end
 FormulaStats() = FormulaStats([],[],[],0,0)
 
+mutable struct SMTLibFormula
+    formula # arraylike
+    stats::FormulaStats
+end
+SMTLibFormula() = SMTLibFormula([], FormulaStats())
+
 mutable struct MyError
-    message:string
+    message::String
 end
 
 mutable struct Problem
-    name::string
+    name::String
     executable_fcn
     symbolic_fcn # may be a list of relational expressions representing the true function
     overt_problem::OvertProblem
@@ -46,9 +46,9 @@ end
 """Printing/Writing Functions"""
 function Base.show(io::IO, f::SMTLibFormula)
     s = "SMTLibFormula: "
-    s *= "new_bool_var_count = " * string(f.new_bool_var_count)
-    s *= ", bools: " * string(f.bools)
-    s *= ", reals: " * string(f.reals)
+    s *= "new_bool_var_count = " * string(f.stats.new_bool_var_count)
+    s *= ", bools: " * string(f.stats.bools)
+    s *= ", reals: " * string(f.stats.reals)
     println(io, s)
 end
 
@@ -71,7 +71,7 @@ end
 # the dynamics using a neural network vs approximating the 
 # dynamics using OVERT
 """
-function compare_soundness(problem::string)
+function compare_soundness(problem::String)
     NN_result = check_soundness(problem, approx="NN")
     OVERT_result = check_soundness(problem, approx="OVERT")
     println("Comparing Soundness of Approximations for Problem: ", problem)
@@ -81,12 +81,12 @@ function compare_soundness(problem::string)
     println(OVERT_result)
 end
 
-function check_soundness(problem::string; approx="OVERT")
+function check_soundness(problem::String; approx="OVERT")
     # construct SoundnessQuery
     query = construct_soundness_query(problem, approx)
     # check soundness query
     solver = "dreal"
-    result = check(solver, query, fname=approx*".smtlib2")
+    result = check(solver, query, approx*".smtlib2")
     return result
 end
 
@@ -112,15 +112,15 @@ which is the final formula that we will encode.
 """
 function soundnessquery2smt(query::SoundnessQuery)
     stats = FormulaStats()
-    ϕ = assert_conjunction(query.ϕ, stats)
-    notϕ̂ = assert_negation_of_conjunction(query.ϕ̂, stats)
+    ϕ = assert_conjunction(query.ϕ, stats; conjunct_name="phi")
+    notϕ̂ = assert_negation_of_conjunction(query.ϕ̂, stats; conjunct_name="phihat")
     main_formula = vcat(["; assert phi"], ϕ, ["; assert not phi hat"], notϕ̂) 
     #
-    whole_formula = vcat(header(), declare_reals(), define_domain(), main_formula, footer())
-    return SMTLibFormula(whole_formula, stats)
+    whole_formula = vcat(header(), declare_reals(stats), define_domain(query.domain), main_formula, footer())
+    return SMTLibFormula(whole_formula, stats)   
 end
 
-function check(solver::string, query::SoundnessQuery, fname::string)
+function check(solver::String, query::SoundnessQuery, fname::String)
     result = nothing
     if solver == "dreal"
         smtlibscript = soundnessquery2smt(query)
@@ -143,14 +143,25 @@ function read_result(fname)
     return result
 end
 
+function define_domain(d)
+    # d is a dictionary denoting the domain
+    
+end
+
+function assert_box(v, lb, ub)
+    lb_e = prefix_notate("<=", [v, ub])
+    ub_e = prefix_notate(">=", [v, lb])
+
+end
+
 function create_OP_for_dummy_sin()
     return OvertProblem()
 end
 
 """
-problem::string -> problem::Problem
+problem::String -> problem::Problem
 """
-function get_problem(problem::string)
+function get_problem(problem::String)
     if problem == "dummy_sin"
         domain = Dict(:x => [-π, π])
         return Problem("dummy_sin", 
@@ -168,7 +179,7 @@ function get_problem(problem::string)
     end
 end
 
-function construct_soundness_query(p::string, approx)
+function construct_soundness_query(p::String, approx)
     problem = get_problem(p)
     if approx == "OVERT"
         phihat = construct_OVERT(problem)
@@ -197,12 +208,12 @@ end
 f is an array representing a conjunction.
 Returns an array
 """
-function assert_conjunction(f::Array, fs::FormulaStats)
+function assert_conjunction(f::Array, fs::FormulaStats; conjunct_name=nothing)
     if length(f) == 1
         return [assert_literal(f[1], fs)]
     elseif length(f) > 1
         # assert conjunction
-        return assert_actual_conjunction(f, fs)::Array
+        return assert_actual_conjunction(f, fs; conjunct_name=conjunct_name)::Array
     else # empty list
         return []
     end
@@ -216,11 +227,11 @@ function assert_negated_literal(l, fs::FormulaStats)
     return assert_statement(negate(convert_any_constraint(l, fs::FormulaStats)[1]))
 end
 
-function assert_negation_of_conjunction(f::Array, fs::FormulaStats)
+function assert_negation_of_conjunction(f::Array, fs::FormulaStats; conjunct_name=nothing)
     if length(f) == 1
         return [assert_negated_literal(f[1], fs)]
     elseif length(f) >= 1
-        return assert_actual_negation_of_conjunction(f, fs)::Array
+        return assert_actual_negation_of_conjunction(f, fs; conjunct_name=conjunct_name)::Array
     else # empty list
         return []
     end
@@ -349,7 +360,7 @@ function assert_actual_negation_of_conjunction(constraint_list, fs::FormulaStats
     not (A and B and C and ...)
     """
     formula, conjunct_name = declare_conjunction(constraint_list, fs; conjunct_name=conjunct_name) # declare conjunction
-    formula += [assert_statement(negate(conjunct_name))] # assert NEGATED conjunction
+    push!(formula, assert_statement(negate(conjunct_name))) # assert NEGATED conjunction
     return formula
 end
 
@@ -374,7 +385,7 @@ function declare_conjunction(constraint_list, fs::FormulaStats; conjunct_name=no
     conjunct = prefix_notate("and", macro_names)
     conjunct_decl = [declare_const(conjunct_name, "Bool")]
     conjunct_def = [define_atom(conjunct_name, conjunct)]
-    formula = vcat(macro_defs + conjunct_decl + conjunct_def)
+    formula = vcat(macro_defs, conjunct_decl, conjunct_def)
     return formula, conjunct_name
 end
 
@@ -403,6 +414,9 @@ end
 function convert_any_constraint(s::Symbol, fs::FormulaStats)
     return string(s)
 end
+function convert_any_constraint(n::Real, fs::FormulaStats)
+    return string(n)
+end
 
 function declare_list(constraint_list::Array, fs::FormulaStats)
     """
@@ -414,12 +428,10 @@ function declare_list(constraint_list::Array, fs::FormulaStats)
     macro_defs = [] # definitions + declarations
     macro_names = [] # names
     for item in constraint_list 
-        expr = convert_any_constraint(item, fs) # may return a list of constraints when converted
-        for e in expr
-            macro_name = get_new_macro(fs)
-            push!(macro_names, macro_name)
-            push!(macro_defs, define_bool_macro(macro_name, e))
-        end
+        expr = convert_any_constraint(item, fs)::String 
+        macro_name = get_new_macro(fs)
+        push!(macro_names, macro_name)
+        push!(macro_defs, define_bool_macro(macro_name, expr))
     end
     return macro_defs, macro_names
 end
