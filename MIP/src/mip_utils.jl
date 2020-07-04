@@ -408,7 +408,18 @@ function split_hyperrectangle(input_set::Hyperrectangle, splits_idx)
 	return input_sets_splitted
 end
 
-function symbolic_reachability_with_splitting(query::OvertQuery, input_set::Hyperrectangle, splits_idx)
+function symbolic_reachability_with_splitting(query::OvertQuery, input_sets::Array{Any, 1}, splits_idx::Array{Int, 1})
+	all_concrete_sets = []
+	all_symbolic_sets = []
+	for input_set in input_sets
+		concrete_sets, symbolic_set = symbolic_reachability_with_splitting(query, input_set, splits_idx)
+		push!(all_concrete_sets, concrete_sets)
+		push!(all_symbolic_sets, symbolic_set)
+	end
+	return all_concrete_sets, all_symbolic_sets
+end
+
+function symbolic_reachability_with_splitting(query::OvertQuery, input_set::Hyperrectangle, splits_idx::Array{Int, 1})
 	"""
  	This function splits the input_set into halves based on indices given in splits_idx
 		and then computes the reachable set after n timestep symbolically
@@ -431,12 +442,6 @@ function symbolic_reachability_with_splitting(query::OvertQuery, input_set::Hype
 	end
 	return all_concrete_sets, all_symbolic_sets
 end
-
-"""
-----------------------------------------------
-symbolic queries, reachability with concretizsation in between.
-----------------------------------------------
-"""
 
 function symbolic_reachability_with_concretization(query::OvertQuery,
 	input_set::Hyperrectangle, concretize_every::Union{Int, Array{Int, 1}})
@@ -476,6 +481,50 @@ function symbolic_reachability_with_concretization(query::OvertQuery,
 	return all_concrete_sets, all_symbolic_sets
 end
 
+function symbolic_reachability_with_concretization_with_splitting(query::OvertQuery,
+	input_sets::Array{Any, 1},
+	concretize_every::Union{Int, Array{Int, 1}},
+	split_idx::Array{Int, 1})
+
+	all_concrete_sets = []
+	all_symbolic_sets = []
+	for input_set in input_sets
+		concrete_set, symbolic_set = symbolic_reachability_with_concretization_with_splitting(query, input_set, concretize_every_split_idx)
+		push!(all_concrete_sets, concrete_sets)
+		push!(all_symbolic_sets, symbolic_set)
+	end
+	return all_concrete_sets, all_symbolic_sets
+end
+
+function symbolic_reachability_with_concretization_with_splitting(query::OvertQuery,
+	input_set::Hyperrectangle,
+	concretize_every::Union{Int, Array{Int, 1}},
+	split_idx::Array{Int, 1})
+
+	ntime = query.ntime
+	if isa(concretize_every, Int)
+		@assert ntime % concretize_every == 0
+		n_loops = Int(query.ntime / concretize_every)
+		concretize_every = [concretize_every for i in 1:n_loops]
+	end
+
+	all_concrete_sets = []
+	all_symbolic_sets = []
+	this_set = copy(input_set)
+	idx = 0
+	for n in concretize_every
+		idx += 1
+		println("concretize step: $idx")
+		query.ntime = n
+		concrete_sets, symbolic_set = symbolic_reachability_with_splitting(query, this_set, split_idx)
+		push!(all_concrete_sets, concrete_sets)
+		push!(all_symbolic_sets, symbolic_set)
+		this_set = copy(symbolic_set)
+	end
+
+	query.ntime = ntime
+	return all_concrete_sets, all_symbolic_sets
+end
 
 """
 ----------------------------------------------

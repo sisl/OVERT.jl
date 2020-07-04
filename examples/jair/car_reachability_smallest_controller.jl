@@ -24,4 +24,4 @@ t2 = Dates.time()
 dt = (t2-t1)
 
 using JLD2
-JLD2.@save "examples/jair/data/car_reachability_smallest_controller_data.jld2" query input_set target_set SATus vals stats dt
+JLD2.@save "examples/jair/data/car_reachability_smallest_controller_data.jld2" query input_set all_sets all_sets_symbolic dt

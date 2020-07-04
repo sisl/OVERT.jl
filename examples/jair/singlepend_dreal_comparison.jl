@@ -12,17 +12,18 @@ query = OvertQuery(
 	controller,        # network file
 	Id(),              # last layer activation layer Id()=linear, or ReLU()=relu
 	"MIP",             # query solver, "MIP" or "ReluPlex"
-	5,                # ntime
+	10,                # ntime
 	0.1,               # dt
 	-1,                # N_overt
 	)
 
 input_set = Hyperrectangle(low=[1., 0.], high=[1.2, 0.2])
+target_set = InfiniteHyperrectangle([-Inf, -Inf], [-0.5, Inf])
 t1 = Dates.time()
-all_sets, all_sets_symbolic = symbolic_reachability_with_concretization(query, input_set, [3, 2])
+SATus, vals, stats = symbolic_satisfiability(query, input_set, target_set)
 t2 = Dates.time()
 dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
 using JLD2
-JLD2.@save "examples/jair/data/test_data.jld2" query, input_set, all_sets, all_sets_symbolic, dt
+JLD2.@save "examples/jair/data/single_pendulum_dreal_comparison_data.jld2" query input_set target_set SATus vals stats dt

@@ -25,4 +25,4 @@ dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
 using JLD2
-JLD2.@save "tora_reachability_smaller_controller_data.jld2" query, input_set, all_sets, all_sets_symbolic, dt
+JLD2.@save "tora_reachability_smaller_controller_data.jld2" query input_set all_sets all_sets_symbolic dt
