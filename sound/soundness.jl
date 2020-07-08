@@ -39,19 +39,22 @@ mutable struct Problem
     executable_fcn
     symbolic_fcn # may be a list of relational expressions representing the true function
     overt_problem::OvertProblem
-    oa::OverApproximation
+    oa #::OverApproximation
     domain
 end
+# maybe this should be:
+# exec...
+# sym ...
+# oa 
+# nn
+
 function Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, domain)
     oa, oa_outputvar = overt_problem.overt_dynamics(domain, -1)
     return Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, oa, domain)
 end
 
 function Problem(name::String, executable, overt_problem::OvertProblem, domain)
-    oa, oa_outputvar = overt_problem.overt_dynamics(domain, -1)
-    sym_dict = oa.fun_eq
-    sym_funs = [:(k=v) for (k,v) in sym_dict]
-    return Problem(name::String, executable, sym_funs, overt_problem::OvertProblem, oa, domain)
+    return Problem(name::String, executable, nothing, overt_problem::OvertProblem, nothing, domain)
 end
 
 """Printing/Writing Functions"""
@@ -69,6 +72,10 @@ function write_to_file(f::SMTLibFormula, fname; dirname="smtlibfiles/")
         println(join(f.formula, "\n"))
     end
     # TODO: make dir before writing to file in it
+    try
+        mkdir(pwd() * dirname) # make dir if it doesn't exist
+    catch
+    end
     full_fname = pwd() * dirname * fname
     file = open(full_fname, "w")
     write(file, join(f.formula, "\n"))
@@ -98,7 +105,7 @@ function check_soundness(problem::String; approx="OVERT")
     query = construct_soundness_query(problem, approx)
     # check soundness query
     solver = "dreal"
-    result = check(solver, query, approx*".smtlib2")
+    result = check(solver, query, approx*problem*".smtlib2")
     return result
 end
 
@@ -219,18 +226,23 @@ end
 function construct_soundness_query(p::String, approx)
     problem = get_problem(p)
     if approx == "OVERT"
-        phihat = construct_OVERT(problem)
+        ϕ̂ = construct_OVERT(problem)
     elseif approx == "NN"
-        phihat = fit_NN(problem)
+        ϕ̂ = fit_NN(problem)
     end
-    phi = problem.symbolic_fcn
-    return SoundnessQuery(phi, phihat, problem.domain)
+    ϕ = problem.symbolic_fcn
+    return SoundnessQuery(ϕ, ϕ̂, problem.domain)
 end
 
 function construct_OVERT(problem::Problem)
-    oa::OverApproximation, output_vars = problem.overt_problem.overt_dynamics(problem.domain, -1)
+    oa::OverApproximation, output_vars = problem.overt_problem.overt_dynamics(problem.domain, 2)
+    problem.oa = oa
+    sym_dict = oa.fun_eq
+    sym_funs = [:($k==$v) for (k,v) in sym_dict]
+    problem.symbolic_fcn = sym_funs
     # what to return, exactly?
     # return: combine two arrays of oa.approx_eq, oa.approx_ineq
+    # TODO: check that problem::Problem is modified once this function exits
     return vcat(oa.approx_eq, oa.approx_ineq)
 end
 
