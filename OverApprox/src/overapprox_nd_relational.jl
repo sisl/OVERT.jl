@@ -6,7 +6,7 @@ include("OA_relational_util.jl")
 using SymEngine
 using Revise
 
-plotflag = false
+plotflag = true
 
 """
     overapprox_nd(expr,
@@ -253,18 +253,54 @@ function mul_var_sca_helper(var, constant, bound)
 end
 
 function expand_multiplication(x, y, bound; ξ=0.1)
+    return expand_multiplication_with_scaling(x, y, bound; ξ=ξ)
+end
+# function expand_multiplication(x, y, bound; ξ=0.1)
+#     """
+#         expand_multiplication(x, y, bound; ξ=1.0)
+#     Re write multiplication e.g. x*y using exp(log()) and affine expressions
+#     e.g. x*y, x ∈ [a,b] ∧ y ∈ [c,d], ξ>0
+#          x2 = x - a + ξ  , x2 ∈ [ξ, b - a + ξ] aka x2 > 0   (recall, b > a)
+#             x = x2 + a - ξ
+#          y2 = y - c + ξ , y2 ∈ [ξ, d - c + ξ] aka y2 > 0   (recall, d > c)
+#             y = y2 + c - ξ
+#         x*y = (x2 + a - ξ)*(y2 + c - ξ)
+#             = x2*y2 + (a - ξ)*y2 + (c - ξ)*x2 + (a - ξ)*(c - ξ)
+#             = exp(log(x2*y2)) + (a - ξ)*y2 + (c - ξ)*x2 + (a - ξ)*(c - ξ)
+#             = exp(log(x2) + log(y2)) + (a - ξ)*y2 + (c - ξ)*x2 + (a - ξ)*(c - ξ)
+#         In this final form, everything is decomposed into unary functions, +, and affine functions!
+#     """
+#
+#     x2 = add_var(bound)
+#     y2 = add_var(bound)
+#     a,b = bound.ranges[x]
+#     c,d = bound.ranges[y]
+#     @assert(b >= a)
+#     @assert(d >= c)
+#     push!(bound.approx_eq, :($x2 == $x - $a + $ξ))
+#     push!(bound.approx_eq, :($y2 == $y - $c + $ξ))
+#     @debug("Expanding multiplication")
+#     bound.fun_eq[x2] = :($x - $a + $ξ)
+#     bound.fun_eq[y2] = :($y - $c + $ξ)
+#     bound.ranges[x2] = [ξ, b - a + ξ]
+#     bound.ranges[y2] = [ξ, d - c + ξ]
+#     expr = :( exp(log($x2) + log($y2)) + ($a - $ξ)*$y2 + ($c - $ξ)*$x2 + (($a - $ξ)*($c - $ξ)) )
+#     return expr, bound
+# end
+
+function expand_multiplication_with_scaling(x, y, bound; ξ=0.1)
     """
         expand_multiplication(x, y, bound; ξ=1.0)
     Re write multiplication e.g. x*y using exp(log()) and affine expressions
     e.g. x*y, x ∈ [a,b] ∧ y ∈ [c,d], ξ>0
-         x2 = x - a + ξ  , x2 ∈ [ξ, b - a + ξ] aka x2 > 0   (recall, b > a)
-            x = x2 + a - ξ
-         y2 = y - c + ξ , y2 ∈ [ξ, d - c + ξ] aka y2 > 0   (recall, d > c)
-            y = y2 + c - ξ
-        x*y = (x2 + a - ξ)*(y2 + c - ξ)
-            = x2*y2 + (a - ξ)*y2 + (c - ξ)*x2 + (a - ξ)*(c - ξ)
-            = exp(log(x2*y2)) + (a - ξ)*y2 + (c - ξ)*x2 + (a - ξ)*(c - ξ)
-            = exp(log(x2) + log(y2)) + (a - ξ)*y2 + (c - ξ)*x2 + (a - ξ)*(c - ξ)
+         x2 = (x - a)/(b - a) + ξ  , x2 ∈ [ξ, 1 + ξ] aka x2 > 0   (recall, b > a)
+            x = (b - a)x2 + a - ξ
+         y2 = (y - c)/(d - c) + ξ , y2 ∈ [ξ, 1 + ξ] aka y2 > 0   (recall, d > c)
+            y = (d - c)y2 + c - ξ
+        x*y = ((b - a)x2 + a - ξ)*((d - c)y2 + c - ξ)
+            = (b - a)*(d - c)*x2*y2  + (d - c)(a - ξ)*y2 + (b - a)(c - ξ)*x2 + (a - ξ)*(c - ξ)
+            = (b - a)*(d - c)*exp(log(x2*y2)) + (d - c)(a - ξ)*y2 + (b - a)(c - ξ)*x2 + (a - ξ)*(c - ξ)
+            = (b - a)*(d - c)*exp(log(x2) + log(y2)) + (d - c)(a - ξ)*y2 + (b - a)(c - ξ)*x2 + (a - ξ)*(c - ξ)
         In this final form, everything is decomposed into unary functions, +, and affine functions!
     """
 
@@ -274,16 +310,17 @@ function expand_multiplication(x, y, bound; ξ=0.1)
     c,d = bound.ranges[y]
     @assert(b >= a)
     @assert(d >= c)
-    push!(bound.approx_eq, :($x2 == $x - $a + $ξ))
-    push!(bound.approx_eq, :($y2 == $y - $c + $ξ))
+    push!(bound.approx_eq, :($x2 == ($x - $a)/($b - $a) + $ξ))
+    push!(bound.approx_eq, :($y2 == ($y - $c)/($d - $c) + $ξ))
     @debug("Expanding multiplication")
-    bound.fun_eq[x2] = :($x - $a + $ξ)
-    bound.fun_eq[y2] = :($y - $c + $ξ)
-    bound.ranges[x2] = [ξ, b - a + ξ]
-    bound.ranges[y2] = [ξ, d - c + ξ]
-    expr = :( exp(log($x2) + log($y2)) + ($a - $ξ)*$y2 + ($c - $ξ)*$x2 + (($a - $ξ)*($c - $ξ)) )
+    bound.fun_eq[x2] = :(($x - $a)/($b - $a) + $ξ)
+    bound.fun_eq[y2] = :(($y - $c)/($d - $c) + $ξ)
+    bound.ranges[x2] = [ξ, 1. + ξ]
+    bound.ranges[y2] = [ξ, 1. + ξ]
+    expr = :(($b - $a)*($d - $c)*exp(log($x2) + log($y2)) + ($d - $c)*($a - $ξ)*$y2 + ($b - $a)($c - $ξ)*$x2 + ($a - $ξ)*($c - $ξ) )
     return expr, bound
 end
+
 
 function apply_fx(f, a)
     substitute!(f, :x, a)
