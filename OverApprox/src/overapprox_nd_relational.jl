@@ -310,14 +310,23 @@ function expand_multiplication_with_scaling(x, y, bound; ξ=0.1)
     c,d = bound.ranges[y]
     @assert(b >= a)
     @assert(d >= c)
-    push!(bound.approx_eq, :($x2 == ($x - $a)/($b - $a) + $ξ))
-    push!(bound.approx_eq, :($y2 == ($y - $c)/($d - $c) + $ξ))
+    b_minus_a = b - a
+    d_minus_c = d - c
+    push!(bound.approx_eq, :($x2 == ($x - $a)/$b_minus_a + $ξ))
+    push!(bound.approx_eq, :($y2 == ($y - $c)/$d_minus_c + $ξ))
     @debug("Expanding multiplication")
-    bound.fun_eq[x2] = :(($x - $a)/($b - $a) + $ξ)
-    bound.fun_eq[y2] = :(($y - $c)/($d - $c) + $ξ)
+    bound.fun_eq[x2] = :(($x - $a)/$b_minus_a + $ξ)
+    bound.fun_eq[y2] = :(($y - $c)/$d_minus_c + $ξ)
     bound.ranges[x2] = [ξ, 1. + ξ]
     bound.ranges[y2] = [ξ, 1. + ξ]
-    expr = :(($b - $a)*($d - $c)*exp(log($x2) + log($y2)) + ($d - $c)*($a - $ξ)*$y2 + ($b - $a)($c - $ξ)*$x2 + ($a - $ξ)*($c - $ξ) )
+
+
+    b_minus_a_times_d_minus_c = (b - a)*(d - c)
+    d_minus_c_times_a_minus_ξ = (d - c)*(a - ξ)
+    b_minus_a_times_c_minus_ξ = (b - a)*(c - ξ)
+    a_minus_ξ_times_c_minus_ξ = (a - ξ)*(c - ξ)
+
+    expr = :($b_minus_a_times_d_minus_c*exp(log($x2) + log($y2)) + $d_minus_c_times_a_minus_ξ*$y2 + $b_minus_a_times_c_minus_ξ*$x2 + $a_minus_ξ_times_c_minus_ξ )
     return expr, bound
 end
 
