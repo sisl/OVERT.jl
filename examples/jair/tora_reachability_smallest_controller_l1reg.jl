@@ -5,7 +5,7 @@ include("../../MIP/src/overt_to_mip.jl")
 include("../../MIP/src/mip_utils.jl")
 include("../../models/tora/tora.jl")
 
-controller = "nnet_files/jair/tora_smallest_controller.nnet"
+controller = "nnet_files/jair/tora_smallest_controller_l1reg.nnet"
 
 query = OvertQuery(
 	Tora,       # problem
@@ -25,4 +25,4 @@ dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
 using JLD2
-JLD2.@save "examples/jair/data/tora_reachability_smallest_controller_data.jld2" query input_set all_sets all_sets_symbolic dt
+JLD2.@save "examples/jair/data/tora_reachability_smallest_controller_l1reg_data.jld2" query input_set all_sets all_sets_symbolic dt

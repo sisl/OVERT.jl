@@ -22,7 +22,7 @@ target_set = Hyperrectangle([-1., 0.1, -0.1, -0.6], [0.1, 0.1, 0.1, 0.1])
 t1 = Dates.time()
 SATus, vals, stats = symbolic_satisfiability(query, input_set, target_set)
 t2 = Dates.time()
-dt = (t2-t1)/1000
+dt = (t2-t1)
 
 using JLD2
 JLD2.@save "examples/jair/data/tora_satisfiability_big_controller_data.jld2" query input_set target_set SATus vals stats dt

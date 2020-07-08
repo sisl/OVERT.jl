@@ -408,7 +408,18 @@ function split_hyperrectangle(input_set::Hyperrectangle, splits_idx)
 	return input_sets_splitted
 end
 
-function symbolic_reachability_with_splitting(query::OvertQuery, input_set::Hyperrectangle, splits_idx)
+function symbolic_reachability_with_splitting(query::OvertQuery, input_sets::Array{Any, 1}, splits_idx::Array{Int, 1})
+	all_concrete_sets = []
+	all_symbolic_sets = []
+	for input_set in input_sets
+		concrete_sets, symbolic_set = symbolic_reachability_with_splitting(query, input_set, splits_idx)
+		push!(all_concrete_sets, concrete_sets)
+		push!(all_symbolic_sets, symbolic_set)
+	end
+	return all_concrete_sets, all_symbolic_sets
+end
+
+function symbolic_reachability_with_splitting(query::OvertQuery, input_set::Hyperrectangle, splits_idx::Array{Int, 1})
 	"""
  	This function splits the input_set into halves based on indices given in splits_idx
 		and then computes the reachable set after n timestep symbolically
@@ -432,13 +443,8 @@ function symbolic_reachability_with_splitting(query::OvertQuery, input_set::Hype
 	return all_concrete_sets, all_symbolic_sets
 end
 
-"""
-----------------------------------------------
-symbolic queries, reachability with concretizsation in between.
-----------------------------------------------
-"""
-
-function symbolic_reachability_with_concretization(query::OvertQuery, input_set::Hyperrectangle, concretize_every::Int)
+function symbolic_reachability_with_concretization(query::OvertQuery,
+	input_set::Hyperrectangle, concretize_every::Union{Int, Array{Int, 1}})
    """
 	This function computes the reachable set after n timestep symbolically by
 		concretizing after every concretize_every timesteps.
@@ -453,14 +459,18 @@ function symbolic_reachability_with_concretization(query::OvertQuery, input_set:
    - all_sets_symbolic: a hyperrectangle for the reachable set at t=n, computed symbolically.
 	"""
 	ntime = query.ntime
-	@assert ntime % concretize_every == 0
-	n_loops = Int(query.ntime / concretize_every)
-	query.ntime = concretize_every
+	if isa(concretize_every, Int)
+		@assert ntime % concretize_every == 0
+		n_loops = Int(query.ntime / concretize_every)
+		concretize_every = [concretize_every for i in 1:n_loops]
+	end
+
 
 	all_concrete_sets = []
 	all_symbolic_sets = []
 	this_set = copy(input_set)
-	for n = 1:n_loops
+	for n in concretize_every
+		query.ntime = n
 		concrete_sets, symbolic_set = symbolic_reachability(query, this_set)
 		push!(all_concrete_sets, concrete_sets)
 		push!(all_symbolic_sets, symbolic_set)
@@ -471,6 +481,50 @@ function symbolic_reachability_with_concretization(query::OvertQuery, input_set:
 	return all_concrete_sets, all_symbolic_sets
 end
 
+function symbolic_reachability_with_concretization_with_splitting(query::OvertQuery,
+	input_sets::Array{Any, 1},
+	concretize_every::Union{Int, Array{Int, 1}},
+	split_idx::Array{Int, 1})
+
+	all_concrete_sets = []
+	all_symbolic_sets = []
+	for input_set in input_sets
+		concrete_set, symbolic_set = symbolic_reachability_with_concretization_with_splitting(query, input_set, concretize_every_split_idx)
+		push!(all_concrete_sets, concrete_sets)
+		push!(all_symbolic_sets, symbolic_set)
+	end
+	return all_concrete_sets, all_symbolic_sets
+end
+
+function symbolic_reachability_with_concretization_with_splitting(query::OvertQuery,
+	input_set::Hyperrectangle,
+	concretize_every::Union{Int, Array{Int, 1}},
+	split_idx::Array{Int, 1})
+
+	ntime = query.ntime
+	if isa(concretize_every, Int)
+		@assert ntime % concretize_every == 0
+		n_loops = Int(query.ntime / concretize_every)
+		concretize_every = [concretize_every for i in 1:n_loops]
+	end
+
+	all_concrete_sets = []
+	all_symbolic_sets = []
+	this_set = copy(input_set)
+	idx = 0
+	for n in concretize_every
+		idx += 1
+		println("concretize step: $idx")
+		query.ntime = n
+		concrete_sets, symbolic_set = symbolic_reachability_with_splitting(query, this_set, split_idx)
+		push!(all_concrete_sets, concrete_sets)
+		push!(all_symbolic_sets, symbolic_set)
+		this_set = copy(symbolic_set)
+	end
+
+	query.ntime = ntime
+	return all_concrete_sets, all_symbolic_sets
+end
 
 """
 ----------------------------------------------
@@ -1055,20 +1109,18 @@ function plot_mc_trajectories(data0, data; fig=nothing, idx=[1,2], n_traj = 100,
 end
 
 
-function plot_output_sets_pgfplot(output_sets; idx=[1,2], fig=nothing, linewidth=3,
+function plot_output_sets_pgfplot(output_sets; idx=[1,2], fig=nothing, linewidth=:thick,
     linecolor=:black, linestyle=:solid, fillalpha=0, fill=:red, labels=nothing)
 
-    if isnothing(fig)
-		fig = PGFPlots.Axis(style="width=10cm, height=10cm")
+	if isnothing(labels)
+		labels = ["\$x_$(idx[1])\$", "\$x_$(idx[2])\$"]
 	end
 
-	if !isnothing(labels)
-		fig.xlabel = labels[1]
-		fig.ylabel = labels[2]
+	if isnothing(fig)
+		fig = PGFPlots.Axis(style="width=10cm, height=10cm", xlabel=labels[1], ylabel=labels[2])
 	end
 
-
-	line_style = "$linestyle, $linecolor, very thick, mark=none"
+	line_style = "$linestyle, $linecolor, $linewidth, mark=none"
     for s in output_sets
 		s1, s2 = s.center[idx[1]], s.center[idx[2]]
 		r1, r2 = s.radius[idx[1]], s.radius[idx[2]]
@@ -1083,14 +1135,18 @@ end
 
 function plot_output_hist_pgfplot(data, ntime; fig=nothing, idx=[1,2],
 	     inner_points=false, labels=nothing)
-    if isnothing(fig)
-		fig = PGFPlots.Axis(style="width=10cm, height=10cm")
+    if isnothing(labels)
+		labels = ["\$x_$(idx[1])\$", "\$x_$(idx[2])\$"]
+	end
+
+	if isnothing(fig)
+		fig = PGFPlots.Axis(style="width=10cm, height=10cm", xlabel=labels[1], ylabel=labels[2])
 	end
 
     # x = data[:, ntime, idx[1]]
     # y = data[:, ntime, idx[2]]
 	# push!(fig, PGFPlots.Plots.Histogram2(x, y, density=true,
-	#                                    colormap=PGFPlots.ColorMaps.Named("Jet")))
+	#                                    colormap=PGFPlots.ColorMaps.Named("Jet"))
 
 	points = data[:, ntime, idx]
 	if inner_points
@@ -1101,14 +1157,10 @@ function plot_output_hist_pgfplot(data, ntime; fig=nothing, idx=[1,2],
 	end
 
 	border_idx = chull(points).vertices
-	p = PGFPlots.Plots.Linear(points[border_idx, 1], points[border_idx, 2],
-	                         style="solid, orange, line width=3pt, mark=none")
+	p = PGFPlots.Plots.Linear(points[border_idx, 1], points[border_idx, 2], style="solid, orange, line width=3pt, mark=none")
 	push!(fig, p)
 
-	if !isnothing(labels)
-		fig.xlabel = labels[1]
-		fig.ylabel = labels[2]
-	end
+
 
     return fig
 end

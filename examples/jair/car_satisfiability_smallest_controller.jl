@@ -18,11 +18,6 @@ query = OvertQuery(
 	)
 
 input_set = Hyperrectangle(low=[9.5, -4.5, 2.1, 1.5], high=[9.55, -4.45, 2.11, 1.51])
-#target_set = Hyperrectangle([8.0, -3.0, 2.5, 2.4], [0.1, 0.1, 0.1, 0.1]) # 5
-#target_set = InfiniteHyperrectangle([8.0, -3.0, 2.5, 2.4], [Inf, -2.9, 2.6, 2.5]) # 5
-#target_set = Hyperrectangle([6.0, -1.9, 2.6, 2.2], [0.1, 0.1, 0.1, 0.1]) #   10
-# target_set = InfiniteHyperrectangle([-Inf, -Inf, -Inf, -Inf], [6.0, Inf, Inf, Inf]) #   10
-# target_set = Hyperrectangle([4.0, -0.2, 0.0, -0.8], [0.2, 0.2, 0.1, 0.1]) #   25
 target_set = InfiniteHyperrectangle([-Inf, -Inf, -Inf, -Inf], [5.0, Inf, Inf, Inf])
 t1 = Dates.time()
 SATus, vals, stats = symbolic_satisfiability(query, input_set, target_set)
