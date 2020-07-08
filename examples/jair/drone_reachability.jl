@@ -5,7 +5,7 @@ include("../../MIP/src/overt_to_mip.jl")
 include("../../MIP/src/mip_utils.jl")
 include("../../models/drone/drone.jl")
 
-network = "nnet_files/jair/drone_small_controller.nnet"
+network = "nnet_files/jair/drone_small_controller2.nnet"
 
 query = OvertQuery(
 	Drone,  # problem
@@ -13,8 +13,8 @@ query = OvertQuery(
 	Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
 	"MIP",     	# query solver, "MIP" or "ReluPlex"
 	11,        	# ntime
-	0.1,       	# dt
-	-1,        	# N_overt
+	0.2,       	# dt
+	2,        	# N_overt
 	)
 
 # the controller is trained on data initial data in the following range
