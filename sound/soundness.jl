@@ -49,8 +49,7 @@ end
 # nn
 
 function Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, domain)
-    oa, oa_outputvar = overt_problem.overt_dynamics(domain, -1)
-    return Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, oa, domain)
+    return Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, nothing, domain)
 end
 
 function Problem(name::String, executable, overt_problem::OvertProblem, domain)
@@ -102,7 +101,7 @@ end
 
 function check_soundness(problem::String; approx="OVERT")
     # construct SoundnessQuery
-    query = construct_soundness_query(problem, approx)
+    query = construct_soundness_query(problem, approx)::SoundnessQuery
     # check soundness query
     solver = "dreal"
     result = check(solver, query, approx*problem*".smtlib2")
@@ -175,6 +174,8 @@ function define_domain(d)
 end
 
 function define_box(v::String, lb, ub)
+    lb = lb < 0 ? prefix_notate("-", [-lb]) : string(lb)
+    ub = ub < 0 ? prefix_notate("-", [-ub]) : string(ub)
     lb_e = prefix_notate("<=", [v, ub])
     ub_e = prefix_notate(">=", [v, lb])
     return prefix_notate("and", [lb_e, ub_e])
@@ -235,7 +236,8 @@ function construct_soundness_query(p::String, approx)
 end
 
 function construct_OVERT(problem::Problem)
-    oa::OverApproximation, output_vars = problem.overt_problem.overt_dynamics(problem.domain, 2)
+    range_dict = deepcopy(problem.domain)
+    oa::OverApproximation, output_vars = problem.overt_problem.overt_dynamics(range_dict, 2)
     problem.oa = oa
     sym_dict = oa.fun_eq
     sym_funs = [:($k==$v) for (k,v) in sym_dict]
@@ -377,7 +379,7 @@ end
 
 function header()
     h = [set_logic(), produce_models()]
-    push!(h, define_max(), define_relu())
+    push!(h, define_max(), define_min(), define_relu())
     return h
 end
 
@@ -389,8 +391,15 @@ function produce_models()
     return "(set-option :produce-models true)"
 end
 
+# define-fun is a macro.
+# if x < y return y else x
 function define_max()
     return "(define-fun max ((x Real) (y Real)) Real (ite (< x y) y x))"
+end
+
+# if x < y return x else y
+function define_min()
+    return "(define-fun min ((x Real) (y Real)) Real (ite (< x y) x y))"
 end
 
 function define_relu()
@@ -442,16 +451,31 @@ function assert_disjunction(constraint_list, fs::FormulaStats; disjunct_name=not
     throw(MyError("NotImplementedError"))
 end
 
+"""
+Convert julian relational operators into smtlib2 friendly ones. 
+"""
+function convert_f(f::Symbol)
+    if f == :(==)
+        return "="
+    elseif f == :≤ || f == :≦
+        return "<="
+    elseif f == :≥ || f == :≧
+        return ">="
+    else 
+        return string(f)
+    end
+end
+
 function convert_any_constraint(c::Expr, fs::FormulaStats)
     # basically just prefix notate the constraint and take from expr -> string
     # base case: numerical number
     try
         constant = eval(c)
-        return string(constant)
+        return convert_any_constraint(constant::Real, fs)
     catch e
     end
     # recursive case
-    f = c.args[1]
+    f = convert_f(c.args[1])
     args = c.args[2:end]
     converted_args = []
     for a in args
@@ -461,10 +485,15 @@ function convert_any_constraint(c::Expr, fs::FormulaStats)
 end
 # base cases:
 function convert_any_constraint(s::Symbol, fs::FormulaStats)
+    add_real_var(s, fs) # log var
     return string(s)
 end
 function convert_any_constraint(n::Real, fs::FormulaStats)
-    return string(n)
+    if n >= 0
+        return string(n)
+    else #if n < 0
+        return prefix_notate("-", [-n]) # smtlib2 can't handle negative numbers and needs unary minus, ugh (!)
+    end
 end
 
 function declare_list(constraint_list::Array, fs::FormulaStats)
