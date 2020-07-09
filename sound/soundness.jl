@@ -378,13 +378,13 @@ function footer()
 end
 
 function header()
-    h = [set_logic(), produce_models()]
-    push!(h, define_max(), define_min(), define_relu())
+    h = [produce_models(), set_logic()]
+    # push!(h, define_max(), define_min(), define_relu()) # min and max already defined by dreal
     return h
 end
 
 function set_logic()
-    return "(set-logic ALL)"
+    return "(set-logic QF_NRA)"
 end
 
 function produce_models()
