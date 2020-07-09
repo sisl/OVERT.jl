@@ -104,7 +104,7 @@ function check_soundness(problem::String; approx="OVERT")
     query = construct_soundness_query(problem, approx)::SoundnessQuery
     # check soundness query
     solver = "dreal"
-    result = check(solver, query, approx*problem*".smtlib2")
+    result = check(solver, query, approx*problem*".smt2")
     return result
 end
 
@@ -422,28 +422,34 @@ function assert_actual_negation_of_conjunction(constraint_list, fs::FormulaStats
     return formula
 end
 
-function declare_conjunction(constraint_list, fs::FormulaStats; conjunct_name=nothing)
+function declare_conjunction(constraint_list, fs::FormulaStats; conjunct_name=nothing, use_macros=false)
     """
     Given a list of constraints, declare their conjunction but DO NOT
     assert their conjunction.
-    e.g. 
+    can use macros e.g. 
     (define-fun _def1 () Bool (<= x 2.0))
     (define-fun _def2 () Bool (>= y 3.0))
+    
+    or can use new boolean variables
+    (declare-const b1 Bool)
+    (assert (== b1 (<= x 2.0)))
+    
     ...
     (declare ... phi)
     (assert (= phi (and A B)))
+
     But notice we are just _defining_ phi, we are not asserting that
     phi _holds_, which would be: (assert phi) [not doing that tho!]
     """
-    macro_defs, macro_names = declare_list(constraint_list, fs)
+    defs, names = declare_list(constraint_list, fs; use_macros=use_macros)
     if isnothing(conjunct_name)
         conjunct_name = get_new_bool(fs)
     end
-    @assert length(macro_names) > 1
-    conjunct = prefix_notate("and", macro_names)
+    @assert length(names) > 1
+    conjunct = prefix_notate("and", names)
     conjunct_decl = [declare_const(conjunct_name, "Bool")]
     conjunct_def = [define_atom(conjunct_name, conjunct)]
-    formula = vcat(macro_defs, conjunct_decl, conjunct_def)
+    formula = vcat(defs, conjunct_decl, conjunct_def)
     return formula, conjunct_name
 end
 
@@ -496,22 +502,43 @@ function convert_any_constraint(n::Real, fs::FormulaStats)
     end
 end
 
-function declare_list(constraint_list::Array, fs::FormulaStats)
+function declare_list(constraint_list::Array, fs::FormulaStats; use_macros=false)
     """
     turn a list of some type of AbstractConstraint <: into 
+    
     smtlib macro declarations/definitions:
     (define-fun _def1 () Bool (<= x 2.0))
+    
     But DON'T assert either true or false for the macro (e.g. (assert _def1()) )
+    
+    OR new binary variables:
+    
+    (declare-const b1 Bool)
+    (assert (= b1 (<= v 9)))
+    
+    And again DON'T assert either (assert b1) or (assert (not b1))
     """
-    macro_defs = [] # definitions + declarations
-    macro_names = [] # names
+    defs = [] # definitions + declarations
+    names = [] # names
     for item in constraint_list 
-        expr = convert_any_constraint(item, fs)::String 
-        macro_name = get_new_macro(fs)
-        push!(macro_names, macro_name)
-        push!(macro_defs, define_bool_macro(macro_name, expr))
+        expr = convert_any_constraint(item, fs)::String
+        if item.args[1] == :(==)
+            # if this is a definition of a variable/function, just assert it.
+            push!(defs, assert_statement(expr))
+        else
+            if use_macros 
+                macro_name = get_new_macro(fs)
+                push!(names, macro_name)
+                push!(defs, define_bool_macro(macro_name, expr))
+            else # use new bools
+                bool_name = get_new_bool(fs)
+                push!(names, bool_name)
+                push!(defs, declare_const(bool_name, "Bool"))
+                push!(defs, define_atom(bool_name, expr))
+            end
+        end
     end
-    return macro_defs, macro_names
+    return defs, names
 end
 
 function get_new_macro(fs::FormulaStats)
