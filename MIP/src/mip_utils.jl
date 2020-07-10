@@ -756,7 +756,7 @@ end
 # end
 
 
-function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set; unsat_problem::Bool=false)
+function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set; unsat_problem::Bool=false, after_n::Int=0)
 	"""
 	Checks whether a property P is satisfied at timesteps 1 to n symbolically.
 	inputs:
@@ -765,10 +765,13 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 	- target_set: Hyperrectangle for the targe set of variables.
 	- unsat_problem: if true, it solves an unsatisfiability problem. i.e. the first
 	                timestep at which state does not include in target set.
+    - after_n: satisfiability is checked for n > after_n. n here is the time step number.
+	           default value = 0. meaning that we start from begining.
 	outputs:
 	- status: status of query which can be sat, unsat or error,
 	- vals: if sat, returns the counter example at timestep n+1. else returns empty dictionary.
 	- stats: if sat, returns the counter example at timestep 1 to n. else returns empty dictionary.
+
 	"""
 	n = query.ntime
 	SATus, vals, stats = "", Dict(), Dict() # "init" values...
@@ -786,6 +789,11 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 		push!(all_sets, output_set)
 		push!(all_oA, oA)
 		push!(all_oA_vars, oA_vars)
+
+		if i <= after_n
+			println("not yet in the timestep of interest")
+			continue
+		end
 
 		query.ntime = i
 		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets, all_oA, all_oA_vars)
@@ -1163,4 +1171,42 @@ function plot_output_hist_pgfplot(data, ntime; fig=nothing, idx=[1,2],
 
 
     return fig
+end
+
+function plot_satisfiability_pgfplot(stats, vals, query; fig=nothing, idx=[1,2], labels=nothing)
+	if isnothing(labels)
+		labels = ["\$x_$(idx[1])\$", "\$x_$(idx[2])\$"]
+	end
+	if isnothing(fig)
+		fig = PGFPlots.Axis(style="width=10cm, height=10cm", xlabel=labels[1], ylabel=labels[2])
+	end
+
+	data_sat_x = Array{Float64, 1}(undef, 0)
+	data_sat_y = Array{Float64, 1}(undef, 0)
+    i = 1
+	while true
+		vx = "x$(idx[1])_$i"
+		vx = Meta.parse(vx)
+		if vx ∉ keys(stats)
+			break
+		end
+		push!(data_sat_x, stats[vx])
+
+		vy = "x$(idx[2])_$i"
+		vy = Meta.parse(vy)
+		push!(data_sat_y, stats[vy])
+		i += 1
+	end
+	push!(data_sat_x, vals[idx[1]])
+	push!(data_sat_y, vals[idx[2]])
+
+	n_dim = length(query.problem.input_vars)
+	x0 = [stats[Meta.parse("x$(idx[i])_1")] for i = 1:n_dim]
+	data_mc = monte_carlo_one_simulate(query, x0)
+
+	pp = PGFPlots.Plots.Linear(data_sat_x, data_sat_y, style="mark=none, orange, dashed, very thick")
+	push!(fig, pp)
+	pp = PGFPlots.Plots.Linear(data_mc[:, idx[1]], data_mc[:, idx[2]], style="blue")
+	push!(fig, pp)
+	return fig
 end

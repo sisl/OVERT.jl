@@ -12,9 +12,9 @@ query = OvertQuery(
 	network,    # network file
 	Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
 	"MIP",     	# query solver, "MIP" or "ReluPlex"
-	11,        	# ntime
-	0.2,       	# dt
-	2,        	# N_overt
+	10,        	# ntime
+	0.1,       	# dt
+	-1,        	# N_overt
 	)
 
 # the controller is trained on data initial data in the following range
@@ -25,7 +25,7 @@ query = OvertQuery(
 input_set = Hyperrectangle(low=[-1., -0.5, 4.5, 0.45, 0.45, 0.45, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09],
                           high=[ 1.,  0.5, 5.5, 0.55, 0.55, 0.55, 0.1 , 0.1 , 0.1 , 0.1 , 0.1,  0.1])
 t1 = Dates.time()
-all_sets, all_sets_symbolic = symbolic_reachability(query, input_set)
+all_sets, all_sets_symbolic = many_timestep_concretization(query, input_set)
 t2 = Dates.time()
 dt = (t2-t1)
 
