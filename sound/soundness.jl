@@ -5,6 +5,7 @@
 include("../models/problems.jl")
 include("../models/car/car.jl")
 include("../models/car/simple_car.jl")
+using Flux
 
 global DEBUG = true
 
@@ -248,9 +249,18 @@ function construct_OVERT(problem::Problem)
     return vcat(oa.approx_eq, oa.approx_ineq)
 end
 
+""" Use executable version of function to 
+fit neural network approximation"""
 function fit_NN(problem::Problem)
-    # TODO
-    # some code where I call flux and stuff
+    n_states = length(problem.overt_problem.input_vars)
+    n_controls = length(problem.overt_problem.control_vars)
+    n_inputs = n_states + n_controls
+    n_outputs = n_states
+    model  = Chain(
+        Dense(n_inputs,20,relu),
+        Dense(20,20,relu),
+        Dense(20, n_outputs)
+    )
 end
 
 """Low level functions for converting ϕ and ϕ̂ to smtlib2"""
