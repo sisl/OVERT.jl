@@ -6,6 +6,8 @@ include("../models/problems.jl")
 include("../models/car/car.jl")
 include("../models/car/simple_car.jl")
 using Flux
+using Intervals
+using IterTools: ncycle
 
 global DEBUG = true
 
@@ -256,11 +258,55 @@ function fit_NN(problem::Problem)
     n_controls = length(problem.overt_problem.control_vars)
     n_inputs = n_states + n_controls
     n_outputs = n_states
+    # set up model
     model  = Chain(
         Dense(n_inputs,20,relu),
         Dense(20,20,relu),
         Dense(20, n_outputs)
     )
+    params = Flux.params(model) 
+    # get datasets
+    X, Y = sample_dataset(problem, n_inputs)
+    train_loader = DataLoader((X, Y), batchsize=100, shuffle=true)
+    Xtest, Ytest = sample_dateset(problem, n_inputs)
+    # setup loss
+    loss(x, y) = Flux.Losses.mse(model(x), y)
+    # setup callbacks
+    evalcb() = @show(sum(loss.(Xtest, Ytest)))
+    # train 
+    optimizer = ADAM(3e-2)
+    Flux.train!(loss, params, ncycle(train_loader, 5), optimizer, cb = Flux.throttle(evalcb, 1))
+    println("After training test loss is: ", sum(loss.(Xtest, Ytest)))
+    # return network
+    return model
+end
+
+"""sample dataset to train on.
+Assumes overt_problem.input_vars are listed in the same order that the dynamics function expects.
+e.g. they are listed in the <model>.jl file as: [:x1, :x2, :x3] and the dynamics function expects 
+something of the form [x1, x2, x3] """
+function sample_dateset(problem::Problem; N=10)
+    # sample points in domain of state
+    X = get_random_points(problem.domain, problem.overt_problem.input_vars, N)
+    # sample points in domain of control
+    U = get_random_points(problem.domain, problem.overt_problem.control_vars, N)
+    # compute label using executable function 
+    Y = problem.executable_fcn.(X, U)
+
+    F = collect(eachrow(hcat(hcat(X...)',hcat(U...)')))
+    return F, Y
+end 
+
+"""Get random samples of a multi-dimensional variable. domain contains a range for the 
+variable: (:x => [4,5])"""
+function get_random_points(domain::Dict, variables, N)
+    lbs = [domain[v][1] for v in variables]
+    ubs = [domain[v][2] for v in variables]
+    deltas = ubs - lbs
+    # sample points in domain 
+    X = rand(N, length(variables))*deltas .+ lbs'
+    @assert all(X[:,1] .∈ lbs[1]..ubs[1]) # sanity check to make sure broadcasting works correctly
+    return collect(eachrow(X))
 end
 
 """Low level functions for converting ϕ and ϕ̂ to smtlib2"""
