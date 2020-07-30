@@ -232,7 +232,7 @@ function construct_soundness_query(p::String, approx)
     if approx == "OVERT"
         ϕ̂ = construct_OVERT(problem)
     elseif approx == "NN"
-        ϕ̂ = fit_NN(problem)
+        ϕ̂ = get_NN(problem)
     end
     ϕ = problem.symbolic_fcn
     return SoundnessQuery(ϕ, ϕ̂, problem.domain)
@@ -249,6 +249,20 @@ function construct_OVERT(problem::Problem)
     # return: combine two arrays of oa.approx_eq, oa.approx_ineq
     # TODO: check that problem::Problem is modified once this function exits
     return vcat(oa.approx_eq, oa.approx_ineq)
+end
+
+"""If NN file exists and retrain=false, load saved NN. Otherwise, train new one."""
+function get_NN(problem::Problem; retrain=false)
+    # if NN exists and retrain=false
+    # load NN 
+    # else 
+    # fit NN 
+    model = fit_NN(problem)
+    ϕ̂ = NN2Exprs(model)
+end
+
+"""Turn a Flux model into a list of Julia symbolic expressions"""
+function NN2Exprs(model)
 end
 
 """ Use executable version of function to 
