@@ -19,7 +19,8 @@ compare_soundness("dummy_sin")
 
 check_soundness("dummy_sin")
 
-
+p = get_problem("dummy_sin")
+fit_NN(p)
 
 
 # high level testing
