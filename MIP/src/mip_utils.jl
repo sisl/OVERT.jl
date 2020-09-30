@@ -112,7 +112,7 @@ end
 function solve_for_reachability(mip_model::OvertMIP, query::OvertQuery,
 	oA_vars::Array{Symbol, 1}, t_idx::Union{Int64, Nothing})
 	"""
-	this function setup states in the future timestep and optimize that.
+	this function sets up states in the future timestep and optimizes that.
 	this will give a minimum and maximum on each of the future timesteps.
 	the final answer is a hyperrectangle.
 	inputs:
@@ -458,7 +458,7 @@ function symbolic_reachability_with_concretization(query::OvertQuery,
                computed with concretization
    - all_sets_symbolic: a hyperrectangle for the reachable set at t=n, computed symbolically.
 	"""
-	ntime = query.ntime
+	ntime = query.ntime # number of timesteps
 	if isa(concretize_every, Int)
 		@assert ntime % concretize_every == 0
 		n_loops = Int(query.ntime / concretize_every)
@@ -471,7 +471,7 @@ function symbolic_reachability_with_concretization(query::OvertQuery,
 	this_set = copy(input_set)
 	for n in concretize_every
 		query.ntime = n
-		concrete_sets, symbolic_set = symbolic_reachability(query, this_set)
+		concrete_sets, symbolic_set = symbolic_reachability(query, this_set) # pass query and input set
 		push!(all_concrete_sets, concrete_sets)
 		push!(all_symbolic_sets, symbolic_set)
 		this_set = copy(symbolic_set)
@@ -776,6 +776,7 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 	n = query.ntime
 	SATus, vals, stats = "", Dict(), Dict() # "init" values...
 	problem_type = unsat_problem ? "unsat" : "sat"
+	println("problem type: ", problem_type)
 
 	input_set_tmp = copy(input_set)
 	all_sets = [input_set]

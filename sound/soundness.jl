@@ -282,10 +282,10 @@ function fit_NN(problem::Problem)
     params = Flux.params(model) 
     # get datasets
     X, Y = sample_dataset(problem)
-    train_loader = DataLoader((X, Y), batchsize=100, shuffle=true)
+    train_loader = DataLoader(X, Y, batchsize=100, shuffle=true)
     Xtest, Ytest = sample_dataset(problem)
     # setup loss
-    loss(x, y) = Flux.Losses.mse(model.(x), y) # ADDED A PERIOD AFTER MODEL NOT SURE ABOUT IT
+    loss(x, y) = Flux.Losses.mse(model(x), y) # ADDED A PERIOD AFTER MODEL NOT SURE ABOUT IT
     # setup callbacks
     evalcb() = @show(sum(loss.(Xtest, Ytest)))
     # train 
@@ -298,7 +298,8 @@ Closest candidates are:
   ^(::Missing, ::Integer) at missing.jl:155
   ...
     """
-    Flux.train!(loss, params, ncycle(train_loader, 5), optimizer, cb = Flux.throttle(evalcb, 1))
+    #Flux.train!(loss, params, ncycle(train_loader, 5), optimizer, cb = Flux.throttle(evalcb, 1))
+    Flux.train!(loss, params, train_loader, optimizer, cb = Flux.throttle(evalcb, 1))
     println("After training test loss is: ", sum(loss.(Xtest, Ytest)))
     # return network
     return model
