@@ -19,6 +19,18 @@ include("../nv/optimization/utils/variables.jl")
 include("../nv/reachability/maxSens.jl")
 
 """
+Type Definitions.
+"""
+mutable struct MyHyperrect
+	low::Array
+	high::Array
+end
+MyHyperrect(; low=[], high=[]) = MyHyperrect(low,high)
+low(h::MyHyperrect) = h.low
+high(h::MyHyperrect) = h.high
+
+
+"""
 ----------------------------------------------
 read controller
 ----------------------------------------------
@@ -696,7 +708,7 @@ function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangl
 	# connect outputs of timestep i to inputs of timestep i-1
 	match_io!(mip_model, query, all_oA_vars)
 
-	# add feasibility constraints that n+1 timestep intersects target set.
+	# add feasibility constraints on n+1 timestep
 	timestep_nplus1_vars = add_feasibility_constraints!(mip_model, query, all_oA_vars[end], target_set)
 
 	JuMP.optimize!(mip_model.model)
