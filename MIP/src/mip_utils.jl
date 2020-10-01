@@ -768,7 +768,7 @@ end
 # end
 
 
-function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set; unsat_problem::Bool=false, after_n::Int=0)
+function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set; unsat_problem::Bool=false, after_n::Int=0, return_all=false)
 	"""
 	Checks whether a property P is satisfied at timesteps 1 to n symbolically.
 	inputs:
@@ -786,7 +786,11 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 
 	"""
 	n = query.ntime
-	SATus, vals, stats = "", Dict(), Dict() # "init" values...
+	if return_all
+		SATii, valii, statii = [], [], []
+	else
+		SATus, vals, stats = "", Dict(), Dict() # "init" values...
+	end
 	problem_type = unsat_problem ? "unsat" : "sat"
 	println("problem type: ", problem_type)
 
@@ -812,13 +816,23 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets, all_oA, all_oA_vars)
 		if SATus == problem_type
 			println("Property violated at timestep $i")
-			return SATus, vals, stats
+			if return_all
+				push!(SATii, SATus)
+				push!(valii, vals)
+				push!(statii, stats)
+			else
+				return SATus, vals, stats
+			end
 	 	elseif SATus == "error"
 		 	throw("some error occured at timestep $i")
 		end
-   end
-   println("Property holds for $n timesteps.")
-   return SATus, vals, stats
+   	end
+	if return_all
+		return SATii, valii, statii
+	else
+		println("Property holds for $n timesteps.")
+		return SATus, vals, stats
+	end
 end
 
 
