@@ -30,18 +30,22 @@ function run_query(query_number, avoid_set, controller_name)
 	dt = (t2-t1)
 
 	JLD2.@save "examples/jair/data/new/tora_satisfiability_"*string(controller_name)*"_controller_data_q"*string(query_number)*".jld2" query input_set avoid_set SATus vals stats dt query_number controller_name
+
+	return SATus
 end
 
 function run_tora_satisfiability(;controller_name="smallest")
 
 	# query 1
 	avoid_set1 = MyHyperrect(low=[-Inf, Inf, Inf, Inf], high=[-2, Inf, Inf, Inf]) # checks if x1 is in [-Inf, -2] 
-	run_query(1, avoid_set1, controller_name)
+	SATus1 = run_query(1, avoid_set1, controller_name)
 
-	# query 2
-	avoid_set2 = MyHyperrect(low=[2, Inf, Inf, Inf], high=[Inf, Inf, Inf, Inf]) # checks if x1 is in [2, Inf] 
-	# only constraint actually being added is: x1 >= 2
-	run_query(2, avoid_set2, controller_name)
+	if SATus1 == "unsat" # early stopping, potentially, if first query is sat
+		# query 2
+		avoid_set2 = MyHyperrect(low=[2, Inf, Inf, Inf], high=[Inf, Inf, Inf, Inf]) # checks if x1 is in [2, Inf] 
+		# only constraint actually being added is: x1 >= 2
+		run_query(2, avoid_set2, controller_name)
+	end
 end
 
 run_tora_satisfiability(controller_name="big")
