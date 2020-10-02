@@ -14,20 +14,14 @@ function run_query(query_number, avoid_set, controller_name)
 		controller,    # network file
 		Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
 		"MIP",     	# query solver, "MIP" or "ReluPlex"
-		25,        	# ntime
+		2,        	# ntime
 		0.2,       	# dt
 		-1,        	# N_overt
 		)
 
-	# In this example, our property is the following:
-	# We want the car to reach the box [-.6, .6] [-.2,.2]
-	# at SOME point in the time history
-	# we will perform 4 separate queries and "AND" them together to look
-	# for a point where all properties hold
 	input_set = Hyperrectangle(low=[9.5, -4.5, 2.1, 1.5], high=[9.55, -4.45, 2.11, 1.51])
-	target_set = InfiniteHyperrectangle([-Inf, -Inf, -Inf, -Inf], [5.0, Inf, Inf, Inf])
 	t1 = Dates.time()
-	SATii, valii, statii = symbolic_satisfiability(query, input_set, target_set; return_all=true)
+	SATii, valii, statii = symbolic_satisfiability(query, input_set, avoid_set; return_all=true)
 	t2 = Dates.time()
 	dt = (t2-t1)
 
@@ -37,33 +31,43 @@ function run_query(query_number, avoid_set, controller_name)
 end
 
 function run_car_satisfiability(; controller_name="smallest")
+	# In this example, our property is the following:
+	# We want the car to reach the box [-.6, .6] [-.2,.2]
+	# at SOME point in the time history
+	# we will perform 4 separate queries and "AND" them together to look
+	# for a point where all properties hold
+
 	# query 1
 	avoid_set1 = MyHyperrect(low=[-Inf, -Inf, -Inf, -Inf], high=[-0.6, Inf, Inf, Inf]) 
-	SAT1 = run_query(1, avoid_set1, controller_name)
-
 	# query 2
 	avoid_set2 = MyHyperrect(low=[0.6, -Inf, -Inf, -Inf], high=[Inf, Inf, Inf, Inf]) 
-	SAT2 = run_query(2, avoid_set2, controller_name)
-
 	# query 3
 	avoid_set3 = MyHyperrect(low=[-Inf, -Inf, -Inf, -Inf], high=[Inf, -0.2, Inf, Inf]) 
-	SAT3 = run_query(3, avoid_set3, controller_name)
-
 	# query 4
-	avoid_set4 = MyHyperrect(low=[-Inf, 0.2, -Inf, -Inf], high=[Inf, Inf, Inf, Inf]) 
-	SAT4 = run_query(4, avoid_set4, controller_name)
+	avoid_set4 = MyHyperrect(low=[-Inf, 0.2, -Inf, -Inf], high=[Inf, Inf, Inf, Inf])
+	avoid_sets = [avoid_set1, avoid_set2, avoid_set3, avoid_set4]
+
+	SAT = []
+
+	s = ["unsat", "unsat"]
+	for i, avoid_set in enumerate(avoid_sets)
+		if ~all(s .== "sat") # possibly quit early if all of s = "sat"
+			s = run_query(i, avoid_set, controller_name)
+			push!(SAT, s)
+		else:
+			println("skipping property ", i, " because prior property does not hold any time.")
+		end
+	end
 
 	# now we want to know when all properties hold
-	result1 = SAT1 .== "unsat"
-	result2 = SAT2 .== "unsat"
-	result3 = SAT3 .== "unsat"
-	result4 = SAT4 .== "unsat"
+	all_hold = [true for _ in 1:length(SAT[0])]
+	for i in length(SAT)
+		all_hold = all_hold .& (SAT[i] .== "unsat")
+	end
+	timesteps_where_properties_hold = findall(all_hold)
+	print("The property holds at timestep: ", timesteps_where_properties_hold)
 
-	all_hold = ((result1 .& result2) .& result3) .& result4
-	timesteps_where_peroperties_hold = findall(all_hold)
-	print("The property holds at timestep: ", timesteps_where_peroperties_hold)
-
-	JLD2.@save "examples/jair/data/new/car_satisfiability_"*string(controller_name)*"_controller_data_final_result.jld2" timesteps_where_peroperties_hold
+	JLD2.@save "examples/jair/data/new/car_satisfiability_"*string(controller_name)*"_controller_data_final_result.jld2" SAT timesteps_where_properties_hold
 end
 
 run_car_satisfiability(controller_name="smallest")
