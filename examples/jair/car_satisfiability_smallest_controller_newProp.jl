@@ -50,7 +50,8 @@ function run_car_satisfiability(; controller_name="smallest")
 	SAT = []
 
 	s = ["unsat", "unsat"]
-	for i, avoid_set in enumerate(avoid_sets)
+	for enum = enumerate(avoid_sets)
+		i, avoid_set = enum
 		if ~all(s .== "sat") # possibly quit early if all of s = "sat"
 			s = run_query(i, avoid_set, controller_name)
 			push!(SAT, s)
