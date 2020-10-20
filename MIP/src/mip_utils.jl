@@ -17,6 +17,7 @@ include("../nv/optimization/utils/constraints.jl")
 include("../nv/optimization/utils/objectives.jl")
 include("../nv/optimization/utils/variables.jl")
 include("../nv/reachability/maxSens.jl")
+include("logic.jl")
 
 """
 Type Definitions.
@@ -544,7 +545,7 @@ symbolic queries, satisfiability (feasibility).
 ----------------------------------------------
 """
 
-function add_feasibility_constraints!(mip_model, query, oA_vars, target_set)
+function add_feasibility_constraints!(mip_model, query, oA_vars, target_constraints)
 	"""
 	this function adds the constraints associated with checking whether future states
 	intersect with the target set or not.
@@ -553,7 +554,7 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_set)
 	- mip_model: OvertMIP object that contains all overt and controller constraints.
 	- query: OvertQuery
 	- oA_vars: output variables of overt.
-	- target_set: a hyperrectangle for the target set
+	- target_constraints: EITHER a hyperrectangle for the target set OR a list of Constraint objects
 	outputs:
 	- timestep_nplus1_vars: a list of mip_variables assocaited with the states of
 							next timestep this will be used for computing the
@@ -572,7 +573,7 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_set)
 	control_vars_last = [Meta.parse("$(v)_$ntime") for v in control_vars]
 	integration_map = update_rule(input_vars_last, control_vars_last, oA_vars)
 
-	# setup variables at next timestep and add constraints for feasibility.
+	# setup variables at next timestep 
 	timestep_nplus1_vars = []
 	for (i, v) in enumerate(input_vars_last)
 		v_mip = mip_model.vars_dict[v]
@@ -580,18 +581,30 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_set)
 		dv_mip = mip_model.vars_dict[dv]
 		next_v_mip = v_mip + dt * dv_mip
 		push!(timestep_nplus1_vars, next_v_mip)
-		v_min = low(target_set)[i] #target_set.center[i] - target_set.radius[i]
-		v_max = high(target_set)[i] #target_set.center[i] + target_set.radius[i]
-		if isfinite(v_min)
-			@constraint(mip_model.model, next_v_mip >= v_min)
-		end
-		if isfinite(v_max)
-			@constraint(mip_model.model, next_v_mip <= v_max)
-		end
 	end
+	# Add constraints for feasibility.
+	add_output_constraints!(target_constraints, mip_model.model, timestep_nplus1_vars)
+		
 	return timestep_nplus1_vars
 end
 
+function add_output_constraints!(target_set::Union{Hyperrectangle,MyHyperrect}, model::JuMP.Model, vars::Array)
+	# Version for hyperrectangle outputs
+	for (i, v) in enumerate(vars)
+		v_min = low(target_set)[i] 
+		v_max = high(target_set)[i]
+		if isfinite(v_min)
+			@constraint(model, v >= v_min)
+		end
+		if isfinite(v_max)
+			@constraint(model, v <= v_max)
+		end
+	end
+end
+
+function add_output_constraints!(constraint::Constraint, model::JuMP.Model, vars::Array)
+	# how to construct expression to  go into @coonstraint macro??
+end
 
 # function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangle,
 # 	target_set::Hyperrectangle)

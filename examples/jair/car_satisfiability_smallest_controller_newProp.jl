@@ -25,7 +25,7 @@ function run_query(query_number, avoid_set, controller_name)
 	t2 = Dates.time()
 	dt = (t2-t1)
 
-	JLD2.@save "examples/jair/data/new/car_satisfiability_"*string(controller_name)*"_controller_data_q"*string(query_number)*".jld2" query input_set target_set SATii valii statii dt
+	JLD2.@save "examples/jair/data/new/car_satisfiability_"*string(controller_name)*"_controller_data_q"*string(query_number)*".jld2" query input_set avoid_set SATii valii statii dt
 
 	return SATii
 end
@@ -54,14 +54,15 @@ function run_car_satisfiability(; controller_name="smallest")
 		i, avoid_set = enum
 		if ~all(s .== "sat") # possibly quit early if all of s = "sat"
 			s = run_query(i, avoid_set, controller_name)
+			# BOOKMARK: add breakpoint here to see why s isn't being pushed onto the SAT array...
 			push!(SAT, s)
-		else:
+		else
 			println("skipping property ", i, " because prior property does not hold any time.")
 		end
 	end
 
 	# now we want to know when all properties hold
-	all_hold = [true for _ in 1:length(SAT[0])]
+	all_hold = [true for _ in 1:length(SAT[1])]
 	for i in length(SAT)
 		all_hold = all_hold .& (SAT[i] .== "unsat")
 	end
@@ -71,4 +72,4 @@ function run_car_satisfiability(; controller_name="smallest")
 	JLD2.@save "examples/jair/data/new/car_satisfiability_"*string(controller_name)*"_controller_data_final_result.jld2" SAT timesteps_where_properties_hold
 end
 
-run_car_satisfiability(controller_name="smallest")
+# run_car_satisfiability(controller_name="smallest")
