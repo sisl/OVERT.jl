@@ -22,11 +22,13 @@ function run_query(query_number, avoid_set, controller_name)
 	input_set = Hyperrectangle(low=[9.5, -4.5, 2.1, 1.5], high=[9.55, -4.45, 2.11, 1.51])
 	t1 = Dates.time()
 	SATii, valii, statii = symbolic_satisfiability(query, input_set, avoid_set; return_all=true)
+	println("satii is: ", SATii)
 	t2 = Dates.time()
 	dt = (t2-t1)
 
 	JLD2.@save "examples/jair/data/new/car_satisfiability_"*string(controller_name)*"_controller_data_q"*string(query_number)*".jld2" query input_set avoid_set SATii valii statii dt
 
+	println("satii after save is: ", SATii)
 	return SATii
 end
 
@@ -63,11 +65,15 @@ function run_car_satisfiability(; controller_name="smallest")
 
 	# now we want to know when all properties hold
 	all_hold = [true for _ in 1:length(SAT[1])]
-	for i in length(SAT)
+	for i = 1:length(SAT)
 		all_hold = all_hold .& (SAT[i] .== "unsat")
 	end
 	timesteps_where_properties_hold = findall(all_hold)
-	print("The property holds at timestep: ", timesteps_where_properties_hold)
+	if length(timesteps_where_properties_hold) > 0
+		println("The property holds at timestep: ", timesteps_where_properties_hold)
+	else
+		println("The property does not hold.")
+	end
 
 	JLD2.@save "examples/jair/data/new/car_satisfiability_"*string(controller_name)*"_controller_data_final_result.jld2" SAT timesteps_where_properties_hold
 end
