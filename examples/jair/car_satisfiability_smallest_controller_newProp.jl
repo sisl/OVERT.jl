@@ -16,7 +16,7 @@ function run_query(query_number, avoid_set, controller_name)
 		"MIP",     	# query solver, "MIP" or "ReluPlex"
 		2,        	# ntime
 		0.2,       	# dt
-		1,        	# N_overt
+		-1,        	# N_overt
 		)
 
 	input_set = Hyperrectangle(low=[9.5, -4.5, 2.1, 1.5], high=[9.55, -4.45, 2.11, 1.51])
