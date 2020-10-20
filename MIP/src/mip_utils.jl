@@ -814,13 +814,15 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 
 		query.ntime = i
 		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets, all_oA, all_oA_vars)
+		println("SATus of step ", i, " is ", SATus)
+		if return_all
+			push!(SATii, SATus)
+			push!(valii, vals)
+			push!(statii, stats)
+		end
 		if SATus == problem_type
 			println("Property violated at timestep $i")
-			if return_all
-				push!(SATii, SATus)
-				push!(valii, vals)
-				push!(statii, stats)
-			else
+			if ~return_all
 				return SATus, vals, stats
 			end
 	 	elseif SATus == "error"
