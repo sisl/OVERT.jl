@@ -68,7 +68,7 @@ function run_car_satisfiability(; controller_name="smallest")
 		all_hold = all_hold .& (SAT[i] .== "unsat")
 	end
 	timesteps_where_properties_hold = findall(all_hold)
-	if len(timesteps_where_properties_hold) > 0
+	if length(timesteps_where_properties_hold) > 0
 		println("The property holds at timestep: ", timesteps_where_properties_hold)
 	else
 		println("The property does not hold.")
