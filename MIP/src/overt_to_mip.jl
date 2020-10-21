@@ -21,9 +21,10 @@ mutable struct OvertMIP
 end
 
 # default constructor
-function OvertMIP(overt_app::OverApproximation)
+function OvertMIP(overt_app::OverApproximation; threads=0)
+    # for Gurobi, 0 threads is automatic (usually most of the cores in the machine)
      overt_mip_model = OvertMIP(overt_app,
-                         Model(with_optimizer(Gurobi.Optimizer, OutputFlag=0)),
+                         Model(with_optimizer(Gurobi.Optimizer, OutputFlag=0, Threads=threads)),
                          Dict{Symbol, JuMP.VariableRef}(),
                          "Gurobi")
     overt_2_mip(overt_mip_model)

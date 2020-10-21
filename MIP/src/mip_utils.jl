@@ -692,7 +692,7 @@ end
 
 
 function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangle,
-	target_set, all_sets, all_oA, all_oA_vars)
+	target_set, all_sets, all_oA, all_oA_vars; threads=0)
 	"""
 	This function computes the reachable set after n timestep symbolically.
 	inputs:
@@ -710,7 +710,7 @@ function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangl
 
 	# combine overt cosntraints
 	oA_tot = add_overapproximate(all_oA)
-	mip_model = OvertMIP(oA_tot)
+	mip_model = OvertMIP(oA_tot, threads=threads)
 
 	# read neural network and add controller constraints
 	add_controllers_constraints!(mip_model, query, all_sets)
@@ -781,7 +781,7 @@ end
 # end
 
 
-function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set; unsat_problem::Bool=false, after_n::Int=0, return_all=false)
+function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set; unsat_problem::Bool=false, after_n::Int=0, return_all=false, threads=0)
 	"""
 	Checks whether a property P is satisfied at timesteps 1 to n symbolically.
 	inputs:
@@ -826,7 +826,7 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 		end
 
 		query.ntime = i
-		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets, all_oA, all_oA_vars)
+		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets, all_oA, all_oA_vars, threads=threads)
 		println("SATus of step ", i, " is ", SATus)
 		if return_all
 			push!(SATii, SATus)

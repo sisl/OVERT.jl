@@ -6,7 +6,7 @@ include("../../MIP/src/mip_utils.jl")
 include("../../models/car/simple_car.jl")
 using JLD2
 
-function run_query(query_number, avoid_set, controller_name)
+function run_query(query_number, avoid_set, controller_name; threads=0)
 	controller = "nnet_files/jair/car_"*controller_name*"_controller.nnet"
 
 	query = OvertQuery(
@@ -14,14 +14,14 @@ function run_query(query_number, avoid_set, controller_name)
 		controller,    # network file
 		Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
 		"MIP",     	# query solver, "MIP" or "ReluPlex"
-		2,        	# ntime
+		25,        	# ntime
 		0.2,       	# dt
 		-1,        	# N_overt
 		)
 
 	input_set = Hyperrectangle(low=[9.5, -4.5, 2.1, 1.5], high=[9.55, -4.45, 2.11, 1.51])
 	t1 = Dates.time()
-	SATii, valii, statii = symbolic_satisfiability(query, input_set, avoid_set; return_all=true)
+	SATii, valii, statii = symbolic_satisfiability(query, input_set, avoid_set; return_all=true, threads=threads)
 	println("satii is: ", SATii)
 	t2 = Dates.time()
 	dt = (t2-t1)
@@ -32,7 +32,7 @@ function run_query(query_number, avoid_set, controller_name)
 	return SATii
 end
 
-function run_car_satisfiability(; controller_name="smallest")
+function run_car_satisfiability(; controller_name="smallest", threads=0)
 	# In this example, our property is the following:
 	# We want the car to reach the box [-.6, .6] [-.2,.2]
 	# at SOME point in the time history
@@ -55,7 +55,7 @@ function run_car_satisfiability(; controller_name="smallest")
 	for enum = enumerate(avoid_sets)
 		i, avoid_set = enum
 		if ~all(s .== "sat") # possibly quit early if all of s = "sat"
-			s = run_query(i, avoid_set, controller_name)
+			s = run_query(i, avoid_set, controller_name, threads=threads)
 			# BOOKMARK: add breakpoint here to see why s isn't being pushed onto the SAT array...
 			push!(SAT, s)
 		else
@@ -78,4 +78,5 @@ function run_car_satisfiability(; controller_name="smallest")
 	JLD2.@save "examples/jair/data/new/car_satisfiability_"*string(controller_name)*"_controller_data_final_result.jld2" SAT timesteps_where_properties_hold
 end
 
-# run_car_satisfiability(controller_name="smallest")
+# 0 threads means "let gurobi decide how mayn threads it wants"
+run_car_satisfiability(controller_name="big", threads=0)
