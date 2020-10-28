@@ -8,6 +8,7 @@ using JLD2
 
 function run_query(query_number, avoid_set, controller_name; threads=0)
 	controller = "nnet_files/jair/car_"*controller_name*"_controller.nnet"
+	println("Controller is: ", controller)
 
 	query = OvertQuery(
 		SimpleCar,  # problem

@@ -603,7 +603,22 @@ function add_output_constraints!(target_set::Union{Hyperrectangle,MyHyperrect}, 
 end
 
 function add_output_constraints!(constraint::Constraint, model::JuMP.Model, vars::Array)
-	# how to construct expression to  go into @coonstraint macro??
+	# Constraint contains the coeffs, relation, and scalar, assuming the variables are in 
+	# state order
+	# construct a constraint: a^T x R s
+	# where a is the coefficient vector, x is the variable vector, R is the relation and s is the scalar
+
+	# reshape
+	x = reshape(vars, (length(vars), 1))
+	c = reshape(constraint.coeffs, (1, length(constraint.coeffs)))
+	if constraint.relation == :(<=)
+		@constraint(model, c*x <= constraint.scalar)
+	elseif constraint.relation == :(>=)
+		@constraint(model, c*x >= constraint.scalar)
+	elseif constraint.relation == :(==)
+		@constraint(model, c*x == constraint.scalar)
+	end
+
 end
 
 # function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangle,
