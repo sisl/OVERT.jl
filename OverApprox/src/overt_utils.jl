@@ -137,7 +137,54 @@ function rewrite_division_by_const(expr::Expr)
     end
 end
 
-function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing, ϵ=0)
+function get_sincos_regions(a,b; offset=0)
+    """
+    Return inflection points for sin, cos
+    """
+
+    n̂_a = ceil((a - offset) / π)
+    n̂_b = floor((b - offset) / π)
+    n_array = [i for i in n̂_a:n̂_b]
+
+    if length(n_array) == 0 # no inflection points within interval
+        @assert sin(a + offset) ~= 0.0 
+        return n_array, sin(a + offset) < 0 # true if convex, false implies concave
+    else # greater than 0 length
+        return [offset + n*π for n in n_array], nothing # nothing denotes mixed convexity
+    end
+end
+
+function get_regions_unary(func::Symbol, a, b)
+    """
+    Return the zeros of the second derivative of function func and/or whether it is convex or not
+
+    d2f_zeros, convex = get_regions(func, a, b)
+    """
+    if func == :cos
+        d2f_zeros, convex = get_sincos_regions(a, b, offset=π/2)
+    elseif func == :sin
+        d2f_zeros, convex = get_sincos_regions(a, b, offset=0)
+    elseif func == :exp
+        d2f_zeros, convex = [], true
+    elseif func == :log
+        d2f_zeros, convex = [], false
+    elseif func == :tanh
+        d2f_zeros = (a ≤ 0 && b ≥ 0) ? [0] : []
+        return d2f_zeros, nothing
+    else
+        d2f_zeros, convex = nothing, nothing
+    end
+
+    return d2f_zeros, convex
+end
+
+function get_regions_1arg(e::Expr, arg::Symbol, a, b)
+    # TODO:
+    # check if / or ^ 
+    return nothing, nothing
+end
+
+function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing, ϵ=0, d2f_zeros=nothing, convex=nothing)
 
     """
     This function finds the piecewise linear upperbound (lowerbound) of
@@ -148,8 +195,7 @@ function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_p
     Return values are points (UB_points), the min-max closed form (UB_sym)
     as well the lambda function form (UB_eval).
     """
-
-    UB = bound(func, a, b, N; lowerbound=lb, plot=plot, existing_plot=existing_plot)
+    UB = bound(func, a, b, N; lowerbound=lb, d2f_zeros=d2f_zeros, convex=convex, plot=plot, existing_plot=existing_plot)
     UB_points = unique(sort(to_pairs(UB), by = x -> x[1]))
     #println("points: ", UB_points)
     if abs(ϵ) > 0
