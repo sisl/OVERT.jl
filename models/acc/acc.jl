@@ -3,10 +3,13 @@ function acc_dynamics(x::Array{T, 1} where {T <: Real},
 	a_lead = -2.0
 	mu = 0.0001
 
-    dx1 = x[2]
-    dx2 = x[3]
-    dx3 = -2 * x[3] + 2 * a_lead - mu * x[2]^2
-    dx4 = x[5]
+	# x1,x2,x3 are lead vehicle variables
+    dx1 = x[2] # dposition
+    dx2 = x[3] # dvelocity
+    dx3 = -2 * x[3] + 2 * a_lead - mu * x[2]^2 # daccel 
+	# x4, x5, x6 are eho vehicle variables
+	# which is opposite from the notation used in the paper...
+	dx4 = x[5]
 	dx5 = x[6]
 	dx6 = -2 * x[6] + 2 * u[1] - mu * x[5]^2
     return [dx1, dx2, dx3, dx4, dx5, dx6]
