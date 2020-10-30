@@ -209,6 +209,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 			d2f = Calculus.second_derivative(f)
 		end
 		if isnothing(d2f_zeros) # calculate zeros of second derivative, if not given.
+			println("WARNING: Convex and concave regions will be identified using a numerical procedure. Soundness not guaranteed. ")
 			d2f_zeros = fzeros(d2f, a, b)
         end
         intervals = give_interval(d2f_zeros, a, b)  # find subintervals.
