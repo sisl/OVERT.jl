@@ -179,7 +179,8 @@ function get_regions_unary(func::Symbol, a, b)
 end
 
 function division_d2f_regions(e, arg, a, b)
-    c = e.args[1]
+    # TODO: needs to be tested
+    c = e.args[2] 
     @assert is_number(c)
     if eval(c) > 0
         if a > 0
@@ -205,10 +206,19 @@ function get_regions_1arg(e::Expr, arg::Symbol, a, b)
     # TODO:
     # check if c/x or a^x or x^a 
     # multiplication between two variables is expanded using log and exp
-    func = e.args[0]
+    func = e.args[1]
     if func == :/
         d2f_zeros, convex = division_d2f_regions(e, arg, a, b)
     elseif func == :^
+        if is_number(e.args[2]) # a^x 
+            @assert eval(e.args[2]) > 0 # only real valued over reals for a > 0
+            d2f_zeros, convex = [], true
+        elseif is_number(e.args[3]) # x^a
+            # a few cases
+            # 1) a is fractional. only valid for x > 0. check. and convex (increasing) no inflection points
+            # 2) a is odd (3, 5, 7): inflection point at zero may be applicable. convex for x>0, concave for x<0
+            # 3) a is even (2, 4, 6): convex, no inflection points 
+            # :D
     else
         d2f_zeros, convex = nothing, nothing
     end
