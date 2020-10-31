@@ -178,10 +178,41 @@ function get_regions_unary(func::Symbol, a, b)
     return d2f_zeros, convex
 end
 
+function division_d2f_regions(e, arg, a, b)
+    c = e.args[1]
+    @assert is_number(c)
+    if eval(c) > 0
+        if a > 0
+            d2f_zeros, convex = [], true
+        elseif b < 0
+            d2f_zeros, convex = [], false
+        else
+            error("ERROR: interval ["*string(a)*","*string(b)*"] straddles zero for function c/x.The function is discontinuous and cannot be bounded.")
+        end     
+    elseif eval(c) < 0
+        if a > 0
+            d2f_zeros, convex = [], false
+        elseif b < 0
+            d2f_zeros, convex = [], true
+        else
+            error("ERROR: interval ["*string(a)*","*string(b)*"] straddles zero for function c/x.The function is discontinuous and cannot be bounded.")
+        end
+    end
+    return d2f_zeros, convex
+end
+
 function get_regions_1arg(e::Expr, arg::Symbol, a, b)
     # TODO:
-    # check if / or ^ 
-    return nothing, nothing
+    # check if c/x or a^x or x^a 
+    # multiplication between two variables is expanded using log and exp
+    func = e.args[0]
+    if func == :/
+        d2f_zeros, convex = division_d2f_regions(e, arg, a, b)
+    elseif func == :^
+    else
+        d2f_zeros, convex = nothing, nothing
+    end
+    return d2f_zeros, covnex
 end
 
 function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing, ϵ=0, d2f_zeros=nothing, convex=nothing)
