@@ -202,27 +202,52 @@ function division_d2f_regions(e, arg, a, b)
     return d2f_zeros, convex
 end
 
+function exponent_d2f_regions(e, arg, a, b)
+    if is_number(e.args[2]) # c^x 
+        @assert eval(e.args[2]) > 0 # only real valued over real arguments for c > 0
+        d2f_zeros, convex = [], true
+    elseif is_number(e.args[3]) # x^c
+        x = e.args[2]
+        c = e.args[3]
+        # a few cases
+        # 1) c is fractional. only valid for x > 0. check. and convex (increasing) no inflection points
+        if (c % 1) ~= 0
+            @assert a > 0 # ensures whole interval is > 0
+            d2f_zeros, convex = [], true
+        # 2) c is odd (3, 5, 7): inflection point at zero may be applicable. convex for x>0, concave for x<0
+        elseif (c % 2) == 1
+            if a > 0
+                d2f_zeros, convex = [], true
+            elseif b < 0
+                d2f_zeros, convex = [], false
+            else # interval overlaps 0
+                d2f_zeros, convex = [0], nothing
+            end
+        # 3) c is even (2, 4, 6): convex, no inflection points 
+        elseif (c % 2) == 0
+            d2f_zeros, convex = [], true
+        end
+    else
+        # TODO: handle x^y
+        error("Expression type not handled.")
+    end
+    return d2f_zeros, convex
+end
+
 function get_regions_1arg(e::Expr, arg::Symbol, a, b)
     # TODO:
-    # check if c/x or a^x or x^a 
+    # check if c/x or c^x or x^c 
     # multiplication between two variables is expanded using log and exp
+    # TODO: add case to catch x^1 which is affine
     func = e.args[1]
     if func == :/
         d2f_zeros, convex = division_d2f_regions(e, arg, a, b)
     elseif func == :^
-        if is_number(e.args[2]) # a^x 
-            @assert eval(e.args[2]) > 0 # only real valued over reals for a > 0
-            d2f_zeros, convex = [], true
-        elseif is_number(e.args[3]) # x^a
-            # a few cases
-            # 1) a is fractional. only valid for x > 0. check. and convex (increasing) no inflection points
-            # 2) a is odd (3, 5, 7): inflection point at zero may be applicable. convex for x>0, concave for x<0
-            # 3) a is even (2, 4, 6): convex, no inflection points 
-            # :D
+        d2f_zeros, convex = exponent_d2f_regions(e, arg, a, b)
     else
         d2f_zeros, convex = nothing, nothing
     end
-    return d2f_zeros, covnex
+    return d2f_zeros, convex
 end
 
 function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing, ϵ=0, d2f_zeros=nothing, convex=nothing)
