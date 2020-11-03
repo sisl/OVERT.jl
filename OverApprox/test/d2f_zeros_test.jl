@@ -23,3 +23,22 @@ include("../src/overt_utils.jl")
 @assert get_regions_1arg(:(x^6), :x, -2, -1) == ([], true)
 
 # test get_regions_unary
+# sin, at boundary points
+@assert all(get_regions_unary(:sin, -π, π)[1] .≈ [-π, 0, π])
+@assert get_regions_unary(:sin, -π, π)[2] == nothing
+# at fractional points
+@assert get_regions_unary(:sin, -1, 1) == ([0], nothing)
+@assert all(get_regions_unary(:sin, 1, 4)[1] .≈ [π])
+@assert get_regions_unary(:sin, 1, 4)[2] == nothing
+# cos
+@assert get_regions_unary(:cos, -1, 1) == ([], false)
+@assert all(get_regions_unary(:cos, -π, π)[1] .≈ [-π/2, π/2])
+@assert get_regions_unary(:cos, -π, π)[2] == nothing
+# exp
+@assert get_regions_unary(:exp, -1, 1) == ([], true)
+# log
+@assert get_regions_unary(:log, .5, 1.5) == ([], false)
+# tanh
+@assert get_regions_unary(:tanh, -2, 2) == ([0], nothing)
+@assert get_regions_unary(:tanh, -2, -1) == ([], true)
+@assert get_regions_unary(:tanh, 1, 2) == ([], false)
