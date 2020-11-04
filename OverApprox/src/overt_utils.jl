@@ -147,7 +147,7 @@ function get_sincos_regions(a,b; offset=0)
     n_array = [i for i in n̂_a:n̂_b]
 
     if length(n_array) == 0 # no inflection points within interval
-        @assert sin(a + offset) ~= 0.0 
+        @assert sin(a + offset) != 0.0 
         return n_array, sin(a + offset) < 0 # true if convex, false implies concave
     else # greater than 0 length
         return [offset + n*π for n in n_array], nothing # nothing denotes mixed convexity
@@ -167,10 +167,16 @@ function get_regions_unary(func::Symbol, a, b)
     elseif func == :exp
         d2f_zeros, convex = [], true
     elseif func == :log
+        @assert a > 0
         d2f_zeros, convex = [], false
     elseif func == :tanh
-        d2f_zeros = (a ≤ 0 && b ≥ 0) ? [0] : []
-        return d2f_zeros, nothing
+        if b ≤ 0
+            d2f_zeros, convex = [], true
+        elseif a ≥ 0
+            d2f_zeros, convex = [], false
+        else # spans 0
+            d2f_zeros, convex = [0], nothing
+        end
     else
         d2f_zeros, convex = nothing, nothing
     end
@@ -210,9 +216,9 @@ function exponent_d2f_regions(e, arg, a, b)
         x = e.args[2]
         c = e.args[3]
         # a few cases
-        # 1) c is fractional. only valid for x > 0. check. and convex (increasing) no inflection points
-        if (c % 1) ~= 0
-            @assert a > 0 # ensures whole interval is > 0
+        # 1) c is fractional. only valid for x >= 0. check. and convex (increasing) no inflection points
+        if (c % 1) != 0
+            @assert a >= 0 # ensures whole interval is > 0
             d2f_zeros, convex = [], true
         # 2) c is odd (3, 5, 7): inflection point at zero may be applicable. convex for x>0, concave for x<0
         elseif (c % 2) == 1
