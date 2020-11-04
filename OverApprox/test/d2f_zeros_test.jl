@@ -42,3 +42,5 @@ include("../src/overt_utils.jl")
 @assert get_regions_unary(:tanh, -2, 2) == ([0], nothing)
 @assert get_regions_unary(:tanh, -2, -1) == ([], true)
 @assert get_regions_unary(:tanh, 1, 2) == ([], false)
+
+println("All tests pass!")

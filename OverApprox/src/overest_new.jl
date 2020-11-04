@@ -361,11 +361,13 @@ function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="cont
 	end
 	if ! isnothing(convex) # if convexity is specified, no sub-intervals necessary.
 		intervals = [(a,b)]
+		@debug "convexity specified, no sub intervals necessary."
 	else
 		if isnothing(d2f)
 			d2f = Calculus.second_derivative(f)
 		end
 		if isnothing(d2f_zeros) # calculate zeros of second derivative, if not given.
+			println("WARNING: d2f_zeros have not been specified. Convex and concave regions will be identified using a numerical procedure. Soundness not guaranteed. ")
 			d2f_zeros = fzeros(d2f, a, b)
 		end
 		intervals = give_interval(d2f_zeros, a, b)  # find subintervals.
@@ -374,10 +376,15 @@ function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="cont
 	yp = []
 	for interval in intervals
 		aa, bb = interval
-		convex = d2f((aa + bb) / 2) > 0   # specify convexity
+		# specify convexity
+		if isnothing(convex)
+			this_interval_convex = (d2f((aa+bb)/2) >= 0)
+		else
+			this_interval_convex = convex
+		end
 		for N = 1:Nmax
 			xp_candidate, yp_candidate = bound(f, aa, bb, N; conc_method="continuous", lowerbound=lowerbound, df=df,
-			d2f=d2f, d2f_zeros=d2f_zeros, convex=convex, plot=plot)
+			d2f=d2f, d2f_zeros=d2f_zeros, convex=this_interval_convex, plot=plot)
 
 			# interpolate can sometimes give an error because it thinks the
 			# points are outside the domain.
