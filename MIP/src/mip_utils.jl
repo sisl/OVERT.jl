@@ -588,8 +588,8 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_constrai
 	return timestep_nplus1_vars
 end
 
-function add_output_constraints!(target_set::Union{Hyperrectangle,MyHyperrect}, model::JuMP.Model, vars::Array)
-	# Version for hyperrectangle outputs
+function add_output_constraints!(target_set, model::JuMP.Model, vars::Array)
+	# Version for hyperrectangle outputs ::Union{Hyperrectangle,MyHyperrect,InfiniteHyperrectangle}
 	for (i, v) in enumerate(vars)
 		v_min = low(target_set)[i] 
 		v_max = high(target_set)[i]
