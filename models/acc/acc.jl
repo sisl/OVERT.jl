@@ -3,10 +3,13 @@ function acc_dynamics(x::Array{T, 1} where {T <: Real},
 	a_lead = -2.0
 	mu = 0.0001
 
-    dx1 = x[2]
-    dx2 = x[3]
-    dx3 = -2 * x[3] + 2 * a_lead - mu * x[2]^2
-    dx4 = x[5]
+	# x1,x2,x3 are lead vehicle variables
+    dx1 = x[2] # dposition
+    dx2 = x[3] # dvelocity
+    dx3 = -2 * x[3] + 2 * a_lead - mu * x[2]^2 # daccel 
+	# x4, x5, x6 are ego vehicle variables
+	# which is opposite from the notation used in the paper...
+	dx4 = x[5]
 	dx5 = x[6]
 	dx6 = -2 * x[6] + 2 * u[1] - mu * x[5]^2
     return [dx1, dx2, dx3, dx4, dx5, dx6]
@@ -56,3 +59,11 @@ ACC = OvertProblem(
 	acc_input_vars,
 	acc_control_vars
 )
+
+"""
+Note: Compared this dynamics variable ordering in combination with controller acc_controller.nnet with controller outputs in 
+https://github.com/souradeep-111/sherlock/blob/master/systems_with_networks/ARCH_2019/ACC/simulation_script.m
+with their different variable ordering (xxvvaa) and controller outputs match to 2 decimal places in most cases indicating successful
+handling of the differing variable ordering.
+Closed loop simulations will not be the same as that above script uses ode45, but it matches closely for the first few steps.
+"""

@@ -6,13 +6,13 @@ include("../../MIP/src/mip_utils.jl")
 include("../../models/single_pendulum/single_pend.jl")
 
 controller = "nnet_files/jair/single_pendulum_big_controller.nnet"
-
+println("Controller: ", controller)
 query = OvertQuery(
 	SinglePendulum,    # problem
 	controller,        # network file
 	Id(),              # last layer activation layer Id()=linear, or ReLU()=relu
 	"MIP",             # query solver, "MIP" or "ReluPlex"
-	25,                # ntime
+	30,                # ntime
 	0.1,               # dt
 	-1,                # N_overt
 	)
@@ -25,4 +25,4 @@ t2 = Dates.time()
 dt = (t2-t1)
 
 using JLD2
-JLD2.@save "examples/jair/data/single_pendulum_satisfiability_big_controller_data.jld2" query input_set target_set SATus vals stats dt
+JLD2.@save "examples/jair/data/new/single_pendulum_satisfiability_big_controller_data.jld2" query input_set target_set SATus vals stats dt controller

@@ -69,14 +69,27 @@ function overapprox_nd(expr,
         push!(bound.approx_eq, :($(bound.output) == $expr))
         bound.fun_eq[bound.output] = expr
         bound.ranges[bound.output] = bound.output_range
-        #println("typeof(range) is ", typeof(expr_range))
         return bound
-    elseif is_1d(expr)
-        @debug("is 1d base case")
-        sym = find_variables(expr)
-        arg = sym[1]
-        bound = bound_1arg_function(expr, arg, bound)
-        return bound
+    # elseif is_1d(expr)
+    #     """
+    #     Currently, this case would resort to relying on fzero to find roots of d2f which 
+    #     is not sound as this is a numerical procedure. Thus it has been commented out. 
+    #     TODO in the future is to implement a sound version of this for arbitrary
+    #     1D functions using symbolic differentiation from Calculus.jl:differentiate to find the 
+    #     d2f function and then use the package IntervalRootFinding to find all roots in the 
+    #     interval in question in a GUARANTEED way!
+    #     Allowing the usage of this case (is_1d) can speed up verification with OVERT for some functions by 
+    #     reducing the number of approximations needed and thus reducing the number of relus
+    #     used. E.g. sin(x) + log(x^2) is a 1D function but without using the is_1d case, this
+    #     would incur 3 separate approximations: x^2, log(v_3) and sin(x) . If this case can be used,
+    #     it will recognize that sin(x) + log(x^2) is a 1D function and only construct a single
+    #     OVERT approximation.
+    #     """
+    #     @debug("is 1d base case")
+    #     sym = find_variables(expr)
+    #     arg = sym[1]
+    #     bound = bound_1arg_function(expr, arg, bound)
+    #     return bound
     # recursive cases
     else # is a non-affine function
         if is_unary(expr)
@@ -225,6 +238,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
             error("f(x)^g(y) is not implemented yet.")
         end
     else
+        # TODO: add support for min, max, relu! Should be super simple.
         error(" operation $f with operands $x and $y is not implemented")
         return OverApproximation() # for type stability, maybe?
     end
@@ -344,7 +358,8 @@ function bound_1arg_function(e::Expr, arg::Symbol, bound::OverApproximation; plo
     @debug "bound effectively unary" e arg bound
     fun = SymEngine.lambdify(e, [arg])
     lb, ub, npoint = bound.ranges[arg][1], bound.ranges[arg][2], bound.N
-    return bound_unary_function(fun, e, arg, lb, ub, npoint, bound, plotflag=plotflag)
+    d2f_zeros, convex = get_regions_1arg(e, arg, lb, ub)
+    return bound_unary_function(fun, e, arg, lb, ub, npoint, bound, plotflag=plotflag, d2f_zeros=d2f_zeros, convex=convex)
 end
 
 """
@@ -356,18 +371,19 @@ function bound_unary_function(f::Symbol, x_bound::OverApproximation; plotflag=pl
     fun = eval(:($f))
     lb, ub, npoint = x_bound.output_range[1], x_bound.output_range[2], x_bound.N
     f_x_expr = :($(f)($(x_bound.output)))
-    return bound_unary_function(fun, f_x_expr, x_bound.output, lb, ub, npoint, x_bound, plotflag=plotflag)
+    d2f_zeros, convex = get_regions_unary(f, lb, ub)
+    return bound_unary_function(fun, f_x_expr, x_bound.output, lb, ub, npoint, x_bound, plotflag=plotflag, d2f_zeros=d2f_zeros, convex=convex)
 end
 
 """
     bound_unary_function(f::Function, lb, ub, npoint, bound)
 Bound one argument functions like sin(x) or x -> x^2 or x -> 1/x. Create upper and lower bounds of function f(x)
 """
-function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound; plotflag=plotflag)
+function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound; plotflag=plotflag, d2f_zeros=nothing, convex=nothing)
     p = plotflag ? plot(0,0) : nothing
-    UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, existing_plot=p, ϵ= bound.ϵ)
+    UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, existing_plot=p, ϵ= bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
     fUBrange = [find_1d_range(UBpoints)...]
-    LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, existing_plot=p, ϵ= -bound.ϵ)
+    LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, existing_plot=p, ϵ= -bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
     fLBrange = [find_1d_range(LBpoints)...]
     ## create new vars for these expr, equate to exprs, and add them to equality list
     # e.g. y = fUB(x), z = fLB(x)
