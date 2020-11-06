@@ -6,7 +6,7 @@ include("../../MIP/src/mip_utils.jl")
 include("../../models/single_pendulum/single_pend.jl")
 
 controller = "nnet_files/jair/single_pendulum_big_controller.nnet"
-
+println("Controller: ", controller)
 query = OvertQuery(
 	SinglePendulum,    # problem
 	controller,        # network file
@@ -25,4 +25,4 @@ dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
 using JLD2
-JLD2.@save "examples/jair/data/single_pendulum_reachability_big_controller_data.jld2" query input_set all_sets all_sets_symbolic dt
+JLD2.@save "examples/jair/data/new/single_pendulum_reachability_big_controller_data.jld2" query input_set all_sets all_sets_symbolic dt controller
