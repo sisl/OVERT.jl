@@ -25,4 +25,4 @@ t2 = Dates.time()
 dt = (t2-t1)
 
 using JLD2
-JLD2.@save "examples/jair/data/new/singple_pendulum_satisfiability_small_controller_data.jld2" query input_set target_set SATus vals stats dt controller
+JLD2.@save "examples/jair/data/new2/singple_pendulum_satisfiability_small_controller_data.jld2" query input_set target_set SATus vals stats dt controller
