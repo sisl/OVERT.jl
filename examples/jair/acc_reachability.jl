@@ -36,7 +36,7 @@ input_set = Hyperrectangle(
     )
 
 t1 = Dates.time()
-all_sets, all_sets_symbolic = symbolic_reachability_with_concretization(query, input_set,1)
+all_sets, all_sets_symbolic = symbolic_reachability_with_concretization(query, input_set,[20,35])
 # [20, 35])
 t2 = Dates.time()
 dt = (t2-t1)
