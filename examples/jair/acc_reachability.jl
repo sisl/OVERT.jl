@@ -8,14 +8,15 @@ include("../../models/acc/acc.jl")
 include("../../MIP/src/logic.jl")
 using JLD2
 
-controller = "nnet_files/jair/acc_controller.nnet"
+controller = "acc_controller"
+controller_filepath = "nnet_files/jair/"*controller*".nnet"
 println("Controller is: ", controller)
 query = OvertQuery(
     ACC,  # problem
-    controller,    # network file
+    controller_filepath,    # network file
     Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
     "MIP",     	# query solver, "MIP" or "ReluPlex"
-    2, #35,        	# ntime
+    35,        	# ntime
     0.1,       	# dt
     -1,        	# N_overt
     )
