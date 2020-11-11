@@ -574,7 +574,7 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_constrai
 	integration_map = update_rule(input_vars_last, control_vars_last, oA_vars)
 
 	# setup variables at next timestep 
-	timestep_nplus1_vars = []
+	timestep_nplus1_vars = GenericAffExpr{Float64,VariableRef}[]
 	for (i, v) in enumerate(input_vars_last)
 		v_mip = mip_model.vars_dict[v]
 		dv = integration_map[v]
@@ -612,11 +612,11 @@ function add_output_constraints!(constraint::Constraint, model::JuMP.Model, vars
 	x = reshape(vars, (length(vars), 1))
 	c = reshape(constraint.coeffs, (1, length(constraint.coeffs)))
 	if constraint.relation == :(<=)
-		@constraint(model, c*x <= constraint.scalar)
+		@constraint(model, (c*x)[1] <= constraint.scalar)
 	elseif constraint.relation == :(>=)
-		@constraint(model, c*x >= constraint.scalar)
+		@constraint(model, (c*x)[1] >= constraint.scalar)
 	elseif constraint.relation == :(==)
-		@constraint(model, c*x == constraint.scalar)
+		@constraint(model, (c*x)[1] == constraint.scalar)
 	end
 
 end
