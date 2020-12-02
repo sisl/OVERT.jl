@@ -77,7 +77,7 @@ function write_to_file(f::SMTLibFormula, fname; dirname="smtlibfiles/")
     end
     # TODO: make dir before writing to file in it
     try
-        mkdir(pwd() * dirname) # make dir if it doesn't exist
+        mkdir(pwd() * "/"*dirname) # make dir if it doesn't exist
     catch
     end
     full_fname = pwd() * dirname * fname
