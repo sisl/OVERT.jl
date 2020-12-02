@@ -15,6 +15,7 @@ global DEBUG = true
 """ Types """
 mutable struct SoundnessQuery
     ϕ # the original 
+    defs # definitions for the approximate
     ϕ̂ # the approximate
     domain # the domain over which to check if: phi => phihat   is valid.
 end
@@ -134,9 +135,15 @@ which is the final formula that we will encode.
 """
 function soundnessquery2smt(query::SoundnessQuery)
     stats = FormulaStats()
-    ϕ = assert_conjunction(query.ϕ, stats; conjunct_name="phi")
+    ϕ = assert_all(query.ϕ, stats)
+    defs = assert_all(query.defs, stats)
     notϕ̂ = assert_negation_of_conjunction(query.ϕ̂, stats; conjunct_name="phihat")
-    main_formula = vcat(["; assert phi"], ϕ, ["; assert not phi hat"], notϕ̂) 
+    main_formula = vcat(["; assert phi"], 
+                                       ϕ,
+    ["; assert definitions for phi hat"], 
+                                    defs,
+                ["; assert not phi hat"],
+                                    notϕ̂) 
     #
     whole_formula = vcat(header(), declare_reals(stats), define_domain(query.domain), main_formula, footer())
     return SMTLibFormula(whole_formula, stats)   
@@ -349,6 +356,15 @@ end
 f is an array representing a conjunction.
 Returns an array
 """
+function assert_all(f::Array, fs::FormulaStats)
+    assertions = []
+    for item in f
+        expr = convert_any_constraint(item, fs)::String
+        push!(assertions, assert_statement(expr))
+    end
+    return assertions
+end
+
 function assert_conjunction(f::Array, fs::FormulaStats; conjunct_name=nothing)
     if length(f) == 1
         return [assert_literal(f[1], fs)]
@@ -612,20 +628,15 @@ function declare_list(constraint_list::Array, fs::FormulaStats; use_macros=false
     names = [] # names
     for item in constraint_list 
         expr = convert_any_constraint(item, fs)::String
-        if item.args[1] == :(==)
-            # if this is a definition of a variable/function, just assert it.
-            push!(defs, assert_statement(expr))
-        else
-            if use_macros 
-                macro_name = get_new_macro(fs)
-                push!(names, macro_name)
-                push!(defs, define_bool_macro(macro_name, expr))
-            else # use new bools
-                bool_name = get_new_bool(fs)
-                push!(names, bool_name)
-                push!(defs, declare_const(bool_name, "Bool"))
-                push!(defs, define_atom(bool_name, expr))
-            end
+        if use_macros 
+            macro_name = get_new_macro(fs)
+            push!(names, macro_name)
+            push!(defs, define_bool_macro(macro_name, expr))
+        else # use new bools
+            bool_name = get_new_bool(fs)
+            push!(names, bool_name)
+            push!(defs, declare_const(bool_name, "Bool"))
+            push!(defs, define_atom(bool_name, expr))
         end
     end
     return defs, names
