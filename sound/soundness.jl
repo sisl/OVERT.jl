@@ -228,6 +228,14 @@ function get_problem(problem::String)
     end
 end
 
+function SoundnessQuery(oa::OverApproximation, domain)
+    ϕ̂ = vcat(oa.approx_eq, oa.approx_ineq)
+    ϕ = [:($k==$v) for (k,v) in oa.fun_eq]
+    return SoundnessQuery(ϕ, ϕ̂, domain)
+end
+
+# About to be deprecated: OVERT and NN Approximations need their own separate methods to construct
+# soundness queries
 function construct_soundness_query(p::String, approx)
     problem = get_problem(p)
     if approx == "OVERT"
