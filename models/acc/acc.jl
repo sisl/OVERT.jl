@@ -52,13 +52,18 @@ end
 acc_input_vars = [:x1, :x2, :x3, :x4, :x5, :x6]
 acc_control_vars = [:u1]
 
+acc_measurement_model = [[1., 0., 0., -1., 0., 0.]] # relative distance (D_safe can be computed by scaling and shifting the reachable set of v_ego)
+# but a measurement model can contain multiple rows of measurements!
+
 ACC = OvertProblem(
 	acc_dynamics,
 	acc_dynamics_overt,
 	acc_update_rule,
 	acc_input_vars,
-	acc_control_vars
+	acc_control_vars,
 )
+# 	acc_measurement_model
+# )
 
 """
 Note: Compared this dynamics variable ordering in combination with controller acc_controller.nnet with controller outputs in 
