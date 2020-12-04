@@ -174,23 +174,24 @@ function solve_for_reachability(mip_model::OvertMIP, query::OvertQuery,
 		push!(highs, objective_value(mip_model.model))
 	end
 
-	# compute reachable set for measurements
-	if query.problem.measurement_model != []
-		meas_lows = Array{Float64}(undef, 0)
-		meas_highs = Array{Float64}(undef, 0)
-		# deal with computing reachable set for measurements
-		for measurement_matrix_row in query.problem.measurement_model 
-			@objective(mip_model.model, Min, sum(measurement_matrix_row.*timestep_nplus1_vars))
-			JuMP.optimize!(mip_model.model)
-			push!(meas_lows, objective_value(mip_model.model))
-			@objective(mip_model.model, Max, sum(measurement_matrix_row.*timestep_nplus1_vars))
-			JuMP.optimize!(mip_model.model)
-			push!(meas_highs, objective_value(mip_model.model))
-		end
-		meas_reachable_set = Hyperrectangle(low=lows, high=highs)
-	else
-		meas_reachable_set = nothing
-	end
+	# measurement model code, leave commented for now. til ready for integration
+	# # compute reachable set for measurements
+	# if query.problem.measurement_model != []
+	# 	meas_lows = Array{Float64}(undef, 0)
+	# 	meas_highs = Array{Float64}(undef, 0)
+	# 	# deal with computing reachable set for measurements
+	# 	for measurement_matrix_row in query.problem.measurement_model 
+	# 		@objective(mip_model.model, Min, sum(measurement_matrix_row.*timestep_nplus1_vars))
+	# 		JuMP.optimize!(mip_model.model)
+	# 		push!(meas_lows, objective_value(mip_model.model))
+	# 		@objective(mip_model.model, Max, sum(measurement_matrix_row.*timestep_nplus1_vars))
+	# 		JuMP.optimize!(mip_model.model)
+	# 		push!(meas_highs, objective_value(mip_model.model))
+	# 	end
+	# 	meas_reachable_set = Hyperrectangle(low=lows, high=highs)
+	# else
+	# 	meas_reachable_set = nothing
+	# end
 	# get the hyperrectangle.
 	reacheable_set = Hyperrectangle(low=lows, high=highs)
 	return reacheable_set, meas_reachable_set
