@@ -28,7 +28,7 @@ function acc_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {T <: Re
     	v1 = Meta.parse(v1)
 		v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
 
-		v2 = "-2 * x6 + 2 * u1_$t_idx - $mu * x5_$t_idx^2"
+		v2 = "-2 * x6_$t_idx + 2 * u1_$t_idx - $mu * x5_$t_idx^2"
 		v2 = Meta.parse(v2)
 		v2_oA = overapprox_nd(v2, range_dict; N=N_OVERT)
 	end
