@@ -16,7 +16,7 @@ query = OvertQuery(
     controller_filepath,    # network file
     Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
     "MIP",     	# query solver, "MIP" or "ReluPlex"
-    35,        	# ntime
+    55,        	# ntime
     0.1,       	# dt
     -1,        	# N_overt
     )
