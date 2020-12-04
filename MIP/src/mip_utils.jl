@@ -389,7 +389,8 @@ function symbolic_reachability(query::OvertQuery, input_set::Hyperrectangle)
    - all_sets_symbolic: a hyperrectangle for the reachable set at t=n, computed symbolically.
 	"""
 	# setup all overt cosntraints
-	mip_model, all_sets, all_meas_sets, all_oA_vars = setup_mip_with_overt_constraints(query, input_set)
+	# mip_model, all_sets, all_meas_sets, all_oA_vars = setup_mip_with_overt_constraints(query, input_set)
+	mip_model, all_sets, all_oA_vars = setup_mip_with_overt_constraints(query, input_set)
 
 	# read neural network and add controller constraints
 	add_controllers_constraints!(mip_model, query, all_sets)
