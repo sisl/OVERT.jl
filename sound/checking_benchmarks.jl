@@ -16,7 +16,7 @@ gamma_ego = [0, 0]
 input_domains = [x_lead, v_lead, gamma_lead, x_ego, v_ego, gamma_ego]
 domain = Dict(zip(acc_input_vars, input_domains))
 # construct overapproximation   
-dim3_OA = overapprox_nd(acc_ẋ₃, domain, N=-1)
+dim3_OA = overapprox_nd(acc_ẋ₃, domain, N=-1, ϵ=.1)
 # construct soundness query
 ##################### MODE 1: PUT ALL OA RELATIONS INTO ϕ̂
 dim3_SQ_mode1 = SoundnessQuery([:($k==$v) for (k,v) in dim3_OA.fun_eq], # ϕ
@@ -33,8 +33,8 @@ dim3_SQ_mode2 = SoundnessQuery([:($(dim3_OA.output) == $acc_ẋ₃)], # ϕ
                                 domain)
 # println("soundness query: ", dim3_SQ)
 # check soundness query with dreal
-result_m1 = check("dreal", dim3_SQ_mode1, "acc_dim3_soundness_query")
+result_m1 = check("dreal", dim3_SQ_mode1, "acc_dim3_soundness_query_m1.smt2")
 println("result mode 1 is: ", result_m1)
 #
-result_m2 = check("dreal", dim3_SQ_mode2, "acc_dim3_soundness_query")
+result_m2 = check("dreal", dim3_SQ_mode2, "acc_dim3_soundness_query_m2.smt2")
 println("result mode 2 is: ", result_m2)

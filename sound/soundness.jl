@@ -145,7 +145,8 @@ function soundnessquery2smt(query::SoundnessQuery)
                 ["; assert not phi hat"],
                                     notϕ̂) 
     #
-    whole_formula = vcat(header(), declare_reals(stats), define_domain(query.domain), main_formula, footer())
+    domain_constraints = define_domain(query.domain, stats)
+    whole_formula = vcat(header(), declare_reals(stats), domain_constraints, main_formula, footer())
     return SMTLibFormula(whole_formula, stats)   
 end
 
@@ -155,29 +156,41 @@ function check(solver::String, query::SoundnessQuery, fname::String)
         smtlibscript = soundnessquery2smt(query)
         full_fname = write_to_file(smtlibscript, fname)
         # call dreal from command line to execute on smtlibscript
-        run(`dreal $full_fname`)
-        # read results file? and return result?
-        result = read_result(full_fname)
+        result = read(`dreal $full_fname`, String)
+        @debug("result: ", result)
+        # write result file
+        write_result(full_fname, result)
     else
         throw(MyError("Not implemented"))
     end
     return result
 end
 
+function write_result(fname, result)
+    # results will be put in a txt  file of the same name but with "result" appended
+    io = open(fname[1:end-5]*"_result.txt", "w")
+    write(io, result...)
+    close(io)
+    return nothing
+end
+
 function read_result(fname)
     # results will be put in a txt  file of the same name but with "result" appended
-    io = open(fname[1:end-4]*"_result.txt", "r")
+    io = open(fname[1:end-5]*"_result.txt", "r")
     result = read(io, String)
     close(io)
     return result
 end
 
-function define_domain(d)
+function define_domain(d, stats::FormulaStats)
     # d is a dictionary denoting the domain, e.g. {"x" => [-.3, 5.6], ...}
     assertions = []
     for (k,v) in d
         lb = v[1]
         ub = v[2]
+        if k ∉ stats.reals
+            add_real_var(k, stats)
+        end
         box = assert_statement(define_box(string(k),lb, ub))
         push!(assertions, box)
     end
