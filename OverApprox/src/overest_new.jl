@@ -29,7 +29,7 @@ function plot_bound(f, a, b, xp, yp; existing_plot=nothing)
 	if isnothing(existing_plot)
 		p = plot(x,  y, color="red", linewidth=2, label="f(x)");
 		p = plot!(p, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=false);
-		display(p)
+		#display(p)
 		global NPLOTS
 		NPLOTS += 1
 		savefig("plots/bound_"*string(NPLOTS)*".pdf") # relative to run dir of top level file...dumb...
@@ -37,7 +37,7 @@ function plot_bound(f, a, b, xp, yp; existing_plot=nothing)
 	else
 		plot!(existing_plot, x,  y, color="red", linewidth=2, label="f(x)");
 		plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=false);
-		display(existing_plot);
+		#display(existing_plot);
 		global NPLOTS
 		NPLOTS += 1
 		savefig("plots/bound_"*string(NPLOTS)*".pdf")
