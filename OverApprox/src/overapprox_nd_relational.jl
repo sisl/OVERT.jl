@@ -358,8 +358,7 @@ function bound_1arg_function(e::Expr, arg::Symbol, bound::OverApproximation; plo
     @debug "bound effectively unary" e arg bound
     fun = SymEngine.lambdify(e, [arg])
     lb, ub, npoint = bound.ranges[arg][1], bound.ranges[arg][2], bound.N
-    #d2f_zeros, convex = get_regions_1arg(e, arg, lb, ub)
-    d2f_zeros, convex = nothing, nothing # debugging
+    d2f_zeros, convex = get_regions_1arg(e, arg, lb, ub)
     return bound_unary_function(fun, e, arg, lb, ub, npoint, bound, plotflag=plotflag, d2f_zeros=d2f_zeros, convex=convex)
 end
 
