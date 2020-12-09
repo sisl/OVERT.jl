@@ -16,7 +16,7 @@ query = OvertQuery(
     controller_filepath,    # network file
     Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
     "MIP",     	# query solver, "MIP" or "ReluPlex"
-    35,        	# ntime
+    55,        	# ntime
     0.1,       	# dt
     -1,        	# N_overt
     )
@@ -36,8 +36,7 @@ input_set = Hyperrectangle(
     )
 
 t1 = Dates.time()
-all_sets, all_sets_symbolic = symbolic_reachability_with_concretization(query, input_set,[20,35])
-# [20, 35])
+all_sets, all_sets_symbolic = symbolic_reachability_with_concretization(query, input_set, [20, 35])
 t2 = Dates.time()
 dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
