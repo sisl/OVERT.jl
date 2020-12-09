@@ -1,7 +1,6 @@
 # checking the soundness of overapproximations for the benchmark problems
 
 include("../models/problems.jl")
-include("../models/acc/acc.jl")
 include("../OverApprox/src/overapprox_nd_relational.jl")
 include("soundness.jl")
 
@@ -110,6 +109,7 @@ function check_overapprox(oa, domain, input_vars, problem_name, jobs=1)
         R &= occursin("unsat", result)
         readline() # to make things interactive
     end
-    R ? println("all checks pass!") : println("Some checks fail :( ")
+    R ? println("all checks pass for "*problem_name*"!") : println("Some checks fail :( for "*problem_name)
+    return R
 end
 #check_overapprox(oa, domain, input_vars)
