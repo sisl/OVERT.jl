@@ -12,6 +12,9 @@ mutable struct OvertProblem
 	input_vars
 	control_vars
 end
+# 	measurement_model
+# end
+# OvertProblem(td, od, ur, iv, cv) = OvertProblem(td, od, ur, iv, cv, [])
 
 mutable struct OvertQuery
 	problem::OvertProblem

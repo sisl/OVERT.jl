@@ -269,11 +269,16 @@ function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_p
     """
     UB = bound(func, a, b, N; lowerbound=lb, d2f_zeros=d2f_zeros, convex=convex, plot=plot, existing_plot=existing_plot)
     UB_points = unique(sort(to_pairs(UB), by = x -> x[1]))
-    #println("points: ", UB_points)
+    # if !lb
+    #     println("Is upper bound.")
+    # else
+    #     println("Is lower bound.")
+    # end
+    #println("Max of points: ", maximum(UB_points))
     if abs(ϵ) > 0
         UB_points = add_ϵ(UB_points, ϵ) # return new points shifted by epsilon up or down
     end
-    #println("points: ", UB_points)
+    #println("Max of points after ϵ adjustment: ", maximum(UB_points))
     UB_sym = closed_form_piecewise_linear(UB_points)
     # if !isnothing(digits)
     #     # note this degrades numerical precision, use with care

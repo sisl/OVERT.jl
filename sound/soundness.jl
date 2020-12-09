@@ -15,6 +15,7 @@ global DEBUG = true
 """ Types """
 mutable struct SoundnessQuery
     ϕ # the original 
+    defs # definitions for the approximate
     ϕ̂ # the approximate
     domain # the domain over which to check if: phi => phihat   is valid.
 end
@@ -76,10 +77,10 @@ function write_to_file(f::SMTLibFormula, fname; dirname="smtlibfiles/")
     end
     # TODO: make dir before writing to file in it
     try
-        mkdir(pwd() * dirname) # make dir if it doesn't exist
+        mkdir(pwd() * "/" * dirname) # make dir if it doesn't exist
     catch
     end
-    full_fname = pwd() * dirname * fname
+    full_fname = pwd()* "/" * dirname * fname
     file = open(full_fname, "w")
     write(file, join(f.formula, "\n"))
     close(file)
@@ -134,11 +135,18 @@ which is the final formula that we will encode.
 """
 function soundnessquery2smt(query::SoundnessQuery)
     stats = FormulaStats()
-    ϕ = assert_conjunction(query.ϕ, stats; conjunct_name="phi")
+    ϕ = assert_all(query.ϕ, stats)
+    defs = assert_all(query.defs, stats)
     notϕ̂ = assert_negation_of_conjunction(query.ϕ̂, stats; conjunct_name="phihat")
-    main_formula = vcat(["; assert phi"], ϕ, ["; assert not phi hat"], notϕ̂) 
+    main_formula = vcat(["; assert phi"], 
+                                       ϕ,
+    ["; assert definitions for phi hat"], 
+                                    defs,
+                ["; assert not phi hat"],
+                                    notϕ̂) 
     #
-    whole_formula = vcat(header(), declare_reals(stats), define_domain(query.domain), main_formula, footer())
+    domain_constraints = define_domain(query.domain, stats)
+    whole_formula = vcat(header(), declare_reals(stats), domain_constraints, main_formula, footer())
     return SMTLibFormula(whole_formula, stats)   
 end
 
@@ -148,29 +156,41 @@ function check(solver::String, query::SoundnessQuery, fname::String)
         smtlibscript = soundnessquery2smt(query)
         full_fname = write_to_file(smtlibscript, fname)
         # call dreal from command line to execute on smtlibscript
-        run(`dreal $full_fname`)
-        # read results file? and return result?
-        result = read_result(full_fname)
+        result = read(`dreal $full_fname`, String)
+        @debug("result: ", result)
+        # write result file
+        write_result(full_fname, result)
     else
         throw(MyError("Not implemented"))
     end
     return result
 end
 
+function write_result(fname, result)
+    # results will be put in a txt  file of the same name but with "result" appended
+    io = open(fname[1:end-5]*"_result.txt", "w")
+    write(io, result...)
+    close(io)
+    return nothing
+end
+
 function read_result(fname)
     # results will be put in a txt  file of the same name but with "result" appended
-    io = open(fname[1:end-4]*"_result.txt", "r")
+    io = open(fname[1:end-5]*"_result.txt", "r")
     result = read(io, String)
     close(io)
     return result
 end
 
-function define_domain(d)
+function define_domain(d, stats::FormulaStats)
     # d is a dictionary denoting the domain, e.g. {"x" => [-.3, 5.6], ...}
     assertions = []
     for (k,v) in d
         lb = v[1]
         ub = v[2]
+        if k ∉ stats.reals
+            add_real_var(k, stats)
+        end
         box = assert_statement(define_box(string(k),lb, ub))
         push!(assertions, box)
     end
@@ -228,6 +248,14 @@ function get_problem(problem::String)
     end
 end
 
+function SoundnessQuery(oa::OverApproximation, domain)
+    ϕ̂ = vcat(oa.approx_eq, oa.approx_ineq)
+    ϕ = [:($k==$v) for (k,v) in oa.fun_eq]
+    return SoundnessQuery(ϕ, ϕ̂, domain)
+end
+
+# About to be deprecated: OVERT and NN Approximations need their own separate methods to construct
+# soundness queries
 function construct_soundness_query(p::String, approx)
     problem = get_problem(p)
     if approx == "OVERT"
@@ -341,6 +369,15 @@ end
 f is an array representing a conjunction.
 Returns an array
 """
+function assert_all(f::Array, fs::FormulaStats)
+    assertions = []
+    for item in f
+        expr = convert_any_constraint(item, fs)::String
+        push!(assertions, assert_statement(expr))
+    end
+    return assertions
+end
+
 function assert_conjunction(f::Array, fs::FormulaStats; conjunct_name=nothing)
     if length(f) == 1
         return [assert_literal(f[1], fs)]
@@ -604,20 +641,15 @@ function declare_list(constraint_list::Array, fs::FormulaStats; use_macros=false
     names = [] # names
     for item in constraint_list 
         expr = convert_any_constraint(item, fs)::String
-        if item.args[1] == :(==)
-            # if this is a definition of a variable/function, just assert it.
-            push!(defs, assert_statement(expr))
-        else
-            if use_macros 
-                macro_name = get_new_macro(fs)
-                push!(names, macro_name)
-                push!(defs, define_bool_macro(macro_name, expr))
-            else # use new bools
-                bool_name = get_new_bool(fs)
-                push!(names, bool_name)
-                push!(defs, declare_const(bool_name, "Bool"))
-                push!(defs, define_atom(bool_name, expr))
-            end
+        if use_macros 
+            macro_name = get_new_macro(fs)
+            push!(names, macro_name)
+            push!(defs, define_bool_macro(macro_name, expr))
+        else # use new bools
+            bool_name = get_new_bool(fs)
+            push!(names, bool_name)
+            push!(defs, declare_const(bool_name, "Bool"))
+            push!(defs, define_atom(bool_name, expr))
         end
     end
     return defs, names

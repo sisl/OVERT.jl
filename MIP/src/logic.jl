@@ -15,7 +15,7 @@ julia> @constraint(model, con, A * x .== b)
 """
 mutable struct Constraint
     # e.g. 5*x + 3*theta < 3.2
-    coeffs # 5, 3
-    relation # <
-    scalar # 3.2
+    coeffs::Array{T} where T <: Real # 5, 3
+    relation::Symbol # <
+    scalar::Real # 3.2
 end

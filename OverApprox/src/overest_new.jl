@@ -16,6 +16,8 @@ using Interpolations
 RTOL = 0.01
 myapprox(x,y) = abs(x-y)<RTOL  # This is defined to identify small intervals
 
+global NPLOTS = 0
+
 # function to plot
 function plot_bound(f, a, b, xp, yp; existing_plot=nothing)
 	"""
@@ -28,11 +30,17 @@ function plot_bound(f, a, b, xp, yp; existing_plot=nothing)
 		p = plot(x,  y, color="red", linewidth=2, label="f(x)");
 		p = plot!(p, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=false);
 		display(p)
+		#global NPLOTS
+		#NPLOTS += 1
+		#savefig("plots/bound_"*string(NPLOTS)*".pdf") # relative to run dir of top level file...dumb...
 		#return p
 	else
 		plot!(existing_plot, x,  y, color="red", linewidth=2, label="f(x)");
 		plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=false);
 		display(existing_plot);
+		#global NPLOTS
+		#NPLOTS += 1
+		#savefig("plots/bound_"*string(NPLOTS)*".pdf")
 		#return existing_plot
 	end
 	print("\u1b[1F")

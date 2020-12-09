@@ -1,8 +1,8 @@
+a_lead = -2.0
+mu = 0.0001
+
 function acc_dynamics(x::Array{T, 1} where {T <: Real},
 	                  u::Array{T, 1} where {T <: Real})
-	a_lead = -2.0
-	mu = 0.0001
-
 	# x1,x2,x3 are lead vehicle variables
     dx1 = x[2] # dposition
     dx2 = x[3] # dvelocity
@@ -15,16 +15,17 @@ function acc_dynamics(x::Array{T, 1} where {T <: Real},
     return [dx1, dx2, dx3, dx4, dx5, dx6]
 end
 
+acc_ẋ₃ = :(-2 * x3 + 2 * $a_lead - $mu * x2^2)
+acc_ẋ₆ = :(-2 * x6 + 2 * u1 - $mu * x5^2)
+
 function acc_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real},
 	                              N_OVERT::Int,
 							      t_idx::Union{Int, Nothing}=nothing)
-	a_lead = -2.0
-	mu = 0.0001
 	if isnothing(t_idx)
-		v1 = :(-2 * x3 + 2 * $a_lead - $mu * x2^2)
+		v1 = acc_ẋ₃
 		v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
 
-		v2 = :(-2 * x6 + 2 * u1 - $mu * x5^2)
+		v2 = acc_ẋ₆
 		v2_oA = overapprox_nd(v2, range_dict; N=N_OVERT)
 	else
 		v1 = "-2 * x3_$t_idx + 2 * $a_lead - $mu * x2_$t_idx^2"
@@ -52,13 +53,18 @@ end
 acc_input_vars = [:x1, :x2, :x3, :x4, :x5, :x6]
 acc_control_vars = [:u1]
 
+acc_measurement_model = [[1., 0., 0., -1., 0., 0.]] # relative distance (D_safe can be computed by scaling and shifting the reachable set of v_ego)
+# but a measurement model can contain multiple rows of measurements!
+
 ACC = OvertProblem(
 	acc_dynamics,
 	acc_dynamics_overt,
 	acc_update_rule,
 	acc_input_vars,
-	acc_control_vars
+	acc_control_vars,
 )
+# 	acc_measurement_model
+# )
 
 """
 Note: Compared this dynamics variable ordering in combination with controller acc_controller.nnet with controller outputs in 
