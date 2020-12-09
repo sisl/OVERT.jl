@@ -4,24 +4,26 @@ A function to compute dx/dt as a function of x and u
 function simple_car_dynamics(x::Array{T, 1} where {T <: Real},
 	                         u::Array{T, 1} where {T <: Real})
 
-  dx1 = x[4] * cos(x[3])
-  dx2 = x[4] * sin(x[3])
-  dx3 = u[2]
-  dx4 = u[1]
+  dx1 = x[4] * cos(x[3]) # pos x
+  dx2 = x[4] * sin(x[3]) # pos y
+  dx3 = u[2] # yaw angle
+  dx4 = u[1] # speed
   return [dx1, dx2, dx3, dx4]
 end
 
 """
 A function to constructs OVERT approximation of the simple car dynamics.
 """
+simple_car_ẋ = :(x4 * cos(x3))
+simple_car_ẏ = :(x4 * sin(x3))
 function simple_car_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real},
 		                           N_OVERT::Int,
 							       t_idx::Union{Int, Nothing}=nothing)
 	if isnothing(t_idx)
-	    v1 = :(x4 * cos(x3))
+	    v1 = simple_car_ẋ 
 	    v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
 
-		v2 = :(x4 * sin(x3))
+		v2 = simple_car_ẏ
 		v2_oA = overapprox_nd(v2, range_dict; N=N_OVERT)
 	else
 		v1 = "x4_$t_idx * cos(x3_$t_idx)"
