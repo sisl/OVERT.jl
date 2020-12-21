@@ -1,6 +1,7 @@
+ϵ = 0.1
+
 function tora_dynamics(x::Array{T, 1} where {T <: Real},
                        u::Array{T, 1} where {T <: Real})
-    ϵ = 0.1
     dx1 = x[2]
     dx2 = ϵ * sin(x[3]) - x[1]
     dx3 = x[4]
@@ -8,12 +9,13 @@ function tora_dynamics(x::Array{T, 1} where {T <: Real},
     return [dx1, dx2, dx3, dx4]
 end
 
+tora_dim2 = :($ϵ * sin(x3) - x1)
+
 function tora_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real},
                              N_OVERT::Int,
 					         t_idx::Union{Int, Nothing}=nothing)
-    ϵ = 0.1
 	if isnothing(t_idx)
-		v1 = :($ϵ * sin(x3) - x1)
+		v1 = tora_dim2
 	else
     	v1 = "$ϵ * sin(x3_$t_idx) - x1_$t_idx"
     	v1 = Meta.parse(v1)
@@ -32,7 +34,7 @@ function tora_update_rule(input_vars, control_vars, overt_output_vars)
 end
 
 tora_input_vars = [:x1, :x2, :x3, :x4]
-tora_control_vars = [:u]
+tora_control_vars = [:u1]
 
 Tora = OvertProblem(
 	tora_dynamics,

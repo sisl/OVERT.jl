@@ -68,10 +68,29 @@ function single_pendulum()
     return result
 end
 
+# runs on laptop!!!
 function tora()
+    x1 = [0.6, 0.7]
+    x2 = [-0.7, -0.6]
+    x3 = [-0.4, -0.3]
+    x4 = [0.5, 0.6]
+    input_domains = [x1, x2, x3, x4]
+    input_set = Hyperrectangle(low=[i[1] for i in input_domains], high=[i[2] for i in input_domains])
+    # get controller bounds
+    bounds = find_controller_bound(pwd()*"/../nnet_files/jair/tora_smallest_controller.nnet", input_set, Id()) # returns 1D
+    domain = Dict(zip(tora_input_vars, input_domains))
+    domain[tora_control_vars[1]] = [low(bounds)..., high(bounds)...]  # u is 1d
+    oa = overapprox_nd(tora_dim2, domain, N=-1, ϵ=.1)
+
+    result = check_overapprox(oa, domain, [tora_input_vars..., tora_control_vars...], "tora", jobs=1, delta_sat=0.001)
+    return result
 end
 
-#acc()
-#simple_car()
-#single_pendulum()
-#tora()
+acc()
+println("acc done")
+simple_car()
+println("simple car done")
+single_pendulum()
+println("single pendulum done")
+tora()
+println("tora done")
