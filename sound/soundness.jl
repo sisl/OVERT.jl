@@ -39,27 +39,27 @@ mutable struct MyError
     message::String
 end
 
-mutable struct Problem
-    name::String
-    executable_fcn
-    symbolic_fcn # may be a list of relational expressions representing the true function
-    overt_problem::OvertProblem
-    oa #::OverApproximation
-    domain
-end
-# maybe this should be:
-# exec...
-# sym ...
-# oa 
-# nn
+# mutable struct Problem
+#     name::String
+#     executable_fcn
+#     symbolic_fcn # may be a list of relational expressions representing the true function
+#     overt_problem::OvertProblem
+#     oa #::OverApproximation
+#     domain
+# end
+# # maybe this should be:
+# # exec...
+# # sym ...
+# # oa 
+# # nn
 
-function Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, domain)
-    return Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, nothing, domain)
-end
+# function Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, domain)
+#     return Problem(name::String, executable, symbolic_fcn, overt_problem::OvertProblem, nothing, domain)
+# end
 
-function Problem(name::String, executable, overt_problem::OvertProblem, domain)
-    return Problem(name::String, executable, nothing, overt_problem::OvertProblem, nothing, domain)
-end
+# function Problem(name::String, executable, overt_problem::OvertProblem, domain)
+#     return Problem(name::String, executable, nothing, overt_problem::OvertProblem, nothing, domain)
+# end
 
 """Printing/Writing Functions"""
 function Base.show(io::IO, f::SMTLibFormula)
@@ -267,21 +267,21 @@ function construct_soundness_query(p::String, approx)
     return SoundnessQuery(ϕ, ϕ̂, problem.domain)
 end
 
-function construct_OVERT(problem::Problem)
-    range_dict = deepcopy(problem.domain)
-    oa::OverApproximation, output_vars = problem.overt_problem.overt_dynamics(range_dict, 2)
-    problem.oa = oa
-    sym_dict = oa.fun_eq
-    sym_funs = [:($k==$v) for (k,v) in sym_dict]
-    problem.symbolic_fcn = sym_funs
-    # what to return, exactly?
-    # return: combine two arrays of oa.approx_eq, oa.approx_ineq
-    # TODO: check that problem::Problem is modified once this function exits
-    return vcat(oa.approx_eq, oa.approx_ineq)
-end
+# function construct_OVERT(problem::Problem)
+#     range_dict = deepcopy(problem.domain)
+#     oa::OverApproximation, output_vars = problem.overt_problem.overt_dynamics(range_dict, 2)
+#     problem.oa = oa
+#     sym_dict = oa.fun_eq
+#     sym_funs = [:($k==$v) for (k,v) in sym_dict]
+#     problem.symbolic_fcn = sym_funs
+#     # what to return, exactly?
+#     # return: combine two arrays of oa.approx_eq, oa.approx_ineq
+#     # TODO: check that problem::Problem is modified once this function exits
+#     return vcat(oa.approx_eq, oa.approx_ineq)
+# end
 
 """If NN file exists and retrain=false, load saved NN. Otherwise, train new one."""
-function get_NN(problem::Problem; retrain=false)
+function get_NN(problem; retrain=false)
     # if NN exists and retrain=false
     # load NN 
     # else 
@@ -296,7 +296,7 @@ end
 
 """ Use executable version of function to 
 fit neural network approximation"""
-function fit_NN(problem::Problem)
+function fit_NN(problem)
     n_states = length(problem.overt_problem.input_vars)
     n_controls = length(problem.overt_problem.control_vars)
     n_inputs = n_states + n_controls
@@ -337,7 +337,7 @@ end
 Assumes overt_problem.input_vars are listed in the same order that the dynamics function expects.
 e.g. they are listed in the <model>.jl file as: [:x1, :x2, :x3] and the dynamics function expects 
 something of the form [x1, x2, x3] """
-function sample_dataset(problem::Problem; N=10)
+function sample_dataset(problem; N=10)
     # sample points in domain of state
     X = get_random_points(problem.domain, problem.overt_problem.input_vars, N)
     # sample points in domain of control
