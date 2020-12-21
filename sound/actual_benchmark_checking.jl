@@ -6,6 +6,8 @@ include("../models/tora/tora.jl")
 include("../MIP/src/overt_to_mip.jl")
 include("../MIP/src/mip_utils.jl")
 
+file_dir = join(split(@__FILE__, "/")[1:end-1], "/") # get directory of this script
+
 # runs on laptop!
 function acc()
     # Checking acc
@@ -18,7 +20,7 @@ function acc()
     gamma_ego = [0, 0]
     input_domains = [x_lead, v_lead, gamma_lead, x_ego, v_ego, gamma_ego]
     input_set = Hyperrectangle(low=[i[1] for i in input_domains], high=[i[2] for i in input_domains])
-    bounds = find_controller_bound(pwd()*"/../nnet_files/jair/acc_controller.nnet", input_set, Id()) # returns 1D Hyperrectangle (interval)
+    bounds = find_controller_bound(file_dir*"/../nnet_files/jair/acc_controller.nnet", input_set, Id()) # returns 1D Hyperrectangle (interval)
 
     domain = Dict(zip(acc_input_vars, input_domains))
     domain[acc_control_vars[1]] = [low(bounds)..., high(bounds)...] 
@@ -39,7 +41,7 @@ function simple_car()
     vel = [1.5, 1.51]
     input_domains =  [posx, posy, yaw, vel]
     input_set = Hyperrectangle(low=[i[1] for i in input_domains], high=[i[2] for i in input_domains])
-    bounds = find_controller_bound(pwd()*"/../nnet_files/jair/car_smallest_controller.nnet", input_set, Id()) # returns 2D
+    bounds = find_controller_bound(file_dir*"/../nnet_files/jair/car_smallest_controller.nnet", input_set, Id()) # returns 2D
     domain = Dict(zip(simple_car_input_vars, input_domains))
     domain[simple_car_control_vars[1]] = [low(bounds)[1]..., high(bounds)[1]...]  # u is 2d
     domain[simple_car_control_vars[2]] = [low(bounds)[2]..., high(bounds)[2]...]  # u is 2d
@@ -59,7 +61,7 @@ function single_pendulum()
     input_domains = [θ, θ_dot]
     input_set = Hyperrectangle(low=[i[1] for i in input_domains], high=[i[2] for i in input_domains])
     # get controller bounds
-    bounds = find_controller_bound(pwd()*"/../nnet_files/jair/single_pendulum_small_controller.nnet", input_set, Id()) # returns 1D
+    bounds = find_controller_bound(file_dir*"/../nnet_files/jair/single_pendulum_small_controller.nnet", input_set, Id()) # returns 1D
     domain = Dict(zip(single_pend_input_vars, input_domains))
     domain[single_pend_control_vars[1]] = [low(bounds)..., high(bounds)...]  # u is 1d
     oa = overapprox_nd(single_pend_θ_doubledot, domain, N=-1, ϵ=.1)
@@ -77,7 +79,7 @@ function tora()
     input_domains = [x1, x2, x3, x4]
     input_set = Hyperrectangle(low=[i[1] for i in input_domains], high=[i[2] for i in input_domains])
     # get controller bounds
-    bounds = find_controller_bound(pwd()*"/../nnet_files/jair/tora_smallest_controller.nnet", input_set, Id()) # returns 1D
+    bounds = find_controller_bound(file_dir*"/../nnet_files/jair/tora_smallest_controller.nnet", input_set, Id()) # returns 1D
     domain = Dict(zip(tora_input_vars, input_domains))
     domain[tora_control_vars[1]] = [low(bounds)..., high(bounds)...]  # u is 1d
     oa = overapprox_nd(tora_dim2, domain, N=-1, ϵ=.1)
