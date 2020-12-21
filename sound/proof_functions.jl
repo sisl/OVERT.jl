@@ -1,6 +1,5 @@
 # checking the soundness of overapproximations for the benchmark problems
 
-include("../models/problems.jl")
 include("../OverApprox/src/overapprox_nd_relational.jl")
 include("soundness.jl")
 
@@ -27,7 +26,7 @@ end
 ##################### MODE 3: BUILD UP PROOFS OF EACH LEVEL OF THE APPROX
 
 # get dependencies of variables
-function get_dependency(var, list, exclude_vars)
+function get_dependency(var, list, input_vars, exclude_vars)
     # for this var, retrieve all constraints that include this var but do NOT include exclude_vars AND exclude all constraints with vars that are "greater" than var
     function map_fun(list_item)
         vars_in_c = Expr.(free_symbols(Basic(list_item)))
@@ -38,13 +37,13 @@ function get_dependency(var, list, exclude_vars)
     new_free_vars = setdiff(Expr.(free_symbols(Basic.(list[idxs]))), [exclude_vars..., var])
     return idxs, new_free_vars # return boolean indices and free variables
 end
-function get_all_dependecies(vars, list, exclude_vars)
+function get_all_dependecies(vars, list, input_vars, exclude_vars)
     free_vars = Set(vars) 
     all_free_vars = Set(vars) 
     idxs = Bool.(zeros(length(list)))
     # get all dependent constraint indices for the vars in free_vars
     for v in free_vars
-        idxs_i, new_free_vars_i = get_dependency(v, list, exclude_vars)
+        idxs_i, new_free_vars_i = get_dependency(v, list, input_vars, exclude_vars)
         idxs .|= idxs_i
         if length(new_free_vars_i) > 0
             push!(all_free_vars, new_free_vars_i...)
@@ -58,7 +57,7 @@ function get_all_dependecies(vars, list, exclude_vars)
         if length(old_free_vars) > 0
             push!(exclude_vars, old_free_vars...)
         end
-        idxs .|= get_all_dependecies(new_free_vars, list, exclude_vars) 
+        idxs .|= get_all_dependecies(new_free_vars, list, input_vars, exclude_vars) 
         return idxs
     end
 end
@@ -66,6 +65,7 @@ end
 function special_compare(v1, v2)
     # returns TRUE is v1 <= v2
     # for variables of the form: :v_1, :v_2, etc. 
+    @debug("special_compare: ", v1, v2)
     v1num = Meta.parse(match(r"(?<=_)(.*)", string(v1)).captures[1])
     v2num = Meta.parse(match(r"(?<=_)(.*)", string(v2)).captures[1])
     return v1num <= v2num 
@@ -74,7 +74,7 @@ end
 # iterate through pieces of og function
 # (imagine sorted now but doesn't have to be i think)
 # e.g. take v1 = f(x)
-function check_overapprox(oa, domain, input_vars, problem_name, jobs=1)
+function check_overapprox(oa, domain, input_vars, problem_name; jobs=1, delta_sat=0.001)
     # NOTE THIS CODE RELIES ON THE VARIABLE ORDERING!
     vars = sort!(collect(keys(oa.fun_eq))) # sort just there for debugging
     R = true
@@ -85,7 +85,7 @@ function check_overapprox(oa, domain, input_vars, problem_name, jobs=1)
         all_approx_constraints = [((constraint.args[1] == :≤) || (constraint.args[1] == :≦) ) ? :($(constraint.args[2]) <= $(constraint.args[3])) : constraint for constraint in all_approx_constraints]
         all_approx_constraints = [((constraint.args[1] == :≥) || (constraint.args[1] ==  :≧)) ? :($(constraint.args[2]) >= $(constraint.args[3])) : constraint for constraint in all_approx_constraints]
 
-        all_dependencies = all_approx_constraints[get_all_dependecies([vari], all_approx_constraints, [])]
+        all_dependencies = all_approx_constraints[get_all_dependecies([vari], all_approx_constraints, input_vars, [])]
 
         defs = []
         ϕ̂ = []
@@ -104,10 +104,10 @@ function check_overapprox(oa, domain, input_vars, problem_name, jobs=1)
                             ϕ̂, # definitions for ϕ̂
                             domain)
 
-        result = check("dreal", sq, problem_name*"_soundness_query_"*string(vari)*".smt2", δ=0.001, jobs=jobs) # TODO: pass dreal delta
+        result = check("dreal", sq, problem_name*"_soundness_query_"*string(vari)*".smt2", δ=delta_sat, jobs=jobs) # TODO: pass dreal delta
         println("result for var ",vari," is: ", result)
         R &= occursin("unsat", result)
-        readline() # to make things interactive
+        # readline() # to make things interactive for debugging
     end
     R ? println("all checks pass for "*problem_name*"!") : println("Some checks fail :( for "*problem_name)
     return R
