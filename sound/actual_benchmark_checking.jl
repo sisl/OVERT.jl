@@ -47,8 +47,8 @@ function simple_car()
     oa_dim1 = overapprox_nd(simple_car_ẋ, domain, N=-1, ϵ=.1)
     oa_dim2 = overapprox_nd(simple_car_ẏ, domain, N=-1, ϵ=.1)
 
-    result_dim1 = check_overapprox(oa_dim1, domain, simple_car_input_vars, "simple_car_dim1", jobs=10, delta_sat=0.001)
-    result_dim2 = check_overapprox(oa_dim2, domain, simple_car_input_vars, "simple_car_dim2", jobs=10, delta_sat=0.001)
+    result_dim1 = check_overapprox(oa_dim1, domain, [simple_car_input_vars..., simple_car_control_vars...], "simple_car_dim1", jobs=10, delta_sat=0.001)
+    result_dim2 = check_overapprox(oa_dim2, domain, [simple_car_input_vars..., simple_car_control_vars...], "simple_car_dim2", jobs=10, delta_sat=0.001)
     return result_dim1 && result_dim2
 end
 
