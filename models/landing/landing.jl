@@ -4,7 +4,8 @@ A function to compute dx/dt as a function of the system state x and the control 
 The neural network also take T, the approximate time to landing, but this is calculated in the input layer to the network using:
 (vplane - v_thresh) / accel_scale  where only vplane is a variable. 
 """
-accel = 1
+landing_accel = 1
+landing_v_thresh = 66
 function landing_dynamics(x::Array{T,  1} where {T <: Real}, u::Array{T, 1} where {T <: Real})
     # state variables:
     # xc is the position of the car
@@ -14,7 +15,7 @@ function landing_dynamics(x::Array{T,  1} where {T <: Real}, u::Array{T, 1} wher
     dxc = x[2]
     dvc = 2*sin(.05*x[1]) # velocity of the car is constant plus wiggle
     dyp = x[4]
-    dvp = u[1]*-1*accel + (1-u[1])*1*accel
+    dvp = u[1]*-1*landing_accel + (1-u[1])*1*landing_accel
     # u = 0 means go around, so accelerate
     # u = 1 means continue landing, so DEcelerate
     return [dxc, dvc, dyp, dvp]
@@ -24,7 +25,7 @@ end
 function to construct overt approximation of landing dynamics.
 """
 landing_v̇c = :(2 * sin(.05 * x1))
-landing_v̇p = :(u1*-1*accel + (1 - u1)*1*accel)
+landing_v̇p = :(u1*-1*landing_accel + (1 - u1)*1*landing_accel)
 function landing_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real},
     N_OVERT::Int,
     t_idx::Union{Int, Nothing}=nothing)
@@ -32,7 +33,7 @@ function landing_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {T <
         v1 = landing_v̇c
         v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
         v2 = landing_v̇p
-        v2_oA = overapprox_nd(vv2, range_dict; N_OVERT)
+        v2_oA = overapprox_nd(vv2, range_dict; N=N_OVERT)
     else
         v1 = "2 * sin(.05 * x1_$t_idx)"
         v1 = Meta.parse(v1)
