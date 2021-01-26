@@ -22,12 +22,12 @@ query = OvertQuery(
     )
 
                                 #xc,vc,yp,vp
-input_set = Hyperrectangle(low=[600,-15,-5, 99],
-                            high=[800, 0, 5, 100])
+input_set = Hyperrectangle(low=[500,-15,-5, 99],
+                            high=[550, -14, 5, 100])
 concretize_at = [10, 10, 10, 8, 7]
 t1 = Dates.time()
 all_sets, all_sets_symbolic = symbolic_reachability_with_concretization(query, input_set, concretize_at)
 t2 = Dates.time()
 elapsed = (t2-t1)
 print("elapsed time = $(elapsed) seconds")
-JLD2.@save "landing_reachability_2_data.jld2" query input_set all_sets all_sets_symbolic elapsed 
+JLD2.@save "landing_reachability_3_data.jld2" query input_set all_sets all_sets_symbolic elapsed 
