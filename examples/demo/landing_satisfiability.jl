@@ -22,8 +22,8 @@ query = OvertQuery(
     )
 
 #xc,vc,yp,vp
-input_set = Hyperrectangle(low=[500,-15,-5, 99],
-                            high=[550, -14, 5, 100])
+input_set = Hyperrectangle(low=[525,-15,-5, 99],
+                            high=[525.2, -14, 5, 100])
 low_avoid=[400, -Inf, -Inf, -Inf]
 high_avoid=[600, Inf, Inf, landing_v_thresh]
 avoid_set = InfiniteHyperrectangle(low_avoid,high_avoid)
