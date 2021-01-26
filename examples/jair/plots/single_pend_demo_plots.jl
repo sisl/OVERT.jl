@@ -7,6 +7,7 @@ using PlotlyBase
 plotly()
 using QHull
 using JLD2
+using LazySets
 
 include("../../../models/problems.jl")
 include("../../../OverApprox/src/overapprox_nd_relational.jl")
@@ -38,24 +39,24 @@ deleteat!(all_sets_clean, [17, 33]) # remove symbolic sets
 # animation plotting
 p = plot(0,0)
 j = 1
-for i = 1:query.ntime+1 # includes starting set as well
+animation = @animate for i = 1:query.ntime+1 # includes starting set as well
     # symbolic: 15, 30, 40 (not including starting sets)
     plot!(all_sets[i], color="grey")
     plot!(mc_sets[i], color="blue")
-    fname = "pend2_demopng/im"*string(i)*".png"
-    Plots.savefig(p, fname)
+    #fname = "pend2_demopng/im"*string(i)*".png"
+    #Plots.savefig(p, fname)
     if i ∈ [16, 31, 41]
         plot!(all_sets_symbolic[j], color="red")
         global j += 1
-        fname = "pend2_demopng/im"*string(i)*".1.png"
-        Plots.savefig(p, fname)
+        #fname = "pend2_demopng/im"*string(i)*".1.png"
+        #Plots.savefig(p, fname)
     end
+    # avoid set
+    plot!(HalfSpace([1., 0.], -.5), xlim=(-1, 1.3), ylim=(-.7,.2), color="black", alpha=1., label="")
 end
-# avoid set
-using LazySets
-plot!(HalfSpace([1., 0.], -.5), xlim=(-1, 1.3))
-fname = "pend2_demopng/im"*string(query.ntime+2)*".png"
-Plots.savefig(p, fname)
+gif(animation, "single_pend_reachable_sets.gif", fps=4)
+#fname = "pend2_demopng/im"*string(query.ntime+2)*".png"
+#Plots.savefig(p, fname)
 #plot!(0,0)
 
 # wooo it doesn't overshoot
