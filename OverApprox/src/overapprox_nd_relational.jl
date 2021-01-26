@@ -6,7 +6,7 @@ include("OA_relational_util.jl")
 using SymEngine
 using Revise
 
-plotflag = false
+plotflag = true
 
 """
     overapprox_nd(expr,

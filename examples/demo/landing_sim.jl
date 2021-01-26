@@ -39,11 +39,11 @@ function compute_accel(x)
     return [act_ind]
 end
 
-n_sim = 1000
+n_sim = 10000
 dynamics_func = landing_dynamics
-input_set = input_set = Hyperrectangle(low=[700,-15,-5, 99],
-                                        high=[750, 0, 5, 100])
-n_time = 45
+input_set = Hyperrectangle(low=[700,-15,-5, 99],
+                                        high=[750, 15, 5, 100])
+n_time = 15
 dt = 1
 n_states = 4
 min_x = [[Inf64  for n = 1:n_states] for m = 1:n_time]

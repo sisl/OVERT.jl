@@ -42,16 +42,21 @@ for i = 1:query.ntime+1 # includes starting set as well
     # symbolic: 15, 30, 40 (not including starting sets)
     plot!(all_sets[i], color="grey")
     plot!(mc_sets[i], color="blue")
-    fname = "pend1_demo/im"*string(i)*".pdf"
+    fname = "pend2_demopng/im"*string(i)*".png"
     Plots.savefig(p, fname)
     if i ∈ [16, 31, 41]
         plot!(all_sets_symbolic[j], color="red")
         global j += 1
-        fname = "pend1_demo/im"*string(i)*".1.pdf"
+        fname = "pend2_demopng/im"*string(i)*".1.png"
         Plots.savefig(p, fname)
     end
 end
 # avoid set
-#plot!(HalfSpace([1., 0.], -.5))
+using LazySets
+plot!(HalfSpace([1., 0.], -.5), xlim=(-1, 1.3))
+fname = "pend2_demopng/im"*string(query.ntime+2)*".png"
+Plots.savefig(p, fname)
 #plot!(0,0)
+
+# wooo it doesn't overshoot
     

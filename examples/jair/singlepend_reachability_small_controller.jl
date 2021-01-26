@@ -28,5 +28,5 @@ using JLD2
 JLD2.@save "examples/jair/data/new2/single_pendulum_reachability_small_controller_data.jld2" query input_set all_sets all_sets_symbolic dt controller
 
 # we want to check the intersection with the avoid set: x_1 <= -5
-avoid_set = HalfSpace([1., 0.], -5.) # 1*x_1 + 0*x_2 <= -5    => x_1 <= -5 
+#avoid_set = HalfSpace([1., 0.], -5.) # 1*x_1 + 0*x_2 <= -5    => x_1 <= -5 
  

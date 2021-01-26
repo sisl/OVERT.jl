@@ -8,6 +8,15 @@ include("../MIP/src/mip_utils.jl")
 
 file_dir = join(split(@__FILE__, "/")[1:end-1], "/") # get directory of this script
 
+function sincos()
+    dyn = :(sin(cos(x)))
+    x = [0, π]
+    domain = Dict(zip([:x], [x]))
+    oa = overapprox_nd(dyn, domain, N=-1, ϵ=.1)
+    result = check_overapprox(oa, domain, [:x], "sincosexample", jobs=2, delta_sat=0.001)
+    return result
+end   
+
 # runs on laptop!
 function acc()
     # Checking acc
