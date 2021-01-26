@@ -24,7 +24,7 @@ query = OvertQuery(
                                 #xc,vc,yp,vp
 input_set = Hyperrectangle(low=[700,-15,-5, 99],
                             high=[750, -14, 5, 100])
-concretize_at = [10, 10, 10, 5, 5, 5]
+concretize_at = [10, 10, 10, 8, 7]
 t1 = Dates.time()
 all_sets, all_sets_symbolic = symbolic_reachability_with_concretization(query, input_set, concretize_at)
 t2 = Dates.time()
