@@ -202,13 +202,13 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 	if isnothing(df)
     	df = Calculus.derivative(f)
 	end
+	if isnothing(d2f)
+		d2f = Calculus.second_derivative(f)
+	end
     if ! isnothing(convex) # if convexity is specified, no sub-intervals necessary.
 		intervals = [(a,b)]
-		@debug "convexity specified, no sub intervals necessary."
-    else
-		if isnothing(d2f)
-			d2f = Calculus.second_derivative(f)
-		end
+		@debug "convexity specified, no sub intervals necessary." convex
+    else #if concavity is not uniform, calculate intervals of uniform concavity
 		if isnothing(d2f_zeros) # calculate zeros of second derivative, if not given.
 			println("WARNING: d2f_zeros have not been specified. Convex and concave regions will be identified using a numerical procedure. Soundness not guaranteed. ")
 			d2f_zeros = fzeros(d2f, a, b)
@@ -229,6 +229,8 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 		if isnothing(convex)
 			this_interval_convex = d2f((aa+bb)/2) >= 0
 		else
+			@debug "Convexity flag: $convex"
+			@debug "Convexity eval: $(d2f((aa+bb)/2) >= 0)"
 			this_interval_convex = convex
 		end
         if xor(this_interval_convex, lowerbound)  # upper bound for convex or lower bound for concave
