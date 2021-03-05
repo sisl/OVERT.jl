@@ -80,7 +80,7 @@ function is_affine(expr)
                 option2 =  is_number(expr.args[3]) && is_affine(expr.args[2])
                 return (option1 || option2)
             elseif func == :/ # second arg has to be a number
-                return is_number(expr.args[3])
+                return is_affine(expr.args[2]) && is_number(expr.args[3])
             else # func is + or -
                 return all(is_affine.(expr.args[2:end]))
             end
@@ -186,8 +186,10 @@ end
 
 function division_d2f_regions(e, arg, a, b)
     # TODO: needs to be tested
+    # function defined over the interval [a,b]
     c = e.args[2] 
     @assert is_number(c)
+    @assert (a <= b)
     if eval(c) > 0
         if a > 0
             d2f_zeros, convex = [], true
