@@ -166,9 +166,11 @@ function solve_for_reachability(mip_model::OvertMIP, query::OvertQuery,
 		next_v_mip = v_mip + dt * dv_mip
 		@objective(mip_model.model, Min, next_v_mip)
 		JuMP.optimize!(mip_model.model)
+		@assert termination_status(mip_model.model) == MathOptInterface.OPTIMAL
 		push!(lows, objective_value(mip_model.model))
 		@objective(mip_model.model, Max, next_v_mip)
 		JuMP.optimize!(mip_model.model)
+		@assert termination_status(mip_model.model) == MathOptInterface.OPTIMAL
 		push!(highs, objective_value(mip_model.model))
    	end
 
