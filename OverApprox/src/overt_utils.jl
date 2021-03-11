@@ -262,6 +262,7 @@ function get_regions_1arg(e::Expr, arg::Symbol, a, b)
     elseif func == :^
         d2f_zeros, convex = exponent_d2f_regions(e, arg, a, b)
     else
+        @debug "Expression not supported."
         d2f_zeros, convex = nothing, nothing
     end
     @debug "Expression $e is convex: $convex and has inflection points: $d2f_zeros"
