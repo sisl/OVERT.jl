@@ -10,7 +10,7 @@ using NLsolve
 using Roots
 using Plots
 using Interpolations
-#plotly()
+plotly()
 
 
 RTOL = 0.01
@@ -19,28 +19,27 @@ myapprox(x,y) = abs(x-y)<RTOL  # This is defined to identify small intervals
 global NPLOTS = 0
 
 # function to plot
-function plot_bound(f, a, b, xp, yp; existing_plot=nothing)
+function plot_bound(f, a, b, xp, yp; existing_plot=nothing, saveflag=false)
 	"""
 	This function plots f and its overapproximator
 		defined by poins xp and yp
 	"""
 	x = range(a, stop=b, length=200)
 	y = f.(x)
+	global NPLOTS
+	NPLOTS += 1
 	if isnothing(existing_plot)
 		p = plot(x,  y, color="red", linewidth=2, label="f(x)");
 		p = plot!(p, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=false);
-		display(p)
-		#global NPLOTS
-		#NPLOTS += 1
-		#savefig("plots/bound_"*string(NPLOTS)*".pdf") # relative to run dir of top level file...dumb...
+		# display(p)
 		#return p
 	else
 		plot!(existing_plot, x,  y, color="red", linewidth=2, label="f(x)");
-		plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=false);
-		display(existing_plot);
-		#global NPLOTS
-		#NPLOTS += 1
-		#savefig("plots/bound_"*string(NPLOTS)*".pdf")
+		plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=true);
+		# display(existing_plot);
+		if saveflag
+			savefig(existing_plot, "plots/bound_"*string(NPLOTS)*".pdf")
+		end
 		#return existing_plot
 	end
 	print("\u1b[1F")
@@ -168,7 +167,6 @@ that symbolic differentiation can be used.
 
 function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
 	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=false, existing_plot=nothing)
-
 	"""
 	This function over(under)-approximate function f(x).
 
@@ -193,7 +191,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 		overest(sin, -π/2, π, 3, d2f_zero=[0])
 		overest(x-> x^3-sin(x), 0, 2, 3, out=points)
 	"""
-
+	@debug "Number of points in bound, N= $N"
 	if N == -1 # optimally choose N
 		return bound_optimal(f, a, b; conc_method=conc_method,
 			lowerbound=lowerbound, df=df, d2f=d2f, d2f_zeros=d2f_zeros, convex=convex,
@@ -210,13 +208,13 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 	if isnothing(df)
     	df = Calculus.derivative(f)
 	end
+	if isnothing(d2f)
+		d2f = Calculus.second_derivative(f)
+	end
     if ! isnothing(convex) # if convexity is specified, no sub-intervals necessary.
 		intervals = [(a,b)]
-		@debug "convexity specified, no sub intervals necessary."
-    else
-		if isnothing(d2f)
-			d2f = Calculus.second_derivative(f)
-		end
+		@debug "convexity specified, no sub intervals necessary." convex
+    else #if concavity is not uniform, calculate intervals of uniform concavity
 		if isnothing(d2f_zeros) # calculate zeros of second derivative, if not given.
 			println("WARNING: d2f_zeros have not been specified. Convex and concave regions will be identified using a numerical procedure. Soundness not guaranteed. ")
 			d2f_zeros = fzeros(d2f, a, b)
@@ -237,6 +235,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 		if isnothing(convex)
 			this_interval_convex = d2f((aa+bb)/2) >= 0
 		else
+			@assert convex == (d2f((aa+bb)/2) >= 0)
 			this_interval_convex = convex
 		end
         if xor(this_interval_convex, lowerbound)  # upper bound for convex or lower bound for concave
@@ -367,13 +366,13 @@ function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="cont
 	if isnothing(df)
 		df = Calculus.derivative(f)
 	end
+	if isnothing(d2f)
+		d2f = Calculus.second_derivative(f)
+	end
 	if ! isnothing(convex) # if convexity is specified, no sub-intervals necessary.
 		intervals = [(a,b)]
 		@debug "convexity specified, no sub intervals necessary."
 	else
-		if isnothing(d2f)
-			d2f = Calculus.second_derivative(f)
-		end
 		if isnothing(d2f_zeros) # calculate zeros of second derivative, if not given.
 			println("WARNING: d2f_zeros have not been specified. Convex and concave regions will be identified using a numerical procedure. Soundness not guaranteed. ")
 			d2f_zeros = fzeros(d2f, a, b)
@@ -388,6 +387,7 @@ function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="cont
 		if isnothing(convex)
 			this_interval_convex = (d2f((aa+bb)/2) >= 0)
 		else
+			@assert convex == (d2f((aa+bb)/2) >= 0)
 			this_interval_convex = convex
 		end
 		for N = 1:Nmax
@@ -419,7 +419,7 @@ function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="cont
 	yp = unique(yp)
 
 	if plot
-		plot_bound(f, a, b, xp, yp; existing_plot=existing_plot);
+		plot_bound(f, a, b, xp, yp; existing_plot=existing_plot, saveflag=true);
 		return xp, yp
 	else
 		return xp, yp

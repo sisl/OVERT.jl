@@ -23,18 +23,20 @@ function acc_dynamics_overt(range_dict::Dict{Symbol, Array{T, 1}} where {T <: Re
 							      t_idx::Union{Int, Nothing}=nothing)
 	if isnothing(t_idx)
 		v1 = acc_ẋ₃
-		v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
+		v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT, ϵ=0.5)
 
 		v2 = acc_ẋ₆
-		v2_oA = overapprox_nd(v2, range_dict; N=N_OVERT)
+		v2_oA = overapprox_nd(v2, range_dict; N=N_OVERT, ϵ=0.5)
 	else
+		#v1 = "x2_$t_idx^2" # debug idea: try with simpler dynamics
 		v1 = "-2 * x3_$t_idx + 2 * $a_lead - $mu * x2_$t_idx^2"
-    	v1 = Meta.parse(v1)
-		v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT)
+    	v1 = Meta.parse(v1) 
+		v1_oA = overapprox_nd(v1, range_dict; N=N_OVERT, ϵ=0.5)
 
+		#v1 = "x5_$t_idx^2" # debug idea: try with simpler dynamics
 		v2 = "-2 * x6_$t_idx + 2 * u1_$t_idx - $mu * x5_$t_idx^2"
 		v2 = Meta.parse(v2)
-		v2_oA = overapprox_nd(v2, range_dict; N=N_OVERT)
+		v2_oA = overapprox_nd(v2, range_dict; N=N_OVERT, ϵ=0.5)
 	end
     oA_out = add_overapproximate([v1_oA, v2_oA])
     return oA_out, [v1_oA.output, v2_oA.output]

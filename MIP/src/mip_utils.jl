@@ -168,9 +168,11 @@ function solve_for_reachability(mip_model::OvertMIP, query::OvertQuery,
 		push!(timestep_nplus1_vars, next_v_mip)
 		@objective(mip_model.model, Min, next_v_mip)
 		JuMP.optimize!(mip_model.model)
+		@assert termination_status(mip_model.model) == MathOptInterface.OPTIMAL
 		push!(lows, objective_value(mip_model.model))
 		@objective(mip_model.model, Max, next_v_mip)
 		JuMP.optimize!(mip_model.model)
+		@assert termination_status(mip_model.model) == MathOptInterface.OPTIMAL
 		push!(highs, objective_value(mip_model.model))
 	end
 

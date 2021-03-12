@@ -80,12 +80,13 @@ function is_affine(expr)
                 option2 =  is_number(expr.args[3]) && is_affine(expr.args[2])
                 return (option1 || option2)
             elseif func == :/ # second arg has to be a number
-                return is_number(expr.args[3])
+                return is_affine(expr.args[2]) && is_number(expr.args[3])
             else # func is + or -
                 return all(is_affine.(expr.args[2:end]))
             end
         end
     else
+        @error "This case should not be reached. Expression of the wrong type was passed to is_affine()."
         return false # if not a number, symbol, or Expr, return false
     end
 end
@@ -186,8 +187,10 @@ end
 
 function division_d2f_regions(e, arg, a, b)
     # TODO: needs to be tested
+    # function defined over the interval [a,b]
     c = e.args[2] 
     @assert is_number(c)
+    @assert (a <= b)
     if eval(c) > 0
         if a > 0
             d2f_zeros, convex = [], true
@@ -212,14 +215,18 @@ function exponent_d2f_regions(e, arg, a, b)
     if is_number(e.args[2]) # c^x 
         @assert eval(e.args[2]) > 0 # only real valued over real arguments for c > 0
         d2f_zeros, convex = [], true
-    elseif is_number(e.args[3]) # x^c
+    elseif is_number(e.args[3]) # x^c (polynomials)
         x = e.args[2]
         c = e.args[3]
         # a few cases
         # 1) c is fractional. only valid for x >= 0. check. and convex (increasing) no inflection points
         if (c % 1) != 0
             @assert a >= 0 # ensures whole interval is > 0
-            d2f_zeros, convex = [], true
+            if (c > 0) && (c < 1)
+                d2f_zeros, convex = [], false
+            else
+                d2f_zeros, convex = [], true
+            end
         # 2) c is odd (3, 5, 7): inflection point at zero may be applicable. convex for x>0, concave for x<0
         elseif (c % 2) == 1
             if a > 0
@@ -231,6 +238,10 @@ function exponent_d2f_regions(e, arg, a, b)
             end
         # 3) c is even (2, 4, 6): convex, no inflection points 
         elseif (c % 2) == 0
+            if c < 0
+                # discontinuous at zero for negative even numbers
+                @assert ((a > 0) || (b < 0)) && (a ≤ b)
+            end
             d2f_zeros, convex = [], true
         end
     else
@@ -251,8 +262,10 @@ function get_regions_1arg(e::Expr, arg::Symbol, a, b)
     elseif func == :^
         d2f_zeros, convex = exponent_d2f_regions(e, arg, a, b)
     else
+        @debug "Expression not supported."
         d2f_zeros, convex = nothing, nothing
     end
+    @debug "Expression $e is convex: $convex and has inflection points: $d2f_zeros"
     return d2f_zeros, convex
 end
 
