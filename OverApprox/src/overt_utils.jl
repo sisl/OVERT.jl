@@ -120,6 +120,7 @@ end
 
 function add_ϵ(points, ϵ)
     `Add ϵ to the y values of all points in a container`
+    @debug "Added $ϵ to all points"
     new_points = []
     for p in points
         push!(new_points, (p[1], p[2] + ϵ))
