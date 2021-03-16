@@ -38,7 +38,7 @@ function plot_bound(f, a, b, xp, yp; existing_plot=nothing, saveflag=false)
 		plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label="overest(f(x))", legend=true);
 		# display(existing_plot);
 		if saveflag
-			savefig(existing_plot, "plots/bound_"*string(NPLOTS)*".pdf")
+			savefig(existing_plot, "plots/bound_"*string(NPLOTS)*".html")
 		end
 		#return existing_plot
 	end
@@ -333,7 +333,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
         push!(yp, yy)
     end
     if plot
-		plot_bound(f, a, b, xp, yp; existing_plot=existing_plot)
+		#plot_bound(f, a, b, xp, yp; existing_plot=existing_plot)
 		return xp, yp
 	else
 		#println("no plotting 4 u")
@@ -419,7 +419,7 @@ function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="cont
 	yp = unique(yp)
 
 	if plot
-		plot_bound(f, a, b, xp, yp; existing_plot=existing_plot, saveflag=true);
+		#plot_bound(f, a, b, xp, yp; existing_plot=existing_plot, saveflag=true);
 		return xp, yp
 	else
 		return xp, yp
