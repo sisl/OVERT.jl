@@ -169,11 +169,13 @@ function solve_for_reachability(mip_model::OvertMIP, query::OvertQuery,
 		@objective(mip_model.model, Min, next_v_mip)
 		JuMP.optimize!(mip_model.model)
 		@assert termination_status(mip_model.model) == MathOptInterface.OPTIMAL
-		push!(lows, objective_value(mip_model.model))
+		push!(lows, objective_bound(mip_model.model))
+		@debug "Objective value for MIN is: $(objective_value(mip_model.model)) and objective bound is $(objective_bound(mip_model.model))"
 		@objective(mip_model.model, Max, next_v_mip)
 		JuMP.optimize!(mip_model.model)
 		@assert termination_status(mip_model.model) == MathOptInterface.OPTIMAL
-		push!(highs, objective_value(mip_model.model))
+		push!(highs, objective_bound(mip_model.model))
+		@debug "Objective value for MAX is: $(objective_value(mip_model.model)) and objective bound is $(objective_bound(mip_model.model))"
 	end
 
 	# measurement model code, leave commented for now. til ready for integration
