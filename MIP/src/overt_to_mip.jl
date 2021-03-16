@@ -24,7 +24,8 @@ end
 function OvertMIP(overt_app::OverApproximation; threads=0)
     # for Gurobi, 0 threads is automatic (usually most of the cores in the machine)
      overt_mip_model = OvertMIP(overt_app,
-                         Model(with_optimizer(Gurobi.Optimizer, OutputFlag=1, Threads=threads, NumericFocus=3, MIPGap=1e-9)),
+                         Model(with_optimizer(Gurobi.Optimizer, OutputFlag=1, Threads=threads)),
+                         #, NumericFocus=3, MIPGap=1e-9)),
                          Dict{Symbol, JuMP.VariableRef}(),
                          "Gurobi")
     overt_2_mip(overt_mip_model)
