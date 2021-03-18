@@ -4,3 +4,5 @@
 *.synctex.gz
 *.fdb_latexmk
 plots/*.pdf
+plots/*.html
+debug_log*

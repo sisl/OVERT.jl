@@ -135,9 +135,9 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
     divide_by_var = !is_number(y) && f == :/
     is_power = f == :^
     if !(mul_two_vars || divide_by_var || is_power)
-        # then is affine
+        # then is most likely affine
         new_expr = :($f($x,$y))
-        @debug "rewriting into affine expr: " new_expr
+        @debug "Recursing to let other cases handle: " new_expr
         return overapprox_nd(new_expr, bound)
     end
 
@@ -183,7 +183,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
         return bound
     elseif f == :*
         if (is_number(x) | is_number(y))
-            @debug("bounding * with a var and a const")
+            @debug("bounding * with a var and a const. Should be skipped.")
             # multiplication of VARIABLES AND SCALARS ONLY
             # TODO: Actually, I think this is redundant and COULD be captured by "is_affine"
             bound.output  = add_var(bound)
@@ -210,7 +210,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
                 f_new = :($x/$y)
                 bound = bound_1arg_function(f_new, y, bound)
                 return bound
-            elseif x isa Symbol # x/y
+            elseif x isa Symbol # x/y -> x*(1/y)
                 @debug "converting: $x / $y"
                 inv_denom = :(1. / $y)
                 f_new = :($x * $inv_denom)
@@ -225,7 +225,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
             """)
         end
     # The following operation is not yet fully tested.
-    elseif f == :^
+    elseif f == :^ # f(x,y)   x^2
         if is_number(y) # this is f(x)^a, where a is a constant.
             @debug "handling f(x)^a"
             f_new = :($x^$y)
@@ -389,9 +389,22 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
     fLBrange = [find_1d_range(LBpoints)...]
 
     # plot after adding air gap and after turning into closed form expression
+<<<<<<< HEAD
 
     @debug "LB function is: $LBfunc_sym"
     @debug "UB function is: $UBfunc_sym"
+=======
+    @debug "bounding true unary..."
+    if plotflag
+        global NPLOTS
+        NPLOTS += 1
+        p = plot(range(lb, ub, length=100), fun, label="function", color="red")
+        plot!(p, [p[1] for p in LBpoints], [p[2] for p in LBpoints],  color="purple", marker=:o, markersize=1, label="lower bound")
+        plot!(p, [p[1] for p in UBpoints], [p[2] for p in UBpoints], color="blue", marker=:diamond, markersize=1,  label="upper bound", legend=:right, title="Function and bounds")
+        # display(p)
+        savefig(p, "plots/bound_"*string(NPLOTS)*".html")
+    end
+>>>>>>> d746678704499e7cf70f919764298c4966b4bac3
 
     ## create new vars for these expr, equate to exprs, and add them to equality list
     # e.g. y = fUB(x), z = fLB(x)
