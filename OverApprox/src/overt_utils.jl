@@ -80,7 +80,7 @@ function is_affine(expr)
                 option2 =  is_number(expr.args[3]) && is_affine(expr.args[2])
                 return (option1 || option2)
             elseif func == :/ # second arg has to be a number
-                return is_number(expr.args[3])
+                return is_number(expr.args[3]) && is_affine(expr.args[2])
             else # func is + or -
                 return all(is_affine.(expr.args[2:end]))
             end
@@ -119,6 +119,7 @@ end
 
 function add_ϵ(points, ϵ)
     `Add ϵ to the y values of all points in a container`
+    @debug "ϵ added to bound is: $ϵ"
     new_points = []
     for p in points
         push!(new_points, (p[1], p[2] + ϵ))
@@ -284,7 +285,7 @@ function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_p
     #     # note this degrades numerical precision, use with care
     #     UB_sym = round_expr(UB_sym)
     # end
-    UB_eval = eval(:(x -> $UB_sym))
+    UB_eval = SymEngine.lambdify(:(x -> $UB_sym), [:x])
     return UB_points, UB_sym, UB_eval
 end
 
