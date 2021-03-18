@@ -16,7 +16,7 @@ println("query: ", query)
 
 all_sets = vcat(all_sets...)
 
-n_sim=10000
+n_sim=100000
 
 output_sets, sim_vals, x0 = monte_carlo_simulate(query, input_set, n_sim=n_sim);
 
@@ -36,25 +36,19 @@ deleteat!(all_vp_xc, dup_idx)
 # plot
 p = plot(0,0)
 j=1
-for i = 1:query.ntime+1
-    plot!(all_vp_xc[i], color="grey")
-    plot!(mc_vp_xc[i], color="blue")
-    fname = "landing_demopng/im"*string(i)*".png"
-    Plots.savefig(p, fname)
-    if i ∈ [11, 21, 31, 36, 41, 46]
-        plot!(sym_vp_xc[j], color="red")
-        global j += 1
-        fname = "landing_demopng/im"*string(i)*".1.png"
-        Plots.savefig(p, fname)
-    end
+animation = @animate for i = 1:query.ntime+1
+    #if i <= query.ntime+1
+        plot!(all_vp_xc[i], color="grey")
+        plot!(mc_vp_xc[i], color="blue")
+        if i ∈ [11, 21, 31, 39, 46]
+            plot!(sym_vp_xc[j], color="red")
+            global j += 1
+        end
+    #else # if we are at time n+2
+        x = 400
+        y = 50
+        plot!(Shape(x .+ [0,200,200,0],y .+ [0,0,16,16]), color="black", label="", xlim=(-200,1000), ylim=(50, 100))
+    #end
 end
+gif(animation, "landing_reachable_sets.gif", fps=4)
 
-# avoid set 
-# plot!([400, 400], [55, 66], color=)
-# plot!([600, 600], [55, 66], color=)
-# plot!([400, 600], [66, 66], color=)
-x = 400
-y = 55
-plot!(Shape(x .+ [0,200,200,0],y .+ [0,0,11,11]))
-fname = "landing_demopng/im"*string(query.ntime+2)*".png"
-Plots.savefig(p, fname)
