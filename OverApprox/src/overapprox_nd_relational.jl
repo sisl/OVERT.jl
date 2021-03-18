@@ -389,11 +389,6 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
     fLBrange = [find_1d_range(LBpoints)...]
 
     # plot after adding air gap and after turning into closed form expression
-<<<<<<< HEAD
-
-    @debug "LB function is: $LBfunc_sym"
-    @debug "UB function is: $UBfunc_sym"
-=======
     @debug "bounding true unary..."
     if plotflag
         global NPLOTS
@@ -404,7 +399,8 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
         # display(p)
         savefig(p, "plots/bound_"*string(NPLOTS)*".html")
     end
->>>>>>> d746678704499e7cf70f919764298c4966b4bac3
+    @debug "LB function is: $LBfunc_sym"
+    @debug "UB function is: $UBfunc_sym"
 
     ## create new vars for these expr, equate to exprs, and add them to equality list
     # e.g. y = fUB(x), z = fLB(x)
