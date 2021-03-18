@@ -4,7 +4,9 @@ include("overest_new.jl")
 include("overt_utils.jl")
 include("OA_relational_util.jl")
 using SymEngine
-using Revise
+#using Revise
+using Plots
+plotly()
 
 plotflag = false
 
@@ -385,6 +387,12 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
     fUBrange = [find_1d_range(UBpoints)...]
     LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, existing_plot=p, ϵ= -bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
     fLBrange = [find_1d_range(LBpoints)...]
+
+    # plot after adding air gap and after turning into closed form expression
+
+    @debug "LB function is: $LBfunc_sym"
+    @debug "UB function is: $UBfunc_sym"
+
     ## create new vars for these expr, equate to exprs, and add them to equality list
     # e.g. y = fUB(x), z = fLB(x)
     UBvar = add_var(bound)
