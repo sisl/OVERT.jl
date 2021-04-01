@@ -1,10 +1,8 @@
-#include("overt_header.jl")
 include("autoline.jl")
 include("overest_new.jl")
 include("overt_utils.jl")
 include("OA_relational_util.jl")
 using SymEngine
-#using Revise
 using Plots
 plotly()
 
@@ -41,7 +39,7 @@ function overapprox_nd(expr,
                        bound::OverApproximation)
     # println(expr)
     # all operations should have at most two arguments.
-    expr = rewrite_division_by_const(expr)
+    #expr = rewrite_division_by_const(expr)
     expr = reduce_args_to_2(expr)
     @debug(expr)
 
@@ -55,6 +53,7 @@ function overapprox_nd(expr,
         @debug("is number base case")
         bound.output = eval(expr)
         return bound
+        ### This code below preserves an exact numeric expression but adds variables
         # bound.output = add_var(bound)
         # c  = eval(expr)
         # bound.output_range = [c,c]
@@ -133,97 +132,42 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
     @debug "bound binary functions: f x y:" f x y
     mul_two_vars = !is_number(x) && !(is_number(y)) && f  == :*
     divide_by_var = !is_number(y) && f == :/
-    is_power = f == :^
-    if !(mul_two_vars || divide_by_var || is_power)
-        # then is most likely affine
+    divide_by_const = is_number(y) && f ==:/
+    if is_affine(:($f($x,$y)))
         new_expr = :($f($x,$y))
-        @debug "Recursing to let other cases handle: " new_expr
+        @debug "Recursing to let affine handle: " new_expr
         return overapprox_nd(new_expr, bound)
-    end
-
-    if f == :+
-        @debug("bounding +. should not be used anymore")
-        z = add_var(bound)
-        push!(bound.approx_eq, :($z == $x + $y))
-        bound.fun_eq[z] = :($x + $y)
-        bound.output = z
-        if is_number(x)
-            lb_x, ub_x = x, x
-        else
-            lb_x, ub_x = bound.ranges[x][1], bound.ranges[x][2]
-        end
-        if is_number(y)
-            lb_y, ub_y = y, y
-        else
-            lb_y, ub_y = bound.ranges[y][1], bound.ranges[y][2]
-        end
-        sum_range = [lb_x + lb_y, ub_x + ub_y]
-        bound.output_range = sum_range
-        bound.ranges[z] = sum_range
+    elseif mul_two_vars
+        # both args contain variables
+        @debug("bounding * btw two variables")
+        # first expand multiplication expr
+        expanded_mul_expr, bound = expand_multiplication(x, y, bound)
+        # and then bound that expression wrt x2, y2
+        bound = overapprox_nd(expanded_mul_expr, bound)
         return bound
-    elseif f == :-
-        @debug("bounding -. should not be used.")
-        z = add_var(bound)
-        push!(bound.approx_eq, :($z == $x - $y))
-        bound.fun_eq[z] = :($x - $y)
-        bound.output = z
-        if is_number(x)
-            lb_x, ub_x = x, x
-        else
-            lb_x, ub_x = bound.ranges[x][1], bound.ranges[x][2]
-        end
-        if is_number(y)
-            lb_y, ub_y = y, y
-        else
-            lb_y, ub_y = bound.ranges[y][1], bound.ranges[y][2]
-        end
-        diff_range = [lb_x - lb_y,  ub_x - ub_y]
-        bound.output_range = diff_range
-        bound.ranges[z] = diff_range
-        return bound
-    elseif f == :*
-        if (is_number(x) | is_number(y))
-            @debug("bounding * with a var and a const. Should be skipped.")
-            # multiplication of VARIABLES AND SCALARS ONLY
-            # TODO: Actually, I think this is redundant and COULD be captured by "is_affine"
-            bound.output  = add_var(bound)
-            bound = multiply_variable_and_scalar(x, y, bound)
-            return bound
-        else # both args contain variables
-            @debug("bounding * btw two variables")
-            # first expand multiplication expr
-            expanded_mul_expr, bound = expand_multiplication(x, y, bound)
-            # and then bound that expression wrt x2, y2
-            bound = overapprox_nd(expanded_mul_expr, bound)
-            return bound
-        end
-    elseif f == :/
+    elseif divide_by_var
         # handles x/y and c/y
         # x/c should be transformed into (1./c)*x by simplify
-        if y isa Symbol # if y is symbol (variable)
-            @debug("division x/y or c/y")
-            # range of y should not include 0
-            if bound.ranges[y][1]*bound.ranges[y][2] <= 0
-                error("range of y should not include 0")
-            end
-            if is_number(x) # c/y
-                f_new = :($x/$y)
-                bound = bound_1arg_function(f_new, y, bound)
-                return bound
-            elseif x isa Symbol # x/y -> x*(1/y)
-                @debug "converting: $x / $y"
-                inv_denom = :(1. / $y)
-                f_new = :($x * $inv_denom)
-                @debug "into: $f_new"
-                return overapprox_nd(f_new, bound)
-            end
-        else # y is a constant
-        error(
-            """
-            x/c should be handled by simplify and turned into: (1/c)*x
-            and c/c should be handled by affine or is_number
-            """)
+        @debug("division x/y or c/y")
+        # range of y should not include 0
+        if bound.ranges[y][1]*bound.ranges[y][2] <= 0
+            error("range of y should not include 0")
         end
+        if is_number(x) # c/y
+            @debug("c/y")
+            f_new = :($x/$y)
+            bound = bound_1arg_function(f_new, y, bound)
+            return bound
+        elseif x isa Symbol # x/y -> x*(1/y)
+            @debug "converting: $x / $y"
+            inv_denom = :(1. / $y)
+            f_new = :($x * $inv_denom)
+            @debug "into: $f_new"
+            return overapprox_nd(f_new, bound)
+        end
+    elseif divide_by_const
+        new_expr = rewrite_division_by_const(:($f($x,$y)))
+        return overapprox_nd(new_expr, bound)
     # The following operation is not yet fully tested.
     elseif f == :^ # f(x,y)   x^2
         if is_number(y) # this is f(x)^a, where a is a constant.
@@ -246,63 +190,10 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
     end
 end
 
-function multiply_variable_and_scalar(x, y, bound)
-    @assert (is_number(x) | is_number(y))
-    if is_number(x)
-        bound = mul_var_sca_helper(y, x, bound)
-        return bound
-    elseif is_number(y)
-        bound = mul_var_sca_helper(x, y, bound)
-        return bound
-    end
-end
-
-function mul_var_sca_helper(var, constant, bound)
-    z = bound.output
-    push!(bound.approx_eq, :($z == $var * $constant))
-    bound.fun_eq[z] = :($var * $constant)
-    #prod_range = multiply_interval(bound.ranges[var], bound.ranges[constant][1])
-    prod_range = multiply_interval(bound.ranges[var], constant)
-    bound.ranges[z] = prod_range
-    bound.output_range = prod_range
-    return bound
-end
 
 function expand_multiplication(x, y, bound; ξ=0.1)
     return expand_multiplication_with_scaling(x, y, bound; ξ=ξ)
 end
-# function expand_multiplication(x, y, bound; ξ=0.1)
-#     """
-#         expand_multiplication(x, y, bound; ξ=1.0)
-#     Re write multiplication e.g. x*y using exp(log()) and affine expressions
-#     e.g. x*y, x ∈ [a,b] ∧ y ∈ [c,d], ξ>0
-#          x2 = x - a + ξ  , x2 ∈ [ξ, b - a + ξ] aka x2 > 0   (recall, b > a)
-#             x = x2 + a - ξ
-#          y2 = y - c + ξ , y2 ∈ [ξ, d - c + ξ] aka y2 > 0   (recall, d > c)
-#             y = y2 + c - ξ
-#         x*y = (x2 + a - ξ)*(y2 + c - ξ)
-#             = x2*y2 + (a - ξ)*y2 + (c - ξ)*x2 + (a - ξ)*(c - ξ)
-#             = exp(log(x2*y2)) + (a - ξ)*y2 + (c - ξ)*x2 + (a - ξ)*(c - ξ)
-#             = exp(log(x2) + log(y2)) + (a - ξ)*y2 + (c - ξ)*x2 + (a - ξ)*(c - ξ)
-#         In this final form, everything is decomposed into unary functions, +, and affine functions!
-#     """
-#
-#     x2 = add_var(bound)
-#     y2 = add_var(bound)
-#     a,b = bound.ranges[x]
-#     c,d = bound.ranges[y]
-#     @assert(b >= a)
-#     @assert(d >= c)
-#     push!(bound.approx_eq, :($x2 == $x - $a + $ξ))
-#     push!(bound.approx_eq, :($y2 == $y - $c + $ξ))
-#     @debug("Expanding multiplication")
-#     bound.fun_eq[x2] = :($x - $a + $ξ)
-#     bound.fun_eq[y2] = :($y - $c + $ξ)
-#     bound.ranges[x2] = [ξ, b - a + ξ]
-#     bound.ranges[y2] = [ξ, d - c + ξ]
-#     expr = :( exp(log($x2) + log($y2)) + ($a - $ξ)*$y2 + ($c - $ξ)*$x2 + (($a - $ξ)*($c - $ξ)) )
-#     return expr, bound
-# end
 
 function expand_multiplication_with_scaling(x, y, bound; ξ=0.1)
     """
