@@ -133,11 +133,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
     mul_two_vars = !is_number(x) && !(is_number(y)) && f  == :*
     divide_by_var = !is_number(y) && f == :/
     divide_by_const = is_number(y) && f ==:/
-    if is_affine(:($f($x,$y)))
-        new_expr = :($f($x,$y))
-        @debug "Recursing to let affine handle: " new_expr
-        return overapprox_nd(new_expr, bound)
-    elseif mul_two_vars
+    if mul_two_vars
         # both args contain variables
         @debug("bounding * btw two variables")
         # first expand multiplication expr
@@ -182,7 +178,12 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
             return bound
         else  # this is f(x)^g(y)
             error("f(x)^g(y) is not implemented yet.")
+            return OverApproximation() # type stability?
         end
+    elseif is_affine(:($f($x,$y)))
+        new_expr = :($f($x,$y))
+        @debug "Recursing to let affine handle: " new_expr
+        return overapprox_nd(new_expr, bound)
     else
         # TODO: add support for min, max, relu! Should be super simple.
         error(" operation $f with operands $x and $y is not implemented")

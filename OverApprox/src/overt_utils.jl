@@ -1,4 +1,7 @@
 # utilities for overapprox_nd_relational.jl and overest_nd.jl
+EVAL_CONSTS = true # some solvers can handle expressions like "log(2)" or "1/6" but others can only handle 0.16666*x 
+# When EVAL_CONSTS is true, it will evaluate an expression like "1/6" and turn it into 0.16666 
+# TODO: add this functionality to be turned on or off for expressions like log(2)
 
 # opeartions and functions that are supported in overest_nd.jl
 special_oper = [:+, :-, :/, :*, :^]
@@ -133,7 +136,12 @@ function rewrite_division_by_const(e)
 end
 function rewrite_division_by_const(expr::Expr)
     if expr.args[1] == :/ && !is_number(expr.args[2]) && is_number(expr.args[3])
-        return :( (1/$(expr.args[3])) * $(expr.args[2]) )
+        if EVAL_CONSTS
+            c = eval(1/expr.args[3])
+            return :($c * $(expr.args[2]))
+        else
+            return :( (1/$(expr.args[3])) * $(expr.args[2]) )
+        end
     else
         return expr
     end

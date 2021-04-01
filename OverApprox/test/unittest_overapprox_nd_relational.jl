@@ -42,6 +42,7 @@ overapprox_nd(:(sin(sin(z + y))), Dict(:z=>[0,π], :y=>[-π,π]))
 
 overapprox_nd(:(2*x), Dict(:x=>[0,1]))
 
+# TODO: This isn't reduced to eval(log(2))*x because whole thing is affine...
 overapprox_nd(:(log(2)*x), Dict(:x=>[0,1]))
 
 overapprox_nd(:(2*log(x)), Dict(:x=>[1,2]))
@@ -103,4 +104,3 @@ overapprox_nd(:(log(x)), Dict(:x => [1.0, 166.99205596346707]); N=-1)
 # find good way to visualize overapprox and/or qualitatively validate overapprox
 # quantitative validation: dreal
 # analytical (symbolic) differentiation in overest_new.jl
-# handle division by scalars (multiplication really of 1/the_scalar...)
