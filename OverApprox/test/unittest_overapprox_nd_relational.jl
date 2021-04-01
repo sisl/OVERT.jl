@@ -73,8 +73,9 @@ overapprox_nd(:(sin(6)*sin(x)), Dict(:x=>[1,2]))
 
 overapprox_nd(:(sin(6)*sin(x)*sin(y)), Dict(:x=>[1,2], :y=>[1,2])::Dict{Symbol,Array{Int64,1}})
 
+# TODO: when the whole expression is affine, division by a constant still appears...fix so it's converted to multiplication by 1/c
 overapprox_nd(:(x/6), Dict(:x=>[-1,1]))
-# should be hangled by affine base case
+# should be handled by affine base case
 
 overapprox_nd(:(6/x), Dict(:x=>[1,2]))
 # should be handled by 1d base case
@@ -89,7 +90,6 @@ overapprox_nd(:(sin(x + y)/y), Dict(:x=>[2,3], :y=>[1,2]))
 
 overapprox_nd(:(exp(x^2)), Dict(:x=>[-1,1]))
 
-# BOOKMARK, simplify making things difficult
 overapprox_nd(:((x+sin(y))^3), Dict(:x=>[2,3], :y=>[1,2]))
 
 overapprox_nd(:(2^x), Dict(:x=>[2,3]))

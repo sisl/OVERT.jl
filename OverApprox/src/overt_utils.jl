@@ -30,7 +30,7 @@ function to_pairs(B)
 end
 
 # todo: does this do the same thing as SymEngine, free_symbols or Tomer's autoline.get_symbols ?
-function find_variables(expr)
+function find_variables(expr::Expr)
     """
     given an expression expr, this function finds all the variables.
     it is useful to identify 1d functions that can be directly implemented
@@ -40,16 +40,18 @@ function find_variables(expr)
              find_variables(:(log(x)))  = [:x]
              find_variables(:(x+ x*z))   = [:x, :z]
     """
-    all_vars = []
-    for arg in expr.args
-        if arg isa Expr
-            all_vars = vcat(all_vars, find_variables(arg))
-        elseif arg isa Symbol
-            if !(arg in special_oper) && !(arg in special_func)
-                all_vars = vcat(all_vars, arg)
-            end
-        end
-    end
+    # all_vars = []
+    # for arg in expr.args
+    #     if arg isa Expr
+    #         all_vars = vcat(all_vars, find_variables(arg))
+    #     elseif arg isa Symbol
+    #         if !(arg in special_oper) && !(arg in special_func)
+    #             all_vars = vcat(all_vars, arg)
+    #         end
+    #     end
+    # end
+    # use symengine function instead
+    all_vars = Symbol.(free_symbols(Basic(expr)))
     return unique(all_vars)
 end
 
