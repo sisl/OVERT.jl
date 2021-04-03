@@ -1107,6 +1107,58 @@ end
 # 	all_sets_symbolic = Hyperrectangle(low=lows, high=highs)
 # 	return all_sets, all_sets_symbolic
 # end
+"""
+----------------------------------------------
+Checking Reachability Queries
+----------------------------------------------
+"""
+function clean_up_sets(all_sets, symbolic_sets, conc_ints; dims=[4,5])
+	# concretization intervals helps you parse which of all_sets are symbolic and which are one-step concrete. if the concretization intervals are [10,2] all_sets will contain:
+	# init_set, c_t1, c_t2, ..., c_t10, s_t10, c_t11, c_t12
+	# where c_t1 = concrete set at time t=1
+	# s_t1 = symbolic set at time t=1
+	# In constract, symbolic_sets contains:
+	# s_t10, s_t12
+
+	# in case all_sets is a set of sets:
+	init_set = all_sets[1]
+	all_sets = vcat(all_sets...)
+	reachable_sets = []
+	append!(reachable_sets, all_sets[2:conc_ints[1]])
+	push!(reachable_sets, symbolic_sets[1])
+	for i in 2:length(conc_ints)
+		next_concrete_set_idx = sum(conc_ints[1:i-1]) +3
+		next_symbolic_set_m2 = sum(conc_ints[1:i]) +1
+		append!(reachable_sets, all_sets[next_concrete_set_idx:next_symbolic_set_m2])
+		push!(reachable_sets, symbolic_sets[i])
+	end
+	# debug
+	function debug_setcleanup(dims)
+		all_sets_2d = [Hyperrectangle(low=low(h)[dims], high=high(h)[dims]) for h in reachable_sets]
+		Plots.plot(all_sets_2d, color="red", title="debugging set cleanup")
+	end
+	@debug debug_setcleanup()
+	return init_set, reachable_sets
+end
+
+function check_avoid_set_intersection(reachable_sets, init_set, avoid_sets)
+	# if there is more than one avoid set, they are intersected separately
+	# check init set, but should satisfy 
+	safe = true
+	violations = []
+	for (as_idx, as) in enumerate(avoid_sets)
+		empty_intersects = [isempty(rs ∩ as) for rs in reachable_sets]
+		if all(empty_intersects)
+			println("Safe for avoid set $as_idx")
+		else
+			println("Unsafe for avoid set $as_idx. See: $empty_intersects")
+			# record index of avoid set and reachable set(s) that intersected
+			push!(violations, (as_idx, findall(.!empty_intersects)))
+		end
+		safe &= all(empty_intersects)
+	end
+	return safe, violations
+end
 
 """
 ----------------------------------------------
@@ -1327,4 +1379,36 @@ function plot_satisfiability_pgfplot(stats, vals, query; fig=nothing, idx=[1,2],
 	pp = PGFPlots.Plots.Linear(data_mc[:, idx[1]], data_mc[:, idx[2]], style="blue")
 	push!(fig, pp)
 	return fig
+end
+
+# make_animation with @animate macro
+
+# utility to extract subsets of certain dims 
+# for an array of hyperrectangles (input and output type)
+get_subsets(sets, dims) = [Hyperrectangle(low=low(h)[dims], high=high(h)[dims]) for h in sets]
+
+function get_lims(sets, dims)
+	lows = [low(h)[dims] for h in sets]
+	highs = [high(h)[dims] for h in sets]
+	lowest = minimum(vcat(lows'...), dims=1)
+	highest = maximum(vcat(highs'...), dims=1)
+	limits = collect(zip(lowest, highest))
+	return limits[1], limits[2]
+end
+
+function expand_lims(lim_pair)
+	low, high = lim_pair
+	return (low - 0.1*abs(low), high + 0.1*abs(high))
+end
+
+function plot_reachable_sets(reachable_sets, target_sets, target_set_color, target_set_name, dims, plotname, dirname)
+	plotly()
+	rs = get_subsets(reachable_sets, dims)
+	ts = get_subsets(target_sets, dims)
+	xlims, ylims = get_lims(reachable_sets, dims)
+	xlims = expand_lims(xlims)
+	ylims = expand_lims(ylims)
+	p = Plots.plot(reachable_sets, color="yellow", xlim=xlims, ylim=ylims)
+	Plots.plot!(target_sets, color=target_set_color, label=target_set_name)
+	Plots.savefig(p, dirname*plotname*".html")
 end
