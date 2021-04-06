@@ -26,21 +26,20 @@ dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
 # avoid set 1
-avoid_set1 = MyHyperrect(low=[-Inf, Inf, Inf, Inf], high=[-2, Inf, Inf, Inf])
-avoid_set2 = MyHyperrect(low=[2, Inf, Inf, Inf], high=[Inf, Inf, Inf, Inf])
+avoid_set1 = HalfSpace([1., 0., 0., 0.], -2.) # x1 <= -2
+avoid_set2 = HalfSpace([-1., 0., 0., 0.], -2.) # -x1 <= -2  -> 2 <= x1 
 avoid_sets = [avoid_set1, avoid_set2]
 
 # first clean up sets so it looks like: c_t1, ..., s_t10, c_t11, s_t12
-init_set0, reachable_sets = clean_up_sets(all_sets, all_sets_symbolic, concretization_intervals; dims=[4,5])
+init_set0, reachable_sets = clean_up_sets(all_sets, all_sets_symbolic, concretization_intervals)
 # dims argument is just for debugging
 
 # make sure that reachable set does NOT intersect with either avoid set at any point in time
 t1 = time()
-SATus, violations = check_avoid_set_intersection(reachable_sets, input_set, avoid_sets)
+safe, violations = check_avoid_set_intersection(reachable_sets, input_set, avoid_sets)
 dt_check = time() - t1
 
 using JLD2
-JLD2.@save "examples/jmlr/data/tora_reachability_smallest_controller_data.jld2" query input_set all_sets all_sets_symbolic dt SATus violations dt_check
+JLD2.@save "examples/jmlr/data/tora_reachability_smallest_controller_data.jld2" query input_set concretization_intervals all_sets all_sets_symbolic dt avoid_sets reachable_sets safe violations dt_check
 
-# plot any violations
-plot_reachable_sets(reachable_sets, avoid_sets, "black", "Avoid Set", [1,2], "tora_reachability_smallest", "examples/jmlr/data/")
+
