@@ -1121,21 +1121,22 @@ function clean_up_sets(all_sets, symbolic_sets, conc_ints; dims=[4,5])
 	# s_t10, s_t12
 
 	# in case all_sets is a set of sets:
-	init_set = all_sets[1]
 	all_sets = vcat(all_sets...)
-	reachable_sets = []
-	append!(reachable_sets, all_sets[2:conc_ints[1]])
-	push!(reachable_sets, symbolic_sets[1])
-	for i in 2:length(conc_ints)
-		next_concrete_set_idx = sum(conc_ints[1:i-1]) +3
-		next_symbolic_set_m2 = sum(conc_ints[1:i]) +1
-		append!(reachable_sets, all_sets[next_concrete_set_idx:next_symbolic_set_m2])
-		push!(reachable_sets, symbolic_sets[i])
+	sym_idx = cumsum(conc_ints)
+	init_set = all_sets[1]
+	dup_idx = findall(all_sets .∈ Ref(symbolic_sets)) # find indices of symbolic sets
+	deleteat!(all_sets, dup_idx)
+	deleteat!(all_sets, 1) # delete init set too. there should now be symidx[end] sets in all_sets, all concrete
+	reachable_sets = deepcopy(all_sets)
+	for (sym_interval, i) in enumerate(sym_idx)
+		reachable_sets[i] = symbolic_sets[sym_interval]
 	end
 	# debug
-	function debug_setcleanup(dims)
-		all_sets_2d = [Hyperrectangle(low=low(h)[dims], high=high(h)[dims]) for h in reachable_sets]
-		Plots.plot(all_sets_2d, color="red", title="debugging set cleanup")
+	function debug_setcleanup()
+		concrete_2d = get_subsets(all_sets, dims)
+		reachable_2d = get_subsets(reachable_sets, dims)
+		plot(concrete_2d, color="grey", title="debugging set cleanup")
+		plot!(reachable_2d, color="red")
 	end
 	@debug debug_setcleanup()
 	return init_set, reachable_sets
@@ -1383,9 +1384,25 @@ end
 
 # make_animation with @animate macro
 
+function get_subsets(sets, dims)
+	return [get_subset(s, dims) for s in sets]
+end
+
 # utility to extract subsets of certain dims 
 # for an array of hyperrectangles (input and output type)
-get_subsets(sets, dims) = [Hyperrectangle(low=low(h)[dims], high=high(h)[dims]) for h in sets]
+get_subset(h::Hyperrectangle{Float64,Array{Float64,1},Array{Float64,1}}, dims) = Hyperrectangle(low=low(h)[dims], high=high(h)[dims])
+
+# for an array of HalfSpaces
+# assumes that dimensions that are not selected are set to zero
+function get_subset(h::HalfSpace{Float64,Array{Float64,1}}, dims)
+	# if the indices NOT selected do NOT have coefficients == 0 in h.a, show @info? or @warn
+	other_dims = setdiff([1:length(h.a)...], dims)
+	other_dim_coeffs = h.a[other_dims]
+	if !all(isapprox.(other_dim_coeffs, Ref(0.), atol=eps()))
+		@warn "Halfspace representation is inaccurate. A new method must be implemented to adjust the b value of the halfspace to plot accurate projections."
+	end
+	return HalfSpace(h.a[dims], h.b)
+end
 
 function get_lims(sets, dims)
 	lows = [low(h)[dims] for h in sets]
@@ -1408,7 +1425,7 @@ function plot_reachable_sets(reachable_sets, target_sets, target_set_color, targ
 	xlims, ylims = get_lims(reachable_sets, dims)
 	xlims = expand_lims(xlims)
 	ylims = expand_lims(ylims)
-	p = Plots.plot(reachable_sets, color="yellow", xlim=xlims, ylim=ylims)
-	Plots.plot!(target_sets, color=target_set_color, label=target_set_name)
+	p = Plots.plot(rs, color="yellow", xlim=xlims, ylim=ylims)
+	Plots.plot!(ts, color=target_set_color, label=target_set_name)
 	Plots.savefig(p, dirname*plotname*".html")
 end
