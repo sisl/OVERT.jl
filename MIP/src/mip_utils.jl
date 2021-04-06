@@ -1121,21 +1121,22 @@ function clean_up_sets(all_sets, symbolic_sets, conc_ints; dims=[4,5])
 	# s_t10, s_t12
 
 	# in case all_sets is a set of sets:
-	init_set = all_sets[1]
 	all_sets = vcat(all_sets...)
-	reachable_sets = []
-	append!(reachable_sets, all_sets[2:conc_ints[1]])
-	push!(reachable_sets, symbolic_sets[1])
-	for i in 2:length(conc_ints)
-		next_concrete_set_idx = sum(conc_ints[1:i-1]) +3
-		next_symbolic_set_m2 = sum(conc_ints[1:i]) +1
-		append!(reachable_sets, all_sets[next_concrete_set_idx:next_symbolic_set_m2])
-		push!(reachable_sets, symbolic_sets[i])
+	sym_idx = cumsum(conc_ints)
+	init_set = all_sets[1]
+	dup_idx = findall(all_sets .∈ Ref(symbolic_sets)) # find indices of symbolic sets
+	deleteat!(all_sets, dup_idx)
+	deleteat!(all_sets, 1) # delete init set too. there should now be symidx[end] sets in all_sets, all concrete
+	reachable_sets = deepcopy(all_sets)
+	for (sym_interval, i) in enumerate(sym_idx)
+		reachable_sets[i] = symbolic_sets[sym_interval]
 	end
 	# debug
-	function debug_setcleanup(dims)
-		all_sets_2d = [Hyperrectangle(low=low(h)[dims], high=high(h)[dims]) for h in reachable_sets]
-		Plots.plot(all_sets_2d, color="red", title="debugging set cleanup")
+	function debug_setcleanup()
+		concrete_2d = get_subsets(all_sets, dims)
+		reachable_2d = get_subsets(reachable_sets, dims)
+		plot(concrete_2d, color="grey", title="debugging set cleanup")
+		plot!(reachable_2d, color="red")
 	end
 	@debug debug_setcleanup()
 	return init_set, reachable_sets
