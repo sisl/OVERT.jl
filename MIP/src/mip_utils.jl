@@ -1383,9 +1383,25 @@ end
 
 # make_animation with @animate macro
 
+function get_subsets(sets, dims)
+	return [get_subset(s, dims) for s in sets]
+end
+
 # utility to extract subsets of certain dims 
 # for an array of hyperrectangles (input and output type)
-get_subsets(sets, dims) = [Hyperrectangle(low=low(h)[dims], high=high(h)[dims]) for h in sets]
+get_subset(h::Hyperrectangle{Float64,Array{Float64,1},Array{Float64,1}}, dims) = Hyperrectangle(low=low(h)[dims], high=high(h)[dims])
+
+# for an array of HalfSpaces
+# assumes that dimensions that are not selected are set to zero
+function get_subset(h::HalfSpace{Float64,Array{Float64,1}}, dims)
+	# if the indices NOT selected do NOT have coefficients == 0 in h.a, show @info? or @warn
+	other_dims = setdiff([1:length(h.a)...], dims)
+	other_dim_coeffs = h.a[other_dims]
+	if !all(isapprox.(other_dim_coeffs, Ref(0.), atol=eps()))
+		@warn "Halfspace representation is inaccurate. A new method must be implemented to adjust the b value of the halfspace to plot accurate projections."
+	end
+	return HalfSpace(h.a[dims], h.b)
+end
 
 function get_lims(sets, dims)
 	lows = [low(h)[dims] for h in sets]
@@ -1408,7 +1424,7 @@ function plot_reachable_sets(reachable_sets, target_sets, target_set_color, targ
 	xlims, ylims = get_lims(reachable_sets, dims)
 	xlims = expand_lims(xlims)
 	ylims = expand_lims(ylims)
-	p = Plots.plot(reachable_sets, color="yellow", xlim=xlims, ylim=ylims)
-	Plots.plot!(target_sets, color=target_set_color, label=target_set_name)
+	p = plot(rs, color="yellow", xlim=xlims, ylim=ylims)
+	plot!(ts, color=target_set_color, label=target_set_name)
 	Plots.savefig(p, dirname*plotname*".html")
 end
