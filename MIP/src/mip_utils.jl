@@ -123,7 +123,7 @@ function setup_overt_and_controller_constraints(query::OvertQuery, input_set::Hy
 end
 
 function solve_for_reachability(mip_model::OvertMIP, query::OvertQuery,
-	oA_vars::Array{Symbol, 1}, t_idx::Union{Int64, Nothing})
+	oA_vars::Array{Symbol, 1}, t_idx::Union{Int64, Nothing}; get_meas=false)
 	"""
 	this function sets up states in the future timestep and optimizes that.
 	this will give a minimum and maximum on each of the future timesteps.
@@ -177,31 +177,35 @@ function solve_for_reachability(mip_model::OvertMIP, query::OvertQuery,
 		push!(highs, objective_bound(mip_model.model))
 		@debug "Objective value for MAX is: $(objective_value(mip_model.model)) and objective bound is $(objective_bound(mip_model.model))"
 	end
-
-	# measurement model code, leave commented for now. til ready for integration
-	# # compute reachable set for measurements
-	# if query.problem.measurement_model != []
-	# 	meas_lows = Array{Float64}(undef, 0)
-	# 	meas_highs = Array{Float64}(undef, 0)
-	# 	# deal with computing reachable set for measurements
-	# 	for measurement_matrix_row in query.problem.measurement_model 
-	# 		@objective(mip_model.model, Min, sum(measurement_matrix_row.*timestep_nplus1_vars))
-	# 		JuMP.optimize!(mip_model.model)
-	# 		push!(meas_lows, objective_value(mip_model.model))
-	# 		@objective(mip_model.model, Max, sum(measurement_matrix_row.*timestep_nplus1_vars))
-	# 		JuMP.optimize!(mip_model.model)
-	# 		push!(meas_highs, objective_value(mip_model.model))
-	# 	end
-	# 	meas_reachable_set = Hyperrectangle(low=lows, high=highs)
-	# else
-	# 	meas_reachable_set = nothing
-	# end
 	# get the hyperrectangle.
 	reacheable_set = Hyperrectangle(low=lows, high=highs)
-	return reacheable_set #, meas_reachable_set
+
+	# measurement model code,
+	# compute reachable set for measurements
+	if query.problem.measurement_model != [] && get_meas
+		@debug "Computing measurement model reachable sets."
+		meas_lows = Array{Float64}(undef, 0)
+		meas_highs = Array{Float64}(undef, 0)
+		# deal with computing reachable set for measurements
+		for measurement_matrix_row in query.problem.measurement_model 
+			@objective(mip_model.model, Min, sum(measurement_matrix_row.*timestep_nplus1_vars))
+			JuMP.optimize!(mip_model.model)
+			@assert termination_status(mip_model.model) == MathOptInterface.OPTIMAL
+			push!(meas_lows, objective_bound(mip_model.model))
+			@objective(mip_model.model, Max, sum(measurement_matrix_row.*timestep_nplus1_vars))
+			JuMP.optimize!(mip_model.model)
+			@assert termination_status(mip_model.model) == MathOptInterface.OPTIMAL
+			push!(meas_highs, objective_bound(mip_model.model))
+		end
+		meas_reachable_set = Hyperrectangle(low=meas_lows, high=meas_highs)
+	else
+		meas_reachable_set = nothing
+	end
+	
+	return reacheable_set, meas_reachable_set
 end
 
-function one_timestep_concretization(query::OvertQuery, input_set::Hyperrectangle; t_idx::Union{Int64, Nothing}=nothing)
+function one_timestep_concretization(query::OvertQuery, input_set::Hyperrectangle; t_idx::Union{Int64, Nothing}=nothing, get_meas=false)
    """
 	This function computes the next reachable set.
    inputs:
@@ -225,8 +229,8 @@ function one_timestep_concretization(query::OvertQuery, input_set::Hyperrectangl
 	mip_model, oA, oA_vars = setup_overt_and_controller_constraints(query, input_set; t_idx=t_idx)
 
 	# solve for reacheability
-	output_set = solve_for_reachability(mip_model, query, oA_vars, t_idx) # , measurement_output_set
-	return output_set, oA, oA_vars # , measurement_output_set,
+	output_set, measurement_output_set = solve_for_reachability(mip_model, query, oA_vars, t_idx; get_meas=get_meas) 
+	return output_set, measurement_output_set, oA, oA_vars 
 end
 
 function many_timestep_concretization(query::OvertQuery, input_set_0::Hyperrectangle; timed::Bool=false)
@@ -246,29 +250,29 @@ function many_timestep_concretization(query::OvertQuery, input_set_0::Hyperrecta
 	"""
     input_set = copy(input_set_0)
 	all_sets = [input_set_0]
-	#all_meas_sets = []
+	all_meas_sets = []
     all_oA = Array{OverApproximation}(undef, 0)
     all_oA_vars = []
     for i = 1:query.ntime
         t1 = Dates.now()
         if timed
-		   #output_set, meas_output_set, oA, oA_vars = one_timestep_concretization(query, input_set; t_idx=i)
-		   output_set, oA, oA_vars = one_timestep_concretization(query, input_set; t_idx=i)
+		   output_set, meas_output_set, oA, oA_vars = one_timestep_concretization(query, input_set; t_idx=i, get_meas=true)
+		   #output_set, oA, oA_vars = one_timestep_concretization(query, input_set; t_idx=i)
         else
-		   #output_set, meas_output_set, oA, oA_vars = one_timestep_concretization(query, input_set)
-		   output_set, oA, oA_vars = one_timestep_concretization(query, input_set)
+		   output_set, meas_output_set, oA, oA_vars = one_timestep_concretization(query, input_set; get_meas=true)
+		   #output_set, oA, oA_vars = one_timestep_concretization(query, input_set)
         end
         t2 = Dates.now()
         println("timestep $i computed in $((t2-t1).value/1000) seconds")
         input_set = output_set
 		push!(all_sets, output_set)
-		#push!(all_meas_sets, meas_output_set)
+		push!(all_meas_sets, meas_output_set)
         push!(all_oA, oA)
         push!(all_oA_vars, oA_vars)
     end
 
-	#return all_sets, all_meas_sets, all_oA, all_oA_vars
-	return all_sets, all_oA, all_oA_vars
+	return all_sets, all_meas_sets, all_oA, all_oA_vars
+	#return all_sets, all_oA, all_oA_vars
 end
 
 """
@@ -302,13 +306,13 @@ function setup_mip_with_overt_constraints(query::OvertQuery, input_set::Hyperrec
 	update_rule = query.problem.update_rule
 	dt = query.dt
 
-	# setup all overt constraints via bounds found by conceretization
-	# all_sets, all_meas_sets, all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
-	all_sets, all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
+	# setup all overt constraints via bounds found by conc retization
+	all_sets, all_meas_sets, all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
+	#all_sets, all_oA, all_oA_vars = many_timestep_concretization(query, input_set; timed=true)
 	oA_tot = add_overapproximate(all_oA)
 	mip_model = OvertMIP(oA_tot)
-	#return mip_model, all_sets, all_meas_sets, all_oA_vars
-	return mip_model, all_sets, all_oA_vars		
+	return mip_model, all_sets, all_meas_sets, all_oA_vars
+	#return mip_model, all_sets, all_oA_vars		
 end
 
 function add_controllers_constraints!(mip_model, query::OvertQuery, all_sets)
@@ -393,8 +397,8 @@ function symbolic_reachability(query::OvertQuery, input_set::Hyperrectangle)
    - all_sets_symbolic: a hyperrectangle for the reachable set at t=n, computed symbolically.
 	"""
 	# setup all overt cosntraints
-	# mip_model, all_sets, all_meas_sets, all_oA_vars = setup_mip_with_overt_constraints(query, input_set)
-	mip_model, all_sets, all_oA_vars = setup_mip_with_overt_constraints(query, input_set)
+	mip_model, all_sets, all_meas_sets, all_oA_vars = setup_mip_with_overt_constraints(query, input_set)
+	#mip_model, all_sets, all_oA_vars = setup_mip_with_overt_constraints(query, input_set)
 
 	# read neural network and add controller constraints
 	add_controllers_constraints!(mip_model, query, all_sets)
@@ -406,8 +410,8 @@ function symbolic_reachability(query::OvertQuery, input_set::Hyperrectangle)
 	match_io!(mip_model, query, all_oA_vars)
 
 	# optimize for the output of timestep ntime.
-	set_symbolic = solve_for_reachability(mip_model, query, all_oA_vars[end], query.ntime) # , measurement_set_symbolic
-	return all_sets, set_symbolic # all_meas_sets, measurement_set_symbolic
+	set_symbolic, measurement_set_symbolic = solve_for_reachability(mip_model, query, all_oA_vars[end], query.ntime) 
+	return all_sets, set_symbolic, all_meas_sets, measurement_set_symbolic
 end
 
 """
@@ -456,18 +460,18 @@ end
 function symbolic_reachability_with_splitting(query::OvertQuery, input_sets::Array{Any, 1}, splits_idx::Array{Int, 1})
 	all_concrete_sets = []
 	all_symbolic_sets = []
-	#all_concrete_meas_sets = []
-	#all_symbolic_meas_sets = []
+	all_concrete_meas_sets = []
+	all_symbolic_meas_sets = []
 	for input_set in input_sets
-		# concrete_sets, concrete_meas_sets, symbolic_set, symbolic_meas_set = symbolic_reachability_with_splitting(query, input_set, splits_idx)
-		concrete_sets,  symbolic_set = symbolic_reachability_with_splitting(query, input_set, splits_idx)
+		concrete_sets, symbolic_set, concrete_meas_sets, symbolic_meas_set = symbolic_reachability_with_splitting(query, input_set, splits_idx)
+		# concrete_sets,  symbolic_set = symbolic_reachability_with_splitting(query, input_set, splits_idx)
 		push!(all_concrete_sets, concrete_sets)
 		push!(all_symbolic_sets, symbolic_set)
-		#push!(all_concrete_meas_sets, concrete_meas_sets)
-		#push!(all_symbolic_meas_sets, symbolic_meas_set)
+		push!(all_concrete_meas_sets, concrete_meas_sets)
+		push!(all_symbolic_meas_sets, symbolic_meas_set)
 	end
-	# return all_concrete_sets, all_concrete_meas_sets, all_symbolic_sets, all_symbolic_meas_sets
-	return all_concrete_sets, all_symbolic_sets
+	return all_concrete_sets, all_symbolic_sets, all_concrete_meas_sets, all_symbolic_meas_sets
+	#return all_concrete_sets, all_symbolic_sets
 end
 
 function symbolic_reachability_with_splitting(query::OvertQuery, input_set::Hyperrectangle, splits_idx::Array{Int, 1})
@@ -486,18 +490,18 @@ function symbolic_reachability_with_splitting(query::OvertQuery, input_set::Hype
 	input_sets_splitted = split_hyperrectangle(input_set, splits_idx)
 	all_concrete_sets = []
 	all_symbolic_sets = []
-	#all_concrete_meas_sets = []
-	#all_symbolic_meas_sets = []
+	all_concrete_meas_sets = []
+	all_symbolic_meas_sets = []
 	for this_set in input_sets_splitted
-		#concrete_sets, concrete_meas_sets, symbolic_set, symbolic_meas_set = symbolic_reachability(query, this_set)
-		concrete_sets, symbolic_set = symbolic_reachability(query, this_set)
+		concrete_sets, symbolic_set, concrete_meas_sets, symbolic_meas_set = symbolic_reachability(query, this_set)
+		#concrete_sets, symbolic_set = symbolic_reachability(query, this_set)
 		push!(all_concrete_sets, concrete_sets)
 		push!(all_symbolic_sets, symbolic_set)
-		#push!(all_concrete_meas_sets, concrete_meas_sets)
-		#push!(all_symbolic_meas_sets, symbolic_meas_set)
+		push!(all_concrete_meas_sets, concrete_meas_sets)
+		push!(all_symbolic_meas_sets, symbolic_meas_set)
 	end
-	#return all_concrete_sets, all_concrete_meas_sets, all_symbolic_sets, all_symbolic_meas_sets
-	return all_concrete_sets, all_symbolic_sets
+	return all_concrete_sets, all_symbolic_sets, all_concrete_meas_sets, all_symbolic_meas_sets
+	#return all_concrete_sets, all_symbolic_sets
 end
 
 function symbolic_reachability_with_concretization(query::OvertQuery,
@@ -525,23 +529,23 @@ function symbolic_reachability_with_concretization(query::OvertQuery,
 
 	all_concrete_sets = []
 	all_symbolic_sets = []
-	#all_concrete_meas_sets = []
-	#all_symbolic_meas_sets = []
+	all_concrete_meas_sets = []
+	all_symbolic_meas_sets = []
 	this_set = copy(input_set)
 	for n in concretize_every
 		query.ntime = n
-		# concrete_sets, concrete_meas_sets, symbolic_set, symbolic_set_meas = symbolic_reachability(query, this_set) # pass query and input set
-		concrete_sets, symbolic_set = symbolic_reachability(query, this_set) # pass query and input set
+		concrete_sets, symbolic_set, concrete_meas_sets, symbolic_set_meas = symbolic_reachability(query, this_set) # pass query and input set
+		# concrete_sets, symbolic_set = symbolic_reachability(query, this_set) # pass query and input set
 		push!(all_concrete_sets, concrete_sets)
 		push!(all_symbolic_sets, symbolic_set)
-		#push!(all_concrete_meas_sets, concrete_meas_sets)
-		#push!(all_symbolic_meas_sets, symbolic_meas_set)
+		push!(all_concrete_meas_sets, concrete_meas_sets)
+		push!(all_symbolic_meas_sets, symbolic_meas_set)
 		this_set = copy(symbolic_set)
 	end
 
 	query.ntime = ntime
-	#return all_concrete_sets, all_concrete_meas_sets, all_symbolic_sets, all_symbolic_meas_sets
-	return all_concrete_sets, all_symbolic_sets
+	return all_concrete_sets, all_symbolic_sets, all_concrete_meas_sets, all_symbolic_meas_sets
+	# return all_concrete_sets, all_symbolic_sets
 end
 
 function symbolic_reachability_with_concretization_with_splitting(query::OvertQuery,
@@ -560,7 +564,7 @@ function symbolic_reachability_with_concretization_with_splitting(query::OvertQu
 		push!(all_concrete_meas_sets, concrete_meas_sets)
 		push!(all_symbolic_meas_sets, symbolic_meas_set)
 	end
-	return all_concrete_sets, all_concrete_meas_sets, all_symbolic_sets, all_symbolic_meas_sets
+	return all_concrete_sets, all_symbolic_sets, all_concrete_meas_sets, all_symbolic_meas_sets
 end
 
 function symbolic_reachability_with_concretization_with_splitting(query::OvertQuery,
@@ -594,7 +598,7 @@ function symbolic_reachability_with_concretization_with_splitting(query::OvertQu
 	end
 
 	query.ntime = ntime
-	return all_concrete_sets, all_concrete_meas_sets, all_symbolic_sets, all_symbolic_meas_sets
+	return all_concrete_sets, all_symbolic_sets, all_concrete_meas_sets, all_symbolic_meas_sets
 end
 
 """
@@ -640,8 +644,21 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_constrai
 		next_v_mip = v_mip + dt * dv_mip
 		push!(timestep_nplus1_vars, next_v_mip)
 	end
+
+	# if a measurement model is present, check variables on measurement model
+	if query.problem.measurement_model != []
+		@debug "Checking feasibility of property on measurement variables, not state variables."
+		output_vars = GenericAffExpr{Float64,VariableRef}[]
+		for measurement_matrix_row in query.problem.measurement_model 
+			push!(output_vars, sum(measurement_matrix_row.*timestep_nplus1_vars))
+		end
+	else
+		@debug "Checking feasibility of property state variables."
+		output_vars = timestep_nplus1_vars
+	end
+
 	# Add constraints for feasibility.
-	add_output_constraints!(target_constraints, mip_model.model, timestep_nplus1_vars)
+	add_output_constraints!(target_constraints, mip_model.model, output_vars)
 		
 	return timestep_nplus1_vars
 end
@@ -794,7 +811,7 @@ function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangl
 	# connect outputs of timestep i to inputs of timestep i-1
 	match_io!(mip_model, query, all_oA_vars)
 
-	# add feasibility constraints on n+1 timestep
+	# add feasibility constraints on n+1 timestep OR to measurement that is function of n+1 time states
 	timestep_nplus1_vars = add_feasibility_constraints!(mip_model, query, all_oA_vars[end], target_set)
 
 	JuMP.optimize!(mip_model.model)
@@ -882,17 +899,17 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 
 	input_set_tmp = copy(input_set)
 	all_sets = [input_set]
-	# all meas sets = []
+	# all meas sets = [] # don't need to save measurement sets  for a satisfiability problem
 	all_oA = Array{OverApproximation}(undef, 0)
 	all_oA_vars = []
 
 	for i = 1:n
 		println("checking timestep ", i)
-		# output_set, meas_set, oA, oA_vars = one_timestep_concretization(query, input_set_tmp; t_idx=i)
-		output_set, oA, oA_vars = one_timestep_concretization(query, input_set_tmp; t_idx=i)
+		output_set, meas_set, oA, oA_vars = one_timestep_concretization(query, input_set_tmp; t_idx=i, get_meas=false)
+		#output_set, oA, oA_vars = one_timestep_concretization(query, input_set_tmp; t_idx=i)
 		input_set_tmp = output_set
 		push!(all_sets, output_set)
-		# push!(all_meas_sets, meas_set)
+		# push!(all_meas_sets, meas_set) # don't need to save measurement sets  for a satisfiability problem
 		push!(all_oA, oA)
 		push!(all_oA_vars, oA_vars)
 
@@ -909,7 +926,7 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 			push!(valii, vals)
 			push!(statii, stats)
 		end
-		if SATus == problem_type
+		if SATus == problem_type # todo: clean up this problem type stuff
 			println("Property violated at timestep $i")
 			if ~return_all
 				return SATus, vals, stats
