@@ -1161,6 +1161,18 @@ function check_avoid_set_intersection(reachable_sets, init_set, avoid_sets)
 	return safe, violations
 end
 
+function check_goal_set_achieved(reachable_sets, init_set, goal_set)
+	# check if and when the goal set is check_goal_set_achieved
+	# do this by checking if the reachable set is a subset of the goal set at any point in time
+	achieved = [rs ⊆ goal_set for rs in reachable_sets]
+	idx = findall(achieved .== true)
+	if length(idx) == 0
+		return false, nothing
+	else
+		return true, idx[1] # return first index where property is achieved!
+	end
+end
+
 """
 ----------------------------------------------
 monte carlo simulation
