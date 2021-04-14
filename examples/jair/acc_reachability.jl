@@ -17,7 +17,7 @@ query = OvertQuery(
     controller_filepath,    # network file
     Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
     "MIP",     	# query solver, "MIP" or "ReluPlex"
-    55,        	# ntime
+    15,        	# ntime
     0.1,       	# dt
     -1,        	# N_overt
     )
@@ -37,12 +37,12 @@ input_set = Hyperrectangle(
     )
 
 t1 = Dates.time()
-all_sets, all_sets_symbolic = symbolic_reachability_with_concretization(query, input_set, [20, 35])
+concrete_state_sets, symbolic_state_sets, concrete_meas_sets, symbolic_meas_sets = symbolic_reachability_with_concretization(query, input_set, [10, 5])
 t2 = Dates.time()
 dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
-JLD2.@save "examples/jair/data/new/acc_reachability_data_check_2.jld2" query input_set all_sets all_sets_symbolic dt controller
+JLD2.@save "examples/jmlr/data/acc_reachability_data_check_2.jld2" query input_set  concrete_state_sets symbolic_state_sets concrete_meas_sets symbolic_meas_sets dt controller
 
 # TODO: Intersect all sets with output constraint and see where
 # reachable set is fully within safe set

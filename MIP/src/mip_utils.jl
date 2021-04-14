@@ -534,7 +534,7 @@ function symbolic_reachability_with_concretization(query::OvertQuery,
 	this_set = copy(input_set)
 	for n in concretize_every
 		query.ntime = n
-		concrete_sets, symbolic_set, concrete_meas_sets, symbolic_set_meas = symbolic_reachability(query, this_set) # pass query and input set
+		concrete_sets, symbolic_set, concrete_meas_sets, symbolic_meas_set = symbolic_reachability(query, this_set) # pass query and input set
 		# concrete_sets, symbolic_set = symbolic_reachability(query, this_set) # pass query and input set
 		push!(all_concrete_sets, concrete_sets)
 		push!(all_symbolic_sets, symbolic_set)
@@ -558,7 +558,7 @@ function symbolic_reachability_with_concretization_with_splitting(query::OvertQu
 	all_concrete_meas_sets = []
 	all_symbolic_meas_sets = []
 	for input_set in input_sets
-		concrete_sets, concrete_meas_sets, symbolic_set, symbolic_set_meas = symbolic_reachability_with_concretization_with_splitting(query, input_set, concretize_every_split_idx)
+		concrete_sets, concrete_meas_sets, symbolic_set, symbolic_meas_set = symbolic_reachability_with_concretization_with_splitting(query, input_set, concretize_every_split_idx)
 		push!(all_concrete_sets, concrete_sets)
 		push!(all_symbolic_sets, symbolic_set)
 		push!(all_concrete_meas_sets, concrete_meas_sets)
@@ -589,7 +589,7 @@ function symbolic_reachability_with_concretization_with_splitting(query::OvertQu
 		idx += 1
 		println("concretize step: $idx")
 		query.ntime = n
-		concrete_sets, concrete_meas_sets, symbolic_set, symbolic_set_meas = symbolic_reachability_with_splitting(query, this_set, split_idx)
+		concrete_sets, concrete_meas_sets, symbolic_set, symbolic_meas_set = symbolic_reachability_with_splitting(query, this_set, split_idx)
 		push!(all_concrete_sets, concrete_sets)
 		push!(all_symbolic_sets, symbolic_set)
 		push!(all_concrete_meas_sets, concrete_meas_sets)

@@ -64,9 +64,9 @@ ACC = OvertProblem(
 	acc_update_rule,
 	acc_input_vars,
 	acc_control_vars,
-)
-# 	acc_measurement_model
-# )
+#)
+ 	acc_measurement_model
+ )
 
 """
 Note: Compared this dynamics variable ordering in combination with controller acc_controller.nnet with controller outputs in 
