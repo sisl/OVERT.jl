@@ -26,8 +26,8 @@ t2 = Dates.time()
 dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
-# we want to check the intersection with the avoid set: x_1 <= -5
-avoid_set = [HalfSpace([1., 0.], -5.)] # 1*x_1 + 0*x_2 <= -5    => x_1 <= -5 
+# we want to check the intersection with the avoid set: x_1 <= -.5
+avoid_set = [HalfSpace([1., 0.], -0.5)] # 1*x_1 + 0*x_2 <= -.5    => x_1 <= -.5 
 
 init_set0, reachable_state_sets = clean_up_sets(concrete_state_sets, symbolic_state_sets, concretization_intervals)
 
