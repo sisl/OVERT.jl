@@ -36,13 +36,14 @@ input_set = Hyperrectangle(
     high=[v_range[2] for v_range in var_list]
     )
 
+concretization_intervals = [10, 5]
 t1 = Dates.time()
-concrete_state_sets, symbolic_state_sets, concrete_meas_sets, symbolic_meas_sets = symbolic_reachability_with_concretization(query, input_set, [10, 5])
+concrete_state_sets, symbolic_state_sets, concrete_meas_sets, symbolic_meas_sets = symbolic_reachability_with_concretization(query, input_set, concretization_intervals)
 t2 = Dates.time()
 dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
-JLD2.@save "examples/jmlr/data/acc_reachability_data_check_2.jld2" query input_set  concrete_state_sets symbolic_state_sets concrete_meas_sets symbolic_meas_sets dt controller
+JLD2.@save "examples/jmlr/data/acc_reachability_data_check_2.jld2" query input_set  concrete_state_sets symbolic_state_sets concrete_meas_sets symbolic_meas_sets dt controller concretization_intervals
 
 # TODO: Intersect all sets with output constraint and see where
 # reachable set is fully within safe set
