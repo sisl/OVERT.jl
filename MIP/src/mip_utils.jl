@@ -385,7 +385,7 @@ symbolic queries, reachability.
 ----------------------------------------------
 """
 
-function symbolic_reachability(query::OvertQuery, input_set::Hyperrectangle)
+function symbolic_reachability(query::OvertQuery, input_set::Hyperrectangle; get_meas=false)
    """
 	This function computes the reachable set after n timestep symbolically.
    inputs:
@@ -410,7 +410,7 @@ function symbolic_reachability(query::OvertQuery, input_set::Hyperrectangle)
 	match_io!(mip_model, query, all_oA_vars)
 
 	# optimize for the output of timestep ntime.
-	set_symbolic, measurement_set_symbolic = solve_for_reachability(mip_model, query, all_oA_vars[end], query.ntime) 
+	set_symbolic, measurement_set_symbolic = solve_for_reachability(mip_model, query, all_oA_vars[end], query.ntime, get_meas=get_meas) 
 	return all_sets, set_symbolic, all_meas_sets, measurement_set_symbolic
 end
 
@@ -493,7 +493,7 @@ function symbolic_reachability_with_splitting(query::OvertQuery, input_set::Hype
 	all_concrete_meas_sets = []
 	all_symbolic_meas_sets = []
 	for this_set in input_sets_splitted
-		concrete_sets, symbolic_set, concrete_meas_sets, symbolic_meas_set = symbolic_reachability(query, this_set)
+		concrete_sets, symbolic_set, concrete_meas_sets, symbolic_meas_set = symbolic_reachability(query, this_set, get_meas=true)
 		#concrete_sets, symbolic_set = symbolic_reachability(query, this_set)
 		push!(all_concrete_sets, concrete_sets)
 		push!(all_symbolic_sets, symbolic_set)
@@ -534,7 +534,7 @@ function symbolic_reachability_with_concretization(query::OvertQuery,
 	this_set = copy(input_set)
 	for n in concretize_every
 		query.ntime = n
-		concrete_sets, symbolic_set, concrete_meas_sets, symbolic_meas_set = symbolic_reachability(query, this_set) # pass query and input set
+		concrete_sets, symbolic_set, concrete_meas_sets, symbolic_meas_set = symbolic_reachability(query, this_set, get_meas=true) # pass query and input set
 		# concrete_sets, symbolic_set = symbolic_reachability(query, this_set) # pass query and input set
 		push!(all_concrete_sets, concrete_sets)
 		push!(all_symbolic_sets, symbolic_set)
