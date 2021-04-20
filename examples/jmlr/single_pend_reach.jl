@@ -13,13 +13,13 @@ query = OvertQuery(
 	controller,        # network file
 	Id(),              # last layer activation layer Id()=linear, or ReLU()=relu
 	"MIP",             # query solver, "MIP" or "ReluPlex"
-	30,                # ntime
+	25,                # ntime
 	0.1,               # dt
 	-1,                # N_overt
 	)
 
 input_set = Hyperrectangle(low=[1., 0.], high=[1.2, 0.2])
-concretization_intervals = [10, 10, 10]
+concretization_intervals = [10, 10, 5]
 t1 = Dates.time()
 concrete_state_sets, symbolic_state_sets, concrete_meas_sets, symbolic_meas_sets = symbolic_reachability_with_concretization(query, input_set, concretization_intervals)
 t2 = Dates.time()
