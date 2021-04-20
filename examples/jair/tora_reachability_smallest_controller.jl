@@ -40,6 +40,6 @@ safe, violations = check_avoid_set_intersection(reachable_sets, input_set, avoid
 dt_check = time() - t1
 
 using JLD2
-JLD2.@save "examples/jmlr/data/tora_reachability_smallest_controller_data.jld2" query input_set concretization_intervals concrete_state_sets symbolic_state_sets dt avoid_sets reachable_sets safe violations dt_check
+JLD2.@save "examples/jmlr/data/tora_reachability_smallest_controller_data.jld2" query input_set concretization_intervals concrete_state_sets symbolic_state_sets dt controller avoid_sets reachable_sets safe violations dt_check
 
 

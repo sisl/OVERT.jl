@@ -3,7 +3,7 @@ EVAL_CONSTS = true # some solvers can handle expressions like "log(2)" or "1/6" 
 # When EVAL_CONSTS is true, it will evaluate an expression like "1/6" and turn it into 0.16666 
 # TODO: add this functionality to be turned on or off for expressions like log(2)
 
-# opeartions and functions that are supported in overest_nd.jl
+# list of operators and fucntions that are not counted as variables
 special_oper = [:+, :-, :/, :*, :^]
 special_func = [:exp, :log, :log10,
                 :sin, :cos, :tan,
@@ -40,18 +40,18 @@ function find_variables(expr::Expr)
              find_variables(:(log(x)))  = [:x]
              find_variables(:(x+ x*z))   = [:x, :z]
     """
-    # all_vars = []
-    # for arg in expr.args
-    #     if arg isa Expr
-    #         all_vars = vcat(all_vars, find_variables(arg))
-    #     elseif arg isa Symbol
-    #         if !(arg in special_oper) && !(arg in special_func)
-    #             all_vars = vcat(all_vars, arg)
-    #         end
-    #     end
-    # end
-    # use symengine function instead
-    all_vars = Symbol.(free_symbols(Basic(expr)))
+    all_vars = []
+    for arg in expr.args
+        if arg isa Expr
+            all_vars = vcat(all_vars, find_variables(arg))
+        elseif arg isa Symbol
+            if !(arg in special_oper) && !(arg in special_func)
+                all_vars = vcat(all_vars, arg)
+            end
+        end
+    end
+    # # use symengine function instead
+    # all_vars = Symbol.(free_symbols(Basic(expr))) # this bungles the case of 0*x because Basic makes it just 0 and then the expression looks like it has no free vars
     return unique(all_vars)
 end
 

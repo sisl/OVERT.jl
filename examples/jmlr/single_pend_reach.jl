@@ -5,7 +5,8 @@ include("../../MIP/src/overt_to_mip.jl")
 include("../../MIP/src/mip_utils.jl")
 include("../../models/single_pendulum/single_pend.jl")
 
-controller = "nnet_files/jair/single_pendulum_small_controller.nnet"
+controller_type = ARGS[1] # pass from command line, e.g. "small"
+controller = "nnet_files/jair/single_pendulum_$(controller_type)_controller.nnet"
 println("Controller: ", controller)
 query = OvertQuery(
 	SinglePendulum,    # problem
@@ -35,5 +36,5 @@ safe, violations = check_avoid_set_intersection(reachable_state_sets, input_set,
 dt_check = time() - t1
 
 using JLD2
-JLD2.@save "examples/jair/data/new2/single_pendulum_reachability_small_controller_data.jld2" query input_set concretization_intervals concrete_state_sets concrete_meas_sets symbolic_state_sets symbolic_meas_sets dt controller avoid_set reachable_state_sets safe violations dt_check
+JLD2.@save "examples/jmlr/data/single_pendulum_reachability_$(controller_type)_controller_data.jld2" query input_set concretization_intervals concrete_state_sets concrete_meas_sets symbolic_state_sets symbolic_meas_sets dt controller avoid_set reachable_state_sets safe violations dt_check
  

@@ -1,3 +1,5 @@
+# run this with: julia1.4 --project="." examples/jmlr/single_pend_feas.jl "small" |& tee examples/jmlr/single_pend_feas_log.txt
+
 include("../../models/problems.jl")
 include("../../OverApprox/src/overapprox_nd_relational.jl")
 include("../../OverApprox/src/overt_parser.jl")
@@ -5,7 +7,8 @@ include("../../MIP/src/overt_to_mip.jl")
 include("../../MIP/src/mip_utils.jl")
 include("../../models/single_pendulum/single_pend.jl")
 
-controller = "nnet_files/jair/single_pendulum_small_controller.nnet"
+controller_type = ARGS[1] # pass from command line, e.g. "small"
+controller = "nnet_files/jair/single_pendulum_$(controller_type)_controller.nnet"
 println("Controller: ", controller)
 query = OvertQuery(
 	SinglePendulum,    # problem
@@ -25,4 +28,4 @@ t2 = Dates.time()
 dt = (t2-t1)
 
 using JLD2
-JLD2.@save "examples/jmlr/data/singple_pendulum_satisfiability_small_controller_data.jld2" query input_set target_set SATus vals stats dt controller
+JLD2.@save "examples/jmlr/data/single_pendulum_satisfiability_$(controller_type)_controller_data.jld2" query input_set target_set SATus vals stats dt controller
