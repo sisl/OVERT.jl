@@ -1159,6 +1159,15 @@ function clean_up_sets(all_sets, symbolic_sets, conc_ints; dims=[4,5])
 	return init_set, reachable_sets
 end
 
+function clean_up_meas_sets(concrete, symbolic, conc_ints)
+	sym_idx = cumsum(conc_ints)
+	reachable = deepcopy(concrete)
+	for (i,idx) in enumerate(sym_idx)
+		reachable[idx] = symbolic[i]
+	end
+	return reachable 
+end
+
 function check_avoid_set_intersection(reachable_sets, init_set, avoid_sets)
 	# if there is more than one avoid set, they are intersected separately
 	# check init set, but should satisfy 
@@ -1234,32 +1243,46 @@ function monte_carlo_simulate(query::OvertQuery, input_set::Hyperrectangle; n_si
 	ntime = query.ntime
 	dt = query.dt
 	n_states = length(input_set.center)
+	n_meas = length(query.problem.measurement_model)
 	min_x = [[Inf64  for n = 1:n_states] for m = 1:ntime]
 	max_x = [[-Inf64 for n = 1:n_states] for m = 1:ntime]
+	min_y = [[Inf64  for n = 1:n_meas] for m = 1:ntime]
+	max_y = [[-Inf64  for n = 1:n_meas] for m = 1:ntime]
 	controller = read_nnet(controller_nnet_address, last_layer_activation=last_layer_activation)
 	xvec = zeros(n_sim, ntime, n_states)
+	yvec = zeros(n_sim, ntime, n_meas)
 	x0 = zeros(n_sim, n_states)
+	y0 = zeros(n_sim, n_meas)
 	for i = 1:n_sim
 	  x  = rand(n_states)
 	  x .*= input_set.radius * 2
 	  x .+= input_set.center - input_set.radius
 	  x0[i, :] = x
+	  y0[i, :] = [LinearAlgebra.dot(x,y_i) for y_i in query.problem.measurement_model]
 	  for j = 1:ntime
 	      u = compute_output(controller, x)
 	      dx = dynamics_func(x, u)
 	      x = x + dx*dt
+		  y = [LinearAlgebra.dot(x,y_i) for y_i in query.problem.measurement_model]
 	      min_x[j] = min.(x, min_x[j])
 	      max_x[j] = max.(x, max_x[j])
+		  min_y[j] = min.(y, min_y[j])
+		  max_y[j] = max.(y, max_y[j])
 	      xvec[i, j, :] = x
+		  yvec[i, j, :] = y
 	  end
 	end
 
-	output_sets = [input_set]
+	state_sets = [input_set]
 	for (m1, m2) in zip(min_x, max_x)
 	  println(m1, m2)
-	  push!(output_sets, Hyperrectangle(low=m1, high=m2))
+	  push!(state_sets, Hyperrectangle(low=m1, high=m2))
 	end
-return output_sets, xvec, x0
+	meas_sets = []
+	for (m1, m2) in zip(min_y, max_y)
+		push!(meas_sets, Hyperrectangle(low=m1, high=m2))
+	end
+return state_sets, xvec, x0, meas_sets, yvec, y0
 end
 
 """
@@ -1457,4 +1480,9 @@ function plot_reachable_sets(reachable_sets, target_sets, target_set_color, targ
 	p = plot(rs, color="yellow", xlim=xlims, ylim=ylims)
 	plot!(ts, color=target_set_color, label=target_set_name)
 	Plots.savefig(p, dirname*plotname*".html")
+end
+
+function gen_1D_sets(sets, timesteps; width=0, exclamation=true)
+	# plots line segments at each given timestep 
+	return [Interval(t-width/2,t+width/2) × sets[i] for (i, t) in enumerate(timesteps)]
 end
