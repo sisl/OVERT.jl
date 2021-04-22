@@ -15,13 +15,13 @@ query = OvertQuery(
 	controller,        # network file
 	Id(),              # last layer activation layer Id()=linear, or ReLU()=relu
 	"MIP",             # query solver, "MIP" or "ReluPlex"
-	30,                # ntime
+	25,                # ntime
 	0.1,               # dt
 	-1,                # N_overt
 	)
 
 input_set = Hyperrectangle(low=[1., 0.], high=[1.2, 0.2])
-target_set = InfiniteHyperrectangle([-Inf, -Inf], [-0.5, Inf])
+target_set = InfiniteHyperrectangle([-Inf, -Inf], [-0.2167, Inf])
 t1 = Dates.time()
 SATus, vals, stats = symbolic_satisfiability(query, input_set, target_set)
 t2 = Dates.time()

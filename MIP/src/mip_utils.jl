@@ -524,6 +524,8 @@ function symbolic_reachability_with_concretization(query::OvertQuery,
 		@assert ntime % concretize_every == 0
 		n_loops = Int(query.ntime / concretize_every)
 		concretize_every = [concretize_every for i in 1:n_loops]
+	elseif isa(concretize_every, Array{Int, 1})
+		@assert sum(concretize_every) == query.ntime # make sure the concretization intervals add up to total time 
 	end
 
 

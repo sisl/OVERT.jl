@@ -19,7 +19,7 @@ query = OvertQuery(
 	)
 
 input_set = Hyperrectangle(low=[1., 0.], high=[1.2, 0.2])
-concretization_intervals = [10, 10, 5]
+concretization_intervals = Int.(ones(query.ntime))
 t1 = Dates.time()
 concrete_state_sets, symbolic_state_sets, concrete_meas_sets, symbolic_meas_sets = symbolic_reachability_with_concretization(query, input_set, concretization_intervals)
 t2 = Dates.time()
@@ -27,14 +27,12 @@ dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
 # we want to check the intersection with the avoid set: x_1 <= -.2167
-avoid_set = [HalfSpace([1., 0.], -0.2617)] # 1*x_1 + 0*x_2 <= -.2167  -->  x_1 <= -.2167 
-
-init_set0, reachable_state_sets = clean_up_sets(concrete_state_sets, symbolic_state_sets, concretization_intervals)
+avoid_set = [HalfSpace([1., 0.], -0.2167)] # 1*x_1 + 0*x_2 <= -.2167  --> x_1 <= -.2167
 
 t1 = time()
-safe, violations = check_avoid_set_intersection(reachable_state_sets, input_set, avoid_set)
+safe, violations = check_avoid_set_intersection(symbolic_state_sets, input_set, avoid_set)
 dt_check = time() - t1
 
 using JLD2
-JLD2.@save "examples/jmlr/data/single_pendulum_reachability_$(controller_type)_controller_data.jld2" query input_set concretization_intervals concrete_state_sets concrete_meas_sets symbolic_state_sets symbolic_meas_sets dt controller avoid_set reachable_state_sets safe violations dt_check
+JLD2.@save "examples/jmlr/data/single_pendulum_reachability_$(controller_type)_controller_data_1step.jld2" query input_set concretization_intervals concrete_state_sets concrete_meas_sets symbolic_state_sets symbolic_meas_sets dt controller avoid_set safe violations dt_check
  
