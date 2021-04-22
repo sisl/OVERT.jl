@@ -1,6 +1,8 @@
 using PGFPlots
 using QHull
 using JLD2
+using LazySets
+using LinearAlgebra
 include("../../../models/problems.jl")
 include("../../../OverApprox/src/overapprox_nd_relational.jl")
 include("../../../OverApprox/src/overt_parser.jl")
@@ -65,6 +67,9 @@ mc_state_sets, xvec, x0, mc_meas_sets, yvec, y0 = monte_carlo_simulate(query, in
 
 #PGFPlots.save("examples/jair/plots/acc_reachability.tex", fig)
 
+concrete_state_sets = vcat(concrete_state_sets...)
+concrete_meas_sets = vcat(concrete_meas_sets...)
+
 # real plotting
 using Plots 
 plotly()
@@ -74,7 +79,7 @@ concrete_sets = [Hyperrectangle(low=low(h)[dims], high=high(h)[dims]) for h in c
 symbolic_sets = [Hyperrectangle(low=low(h)[dims], high=high(h)[dims]) for h in symbolic_state_sets]
 Plots.plot(mc_sets, color="blue")
 Plots.plot!(concrete_sets, color="gray")
-Plots.plot!(symbolic_sets, color="red")
+Plots.plot!(symbolic_sets, color="red", title="State sets", xlabel="x$(dims[1])", ylabel="x$(dims[2])")
 
 #### plot overt measurement sets compared to simulations
 conc_meas_sets_plottable = gen_1D_sets(concrete_meas_sets, 1:length(concrete_meas_sets);  width=0.2)
@@ -82,7 +87,7 @@ Plots.plot(conc_meas_sets_plottable, color="grey")
 sym_meas_sets_plottable = gen_1D_sets(symbolic_meas_sets, cumsum(concretization_intervals), width=0.2)
 Plots.plot!(sym_meas_sets_plottable, color="red")
 mc_meas_sets_plottable  = gen_1D_sets(mc_meas_sets, 1:length(mc_meas_sets); width=0.2)
-Plots.plot!(mc_meas_sets_plottable, color="blue")
+Plots.plot!(mc_meas_sets_plottable, color="blue", title="Measurement sets", xlabel="timesteps")
 
 #### plot collision plot: lead position, eho position, and D-safe
 dims = [1]
@@ -96,13 +101,17 @@ ego_pos_pltble = gen_1D_sets(ego_car_pos, 1:length(ego_car_pos); width=0.2)
 Plots.plot(ego_pos_pltble, color="yellow")
 Plots.plot!(lead_pos_pltble, color="purple", xlabel="timesteps", ylabel="Distance(m)", title="Ego (yellow), Lead (purple), Minimum Dsafe (green)")
 
-
 # calculate D-safe. D_safe = D-default + Tgap*v-ego . Where D-default =10,Tgap=1.4
 dims=[5]
 v_ego = [Hyperrectangle(low=low(h)[dims], high=high(h)[dims]) for h in clean_states]
 v_ego_pltble = gen_1D_sets(v_ego, 1:length(v_ego); width=0.2)
-d_safe =  v_ego*1.4 .+ Ref(Interval(10.,10.))
+d_safe =  [affine_transform(h, 1.4, 10.) for h in v_ego]
 d_safe_pltble =  gen_1D_sets(d_safe,  1:length(d_safe); width=0.2)
+
+# for above plot, plot D safe on top of ego bar 
+dsafe_ontop_ego = [Hyperrectangle(low=high(ego_car_pos[i]), high=(high(ego_car_pos[i]) + high(d_safe[i]))) for i in 1:length(d_safe)]
+dsafe_ontop_pltble = gen_1D_sets(dsafe_ontop_ego, 1:length(d_safe); width=0.2)
+Plots.plot!(dsafe_ontop_pltble, color="green")
 
 #### collision plot version 2: plot measurement set and D-safe
 # Measured distance should always be larger  than the safe distance
@@ -111,6 +120,15 @@ clean_meas_pltble = gen_1D_sets(clean_meas, 1:length(clean_meas); width=0.2)
 Plots.plot(clean_meas_pltble, width=0.2, color="green")
 Plots.plot!(d_safe_pltble, color="pink", title="Measured distance (green) and Minimum Safe Distance (pink)", xlabel="timesteps", ylabel="Distance (m)")
 
+# collision plot version 3: have timestep be on y axis, plot ego too 
+# This is the winner of plots!
+clean_meas_y = gen_1D_sets(clean_meas, length(clean_meas):-1:1; width=0.2, time_on_y=true)
+d_safe_y = gen_1D_sets(d_safe, length(d_safe):-1:1; width=0.2, time_on_y=true)
+ego = [Interval(0.,0.) for i in 1:length(d_safe)]
+ego_y = gen_1D_sets(ego, length(d_safe):-1:1; width=0.0, time_on_y=true)
+Plots.plot(clean_meas_y, color="purple")
+Plots.plot!(d_safe_y, color="green")
+Plots.plot!(ego_y, color="blue", ylabel="timesteps", yticks=(1:15, string.(15:-1:1)), xlabel="Distance along road relative to ego (m)")
 
 #####
 dims=[1,2]
