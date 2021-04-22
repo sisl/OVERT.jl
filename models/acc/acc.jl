@@ -55,7 +55,8 @@ end
 acc_input_vars = [:x1, :x2, :x3, :x4, :x5, :x6]
 acc_control_vars = [:u1]
 
-acc_measurement_model = [[1., 0., 0., -1., 0., 0.]] # relative distance (D_safe can be computed by scaling and shifting the reachable set of v_ego)
+T_gap = 1.4
+acc_measurement_model = [[1, 0, 0, -1, -T_gap, 0]::Array{Float64}] # relative distance  - v_ego*Tgap 
 # but a measurement model can contain multiple rows of measurements!
 
 ACC = OvertProblem(

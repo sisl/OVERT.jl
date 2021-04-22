@@ -41,12 +41,12 @@ input_set = Hyperrectangle(
 # D_rel = x_lead - x_ego >= D_safe = D_default + T_gap * v_ego
 # x_lead + -1*x_ego - T_gap*v_ego >= D_default = 10
 # BUT WE MUST NEGATE THIS (and so we flip >= to <=) (and then want it to always be unsat)
-T_gap = 1.4
-output_constraint = Constraint([1, 0, 0, -1, -T_gap, 0]::Array{Float64}, :(<=), 10)
-# NOTE: this constraint is written for use with the state variables, not the measurement, so we actually don't want to apply the measurement model here, and we set apply_meas to false in the call to symbolic_satisfiability below
+# THe measurement model gives x_lead + -1*x_ego - T_gap*v_ego  so we just have to pass it through with coeff=1.
+output_constraint = Constraint([1.], :(<=), 10)
+# NOTE: this constraint is written for use with the measurement, so we want to apply the measurement model here, and we set apply_meas to true in the call to symbolic_satisfiability below
 
 t1 = Dates.time()
-SATus, vals, stats = symbolic_satisfiability(query, input_set, output_constraint, apply_meas=false)
+SATus, vals, stats = symbolic_satisfiability(query, input_set, output_constraint, apply_meas=true)
 t2 = Dates.time()
 dt = t2 - t1
 

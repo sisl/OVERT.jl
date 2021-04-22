@@ -17,7 +17,7 @@ query = OvertQuery(
     controller_filepath,    # network file
     Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
     "MIP",     	# query solver, "MIP" or "ReluPlex"
-    15,        	# ntime
+    2,        	# ntime
     0.1,       	# dt
     -1,        	# N_overt
     )
@@ -36,18 +36,24 @@ input_set = Hyperrectangle(
     high=[v_range[2] for v_range in var_list]
     )
 
-concretization_intervals = [10, 5]
+concretization_intervals = [1, 1]
 t1 = Dates.time()
 concrete_state_sets, symbolic_state_sets, concrete_meas_sets, symbolic_meas_sets = symbolic_reachability_with_concretization(query, input_set, concretization_intervals)
 t2 = Dates.time()
 dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
-JLD2.@save "examples/jmlr/data/acc_reachability_data_check_2.jld2" query input_set  concrete_state_sets symbolic_state_sets concrete_meas_sets symbolic_meas_sets dt controller concretization_intervals
+# TODO: Intersect all sets with output constraint and see if
+# reachable set is fully within safe set OR check to see if it ever intersects unsafe set
+# they are equivalent
+# We want the measurement to be greater than 10, always. So the unsafe set if <= 10
+avoid_sets = [HalfSpace([1.], 10.)] # 1*y <= 10
 
-# TODO: Intersect all sets with output constraint and see where
-# reachable set is fully within safe set
-T_gap = 1.4
-safe_set = Constraint([1, 0, 0, -1, -T_gap, 0], :(>=), 10)
+reachable_meas_sets = clean_up_meas_sets(concrete_meas_sets, symbolic_meas_sets, concretization_intervals)
+
+t1 = time()
+safe, violations = check_avoid_set_intersection(reachable_meas_sets, input_set, avoid_sets)
+dt_check = time() - t1
 
  
+JLD2.@save "examples/jmlr/data/acc_reachability_data_check_2.jld2" query input_set concretization_intervals concrete_state_sets concrete_meas_sets symbolic_state_sets symbolic_meas_sets dt controller avoid_sets reachable_state_sets safe violations dt_check

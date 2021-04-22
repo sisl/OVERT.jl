@@ -1163,6 +1163,7 @@ end
 
 function clean_up_meas_sets(concrete, symbolic, conc_ints)
 	sym_idx = cumsum(conc_ints)
+	concrete = vcat(concrete...)
 	reachable = deepcopy(concrete)
 	for (i,idx) in enumerate(sym_idx)
 		reachable[idx] = symbolic[i]
