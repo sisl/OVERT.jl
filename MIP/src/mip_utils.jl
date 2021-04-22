@@ -607,7 +607,7 @@ symbolic queries, satisfiability (feasibility).
 ----------------------------------------------
 """
 
-function add_feasibility_constraints!(mip_model, query, oA_vars, target_constraints)
+function add_feasibility_constraints!(mip_model, query, oA_vars, target_constraints; apply_meas=true)
 	"""
 	this function adds the constraints associated with checking whether future states
 	intersect with the target set or not.
@@ -646,7 +646,7 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_constrai
 	end
 
 	# if a measurement model is present, check variables on measurement model
-	if query.problem.measurement_model != []
+	if (query.problem.measurement_model != []) && apply_meas
 		@debug "Checking feasibility of property on measurement variables, not state variables."
 		output_vars = GenericAffExpr{Float64,VariableRef}[]
 		for measurement_matrix_row in query.problem.measurement_model 
@@ -663,7 +663,7 @@ function add_feasibility_constraints!(mip_model, query, oA_vars, target_constrai
 	return timestep_nplus1_vars
 end
 
-function add_output_constraints!(target_set, model::JuMP.Model, vars::Array)
+function add_output_constraints!(target_set::Hyperrectangle, model::JuMP.Model, vars::Array)
 	# Version for hyperrectangle outputs ::Union{Hyperrectangle,MyHyperrect,InfiniteHyperrectangle}
 	for (i, v) in enumerate(vars)
 		v_min = low(target_set)[i] 
@@ -782,13 +782,13 @@ end
 
 
 function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangle,
-	target_set, all_sets, all_oA, all_oA_vars; threads=0)
+	target_set, all_sets, all_oA, all_oA_vars; threads=0, apply_meas=true)
 	"""
 	This function computes the reachable set after n timestep symbolically.
 	inputs:
 	- query: OvertQuery
 	- input_set: Hyperrectangle for the initial set of states.
-	- target_set: Hyperrectangle for the target set of states.
+	- target_set: Hyperrectangle for the target set of states or Constraint object specify property.
 	outputs:
 	- status: status of query which can be sat, unsat or error,
 	- vals: if sat, returns the counter example at timestep n+1. else returns empty dictionary.
@@ -812,7 +812,7 @@ function symbolic_satisfiability_nth(query::OvertQuery, input_set::Hyperrectangl
 	match_io!(mip_model, query, all_oA_vars)
 
 	# add feasibility constraints on n+1 timestep OR to measurement that is function of n+1 time states
-	timestep_nplus1_vars = add_feasibility_constraints!(mip_model, query, all_oA_vars[end], target_set)
+	timestep_nplus1_vars = add_feasibility_constraints!(mip_model, query, all_oA_vars[end], target_set, apply_meas=apply_meas)
 
 	JuMP.optimize!(mip_model.model)
 	if termination_status(mip_model.model) == MathOptInterface.OPTIMAL
@@ -871,7 +871,7 @@ end
 # end
 
 
-function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set; unsat_problem::Bool=false, after_n::Int=0, return_all=false, threads=0)
+function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, target_set; unsat_problem::Bool=false, after_n::Int=0, return_all=false, threads=0, apply_meas=true)
 	"""
 	Checks whether a property P is satisfied at timesteps 1 to n symbolically.
 	inputs:
@@ -919,7 +919,7 @@ function symbolic_satisfiability(query::OvertQuery, input_set::Hyperrectangle, t
 		end
 
 		query.ntime = i
-		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets, all_oA, all_oA_vars, threads=threads)
+		SATus, vals, stats = symbolic_satisfiability_nth(query, input_set, target_set, all_sets, all_oA, all_oA_vars, threads=threads, apply_meas=apply_meas)
 		println("SATus of step ", i, " is ", SATus)
 		if return_all
 			push!(SATii, SATus)
@@ -1436,8 +1436,13 @@ end
 
 # make_animation with @animate macro
 
-function get_subsets(sets, dims)
-	return [get_subset(s, dims) for s in sets]
+function get_subsets(sets, dims; T=Hyperrectangle{Float64,Array{Float64,1},Array{Float64,1}})
+	return [get_subset(s, dims)::T for s in sets]
+end
+
+function get_interval_subsets(sets, dims)
+	@assert length(dims) == 1
+	return [[low(h)[dims]..., high(h)[dims]...] for h::Hyperrectangle{Float64,Array{Float64,1},Array{Float64,1}} in sets]
 end
 
 # utility to extract subsets of certain dims 
@@ -1482,7 +1487,17 @@ function plot_reachable_sets(reachable_sets, target_sets, target_set_color, targ
 	Plots.savefig(p, dirname*plotname*".html")
 end
 
-function gen_1D_sets(sets, timesteps; width=0, exclamation=true)
+function gen_1D_sets(sets, timesteps; width=0, exclamation=true, time_on_y=false)
 	# plots line segments at each given timestep 
-	return [Interval(t-width/2,t+width/2) × sets[i] for (i, t) in enumerate(timesteps)]
+	if time_on_y
+		return [sets[i] × Interval(t-width/2,t+width/2) for (i, t) in enumerate(timesteps)]
+	else
+		return [Interval(t-width/2,t+width/2) × sets[i] for (i, t) in enumerate(timesteps)]
+	end
+end
+
+function affine_transform(h::Hyperrectangle, scale, shift)
+	low_v = low(h).*scale .+ shift 
+	high_v = high(h).*scale .+ shift
+	return Hyperrectangle(low=low_v, high=high_v)
 end

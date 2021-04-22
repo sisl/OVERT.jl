@@ -40,17 +40,13 @@ input_set = Hyperrectangle(
 # desired property to be proven is:
 # D_rel = x_lead - x_ego >= D_safe = D_default + T_gap * v_ego
 # x_lead + -1*x_ego - T_gap*v_ego >= D_default = 10
-# BUT WE MUST NEGATE THIS (and so we flip >= to <=)
+# BUT WE MUST NEGATE THIS (and so we flip >= to <=) (and then want it to always be unsat)
 T_gap = 1.4
 output_constraint = Constraint([1, 0, 0, -1, -T_gap, 0]::Array{Float64}, :(<=), 10)
-
-# NOTE: I think I will have to load the matlab files here:
-# https://github.com/souradeep-111/sherlock/blob/master/systems_with_networks/ARCH_2019/ACC/NN_output.m
-# in order to determine how the input mapping works
-# TODO: clone repo...play with files...
+# NOTE: this constraint is written for use with the state variables, not the measurement, so we actually don't want to apply the measurement model here, and we set apply_meas to false in the call to symbolic_satisfiability below
 
 t1 = Dates.time()
-SATus, vals, stats = symbolic_satisfiability(query, input_set, output_constraint)
+SATus, vals, stats = symbolic_satisfiability(query, input_set, output_constraint, apply_meas=false)
 t2 = Dates.time()
 dt = t2 - t1
 
