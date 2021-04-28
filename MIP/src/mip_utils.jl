@@ -679,6 +679,19 @@ function add_output_constraints!(target_set::Hyperrectangle, model::JuMP.Model, 
 	end
 end
 
+function add_output_constraints!(constraint::HalfSpace, model::JuMP.Model, vars::Array)
+	# ax <= b 
+	x = reshape(vars, (length(vars), 1))
+	c = reshape(constraint.a, (1, length(constraint.a)))
+	@constraint(model, (c*x)[1] <= constraint.b)
+end
+
+function add_output_constraints!(constraints::HPolyhedron, model::JuMP.Model, vars::Array)
+	for constraint in constraints
+		add_output_constraints!(constraint, model, vars)
+	end
+end
+
 function add_output_constraints!(constraint::Constraint, model::JuMP.Model, vars::Array)
 	# Constraint contains the coeffs, relation, and scalar, assuming the variables are in 
 	# state order

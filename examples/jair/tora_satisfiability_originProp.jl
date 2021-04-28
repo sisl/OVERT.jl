@@ -16,7 +16,7 @@ function run_query(query_number, avoid_set, controller_name)
 		controller, # network file
 		Id(),    # last layer activation layer Id()=linear, or ReLU()=relu
 		"MIP",     # query solver, "MIP" or "ReluPlex"
-		15,        # ntime
+		2,        # ntime
 		0.1,       # dt
 		-1,        # N_overt
 		)
@@ -37,13 +37,12 @@ end
 function run_tora_satisfiability(;controller_name="smallest")
 
 	# query 1
-	avoid_set1 = MyHyperrect(low=[-Inf, Inf, Inf, Inf], high=[-2, Inf, Inf, Inf]) # checks if x1 is in [-Inf, -2] 
+	avoid_set1 = HalfSpace([1., 0., 0., 0.], -2.) # checks if x1 <= -2 
 	SATus1 = run_query(1, avoid_set1, controller_name)
 
 	if SATus1 == "unsat" # early stopping, potentially, if first query is sat
 		# query 2
-		avoid_set2 = MyHyperrect(low=[2, Inf, Inf, Inf], high=[Inf, Inf, Inf, Inf]) # checks if x1 is in [2, Inf] 
-		# only constraint actually being added is: x1 >= 2
+		avoid_set2 =  HalfSpace([-1., 0., 0., 0.], -2.)# checks if x1 >= 2
 		SATus2 = run_query(2, avoid_set2, controller_name)
 
 		open("examples/jair/data/new/tora_satisfiability_"*string(controller_name)*".txt", "w") do io
@@ -52,4 +51,4 @@ function run_tora_satisfiability(;controller_name="smallest")
 	end
 end
 
-run_tora_satisfiability(controller_name="big")
+run_tora_satisfiability(controller_name=ARGS[1])
