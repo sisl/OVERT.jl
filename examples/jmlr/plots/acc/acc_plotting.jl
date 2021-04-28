@@ -51,8 +51,8 @@ for t in 1:query.ntime
 end
 fig.legendStyle =  "at={(1.05,1.0)}, anchor=north west"
 
-save("examples/jmlr/plots/acc_meas.tex", fig)
-save("examples/jmlr/plots/acc_meas.pdf", fig)
+save("examples/jmlr/plots/acc/acc_meas.tex", fig)
+save("examples/jmlr/plots/acc/acc_meas.pdf", fig)
 
 ############################################################
 ### Second plot: car positions SYMBOLIC ONLY
@@ -109,5 +109,5 @@ for t in 1:query.ntime
 end
 fig.legendStyle =  "at={(1.05,1.0)}, anchor=north west"
 
-save("examples/jmlr/plots/acc.tex", fig)
-save("examples/jmlr/plots/acc.pdf", fig)
+save("examples/jmlr/plots/acc/acc.tex", fig)
+save("examples/jmlr/plots/acc/acc.pdf", fig)
