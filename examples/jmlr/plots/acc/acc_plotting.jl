@@ -11,11 +11,11 @@ include("MIP/src/overt_to_mip.jl")
 include("MIP/src/mip_utils.jl")
 include("models/acc/acc.jl")
 
-JLD2.@load "examples/jmlr/data/acc/acc_reachability_data_1step.jld2"
+JLD2.@load "examples/jmlr/data/acc/acc_reachability_data_1step_55.jld2"
 one_step_state_sets = symbolic_state_sets 
 one_step_meas_sets = symbolic_meas_sets
 
-JLD2.@load "examples/jmlr/data/acc/acc_reachability_data.jld2"
+JLD2.@load "examples/jmlr/data/acc/acc_reachability_data_55.jld2"
 
 # monte carlo simulate
 mc_state_sets, xvec, x0, mc_meas_sets, yvec, y0 = monte_carlo_simulate(query, input_set, n_sim=1000000)
@@ -36,7 +36,7 @@ fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$y\$", xlabel="tim
 conc_meas_sets = get_interval_subsets(one_step_meas_sets, [1])
 sym_meas_sets = get_interval_subsets(reachable_meas_sets, [1])
 mc_meas_sets = get_interval_subsets(mc_meas_sets, [1])
-push!(fig, PGFPlots.Plots.Linear([-1., 36.], [10., 10.], style="red, dashed", mark="none", legendentry="Unsafe Set"))
+push!(fig, PGFPlots.Plots.Linear([-1., length(mc_meas_sets) + 1.], [10., 10.], style="red, dashed", mark="none", legendentry="Unsafe Set"))
 for t in 1:query.ntime
     timestep = Float64[t,t]
     if t == query.ntime 
@@ -57,79 +57,57 @@ save("examples/jmlr/plots/acc_meas.pdf", fig)
 ############################################################
 ### Second plot: car positions SYMBOLIC ONLY
 ############################################################
-# in tex, replace with: #139eab
-input_lead_style = "dashed, black, mark=none"
-conc_lead_style = "solid, black, mark=none"
-sym_lead_style = "solid, black, very thick, mark=none"
-mc_lead_style = "solid, black, ultra thick, mark=none"
-# ego in tex, replace with #05d2ad
-input_ego_style = "dashed, blue, mark=none"
-conc_ego_style = "solid, blue, mark=none"
-sym_ego_style = "solid, blue, very thick, mark=none"
-mc_ego_style = "solid, blue, ultra thick, mark=none"
-# d safe, in tex replace with #9bff85
-input_dsafe_style = "dashed, red, mark=none"
-conc_dsafe_style = "solid, red, mark=none"
-sym_dsafe_style = "solid, red, very thick, mark=none"
-mc_dsafe_style = "solid, red, ultra thick, mark=none"
-fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$y\$", xlabel="timesteps", title="Adaptive Cruise Control, State Sets")
+# in tex, replace with: #ab0000
+define_color("lead_color", 0xffc2ca)
+input_lead_style = "dashed, lead_color, mark=none"
+sym_lead_style = "solid, lead_color, ultra thick, mark=none"
+# ego in tex, replace with #d84a43
+define_color("ego_color", 0x800000)
+input_ego_style = "dashed, ego_color, mark=none"
+sym_ego_style = "solid, ego_color, ultra thick, mark=none"
+# d safe, in tex replace with #ff8080
+define_color("dsafe_color", 0xc76666)
+input_dsafe_style = "dashed, dsafe_color, mark=none"
+sym_dsafe_style = "densely dotted, dsafe_color, very thick, mark=none"
+
+fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="Distance Along Roadway (m)", xlabel="timesteps", title="Adaptive Cruise Control, State Sets")
 dim = [1] # x_lead
-conc_lead_sets = get_interval_subsets(one_step_state_sets, dim)
 sym_lead_sets = get_interval_subsets(reachable_state_sets, dim)
-mc_lead_sets = get_interval_subsets(mc_state_sets, dim)
-deleteat!(mc_lead_sets, 1)
 dim = [4] # x_ego
-conc_ego_sets = get_interval_subsets(one_step_state_sets, dim)
 sym_ego_sets = get_interval_subsets(reachable_state_sets, dim)
-mc_ego_sets = get_interval_subsets(mc_state_sets, dim)
-deleteat!(mc_ego_sets, 1)
-# construct dsafe sets extending from behind lead car position
 dim = [5] # v_ego
-conc_dsafe_sets = get_interval_subsets(one_step_state_sets, dim) .* 1.4 .+ Ref([10., 10.])
-
 sym_dsafe_sets = get_interval_subsets(reachable_state_sets, dim) .* 1.4 .+ Ref([10., 10.])
-mc_dsafe_sets = get_interval_subsets(mc_state_sets, dim) .* 1.4 .+ Ref([10., 10.])
-deleteat!(mc_dsafe_sets, 1)
+# construct dsafe sets extending from behind lead car position
+sym_dsafe_behind_ego = [[minimum(sym_lead_sets[i]) - maximum(sym_dsafe_sets[i]), minimum(sym_lead_sets[i])] for i in 1:length(sym_dsafe_sets)]
 
-function plot_triples(fig, x, conc, sym, mc, conc_style, sym_style, mc_style; name="", legendentry="")
-    if legendentry == ""
-        push!(fig, PGFPlots.Linear(x, conc, style=conc_style))
-        push!(fig, PGFPlots.Linear(x, sym, style=sym_style))
-        push!(fig, PGFPlots.Linear(x, mc, style=mc_style))
-    else
-        push!(fig, PGFPlots.Linear(x, conc, style=conc_style, legendentry="Concrete $name Sets"))
-        push!(fig, PGFPlots.Linear(x, sym, style=sym_style, legendentry="OVERT Hybrid Symbolic $name Sets"))
-        push!(fig, PGFPlots.Linear(x, mc, style=mc_style, legendentry="Monte Carlo Simulation $name Sets"))
-    end
-end
 
 # plot init sets
 dims=[1] # lead
-push!(fig, PGFPlots.Plots.Linear([0.,0.], [low(input_set)[dims]..., high(input_set)[dims]...], style=input_lead_style, legendentry="Lead Position Input Set"))
-dims=[4] # ego
-push!(fig, PGFPlots.Plots.Linear([0.,0.], [low(input_set)[dims]..., high(input_set)[dims]...], style=input_ego_style, legendentry="Ego Position Input Set"))
+lead_input = [low(input_set)[dims]..., high(input_set)[dims]...]
+push!(fig, PGFPlots.Plots.Linear([0.,0.], lead_input, style=input_lead_style, legendentry="Lead Position Input Set"))
+##############
 dims=[5] # v_ego
-push!(fig, PGFPlots.Plots.Linear([0.,0.], [low(input_set)[dims]..., high(input_set)[dims]...].*1.4 .+ 10., style=input_dsafe_style, legendentry="Minimum Safe Distance Input Set"))
+d_safe_i = [low(input_set)[dims]..., high(input_set)[dims]...].*1.4 .+ 10.
+dsafe_input = [minimum(lead_input) - maximum(d_safe_i), minimum(lead_input)]
+push!(fig, PGFPlots.Plots.Linear([0.,0.], dsafe_input, style=input_dsafe_style, legendentry="Minimum Safe Distance Input Set"))
+##############
+dims=[4] # ego
+ego_input = [low(input_set)[dims]..., high(input_set)[dims]...]
+push!(fig, PGFPlots.Plots.Linear([0.,0.], ego_input, style=input_ego_style, legendentry="Ego Position Input Set"))
 
 for t in 1:query.ntime
     timestep = Float64[t,t]
     if t == query.ntime 
-        plot_triples(fig, timestep, conc_ego_sets[t], sym_ego_sets[t], sym_ego_sets[t],
-                                    conc_ego_style, sym_ego_style, mc_ego_style, name="Ego Position")
-        plot_triples(fig, timestep, conc_lead_sets[t], sym_lead_sets[t], sym_lead_sets[t],
-                                    conc_lead_style, sym_lead_style, mc_lead_style, name="Lead Position")
-        plot_triples(fig, timestep, conc_dsafe_sets[t], sym_dsafe_sets[t], sym_dsafe_sets[t],
-                                    conc_dsafe_style, sym_dsafe_style, mc_dsafe_style, name="Minimum Safe Distance")
+        push!(fig, PGFPlots.Plots.Linear( timestep, sym_lead_sets[t], style=sym_lead_style, legendentry="Lead Position, OVERT Hybrid Symbolic"))
+        push!(fig, PGFPlots.Plots.Linear( timestep, sym_dsafe_behind_ego[t], style=sym_dsafe_style, legendentry="Minimum Safe Distance, OVERT Hybrid Symbolic"))
+        push!(fig, PGFPlots.Plots.Linear( timestep, sym_ego_sets[t], style=sym_ego_style, legendentry="Ego Position, OVERT Hybrid Symbolic"))
     else
-        plot_triples(fig, timestep, conc_ego_sets[t], sym_ego_sets[t], sym_ego_sets[t],
-                                    conc_ego_style, sym_ego_style, mc_ego_style)
-        plot_triples(fig, timestep, conc_lead_sets[t], sym_lead_sets[t], sym_lead_sets[t],
-                                    conc_lead_style, sym_lead_style, mc_lead_style)
-        plot_triples(fig, timestep, conc_dsafe_sets[t], sym_dsafe_sets[t], sym_dsafe_sets[t],
-                                    conc_dsafe_style, sym_dsafe_style, mc_dsafe_style)
+        push!(fig, PGFPlots.Plots.Linear( timestep, sym_lead_sets[t], style=sym_lead_style))
+        push!(fig, PGFPlots.Plots.Linear( timestep, sym_dsafe_behind_ego[t], style=sym_dsafe_style))
+        push!(fig, PGFPlots.Plots.Linear( timestep, sym_ego_sets[t], style=sym_ego_style))
     end
 end
 fig.legendStyle =  "at={(1.05,1.0)}, anchor=north west"
 
-save("examples/jmlr/plots/acc_meas.tex", fig)
-save("examples/jmlr/plots/acc_meas.pdf", fig)
+save("examples/jmlr/plots/acc.tex", fig)
+save("examples/jmlr/plots/acc.pdf", fig)
