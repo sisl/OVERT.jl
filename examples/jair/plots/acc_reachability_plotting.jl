@@ -121,7 +121,6 @@ Plots.plot(clean_meas_pltble, width=0.2, color="green")
 Plots.plot!(d_safe_pltble, color="pink", title="Measured distance (green) and Minimum Safe Distance (pink)", xlabel="timesteps", ylabel="Distance (m)")
 
 # collision plot version 3: have timestep be on y axis, plot ego too 
-# This is the winner of plots!
 clean_meas_y = gen_1D_sets(clean_meas, length(clean_meas):-1:1; width=0.2, time_on_y=true)
 d_safe_y = gen_1D_sets(d_safe, length(d_safe):-1:1; width=0.2, time_on_y=true)
 ego = [Interval(0.,0.) for i in 1:length(d_safe)]
