@@ -1504,3 +1504,11 @@ function affine_transform(h::Hyperrectangle, scale, shift)
 	high_v = high(h).*scale .+ shift
 	return Hyperrectangle(low=low_v, high=high_v)
 end
+
+function get_rectangle(h::Hyperrectangle, dims)
+	@assert length(dims) == 2
+	xL, yL = low(h)[dims]
+	xH, yH = high(h)[dims]
+	
+	return [xL, xH, xH, xL, xL], [yL, yL, yH, yH, yL]
+end
