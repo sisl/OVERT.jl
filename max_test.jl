@@ -3,17 +3,8 @@ using LazySets
 using Gurobi
 using LinearAlgebra: dot
 using IntervalArithmetic
-
-vars = [:x, :y]
-var_ranges = Dict(:x => [0.,1.], :y=> [-2. , 1.2])
-var2JuMPmap = Dict() # maps symbols -> JuMP variables
-# we have halfspace constraints of the form: [c1, c2]' * [x, y] <= b where b is a scalar
-h1 = HalfSpace([1., -1.], 20.)
-h2 = HalfSpace([-0.2, -0.1], 10.)
-h3 = HalfSpace([-12., 1.], 6.)
-constraints = [h1, h2, h3]
-
-model = JuMP.Model(Gurobi.Optimizer)
+N = 1
+aux_var_counter = 1
 
 function get_jump_var(model::JuMP.Model, var::Symbol, var2JuMPmap::Dict, var_ranges::Dict)
     if var in keys(var2JuMPmap)
@@ -30,18 +21,9 @@ end
 function get_bound(h::HalfSpace, ranges)
     # ranges is a list of pairs like: [[l1, u1], [l2, u2]]
     intervals = [r[1]..r[2] for r in ranges] # using IntervalArithmetic.Interval type with .. syntax
-    output = dot(h.a, intervals) - h.b # ax - b <= 0
+    output = h.b - dot(h.a, intervals) # b - ax
     return [output.lo, output.hi]
 end
-
-jump_vars = [get_jump_var(model, v, var2JuMPmap, var_ranges) for v in vars]
-exprs = [dot(c.a, jump_vars) - c.b for c in constraints] 
-expr_bounds = [get_bound(c, [var_ranges[v] for v in vars]) for c in constraints]
-expr_bounds = hcat(expr_bounds...)[1,:], hcat(expr_bounds...)[2,:] 
-max_out = add_max(model, exprs, expr_bounds)
-@constraint(model, max_out >= 0)
-optimize!(model)
-termination_status(model)
 
 # note: may have to solve non-trivial mixed integer program to get bounds on args to max...
 
@@ -65,6 +47,7 @@ function get_u_max_i(us::Array, i)
     return maximum(us[[1:(i-1)...,(i+1):end...]])
 end
 function add_max_to_JuMP_helper(model, x::Array, x_bounds)
+    # max encoding from MNIPverify paper by Tjeng, Xiao, and Tedrake
     # x is a vector of variables
     # only considering "good" indices
     # unpack
@@ -87,5 +70,45 @@ function add_max_to_JuMP_helper(model, x::Array, x_bounds)
     @constraint(model, sum(deltas) == 1)
     return y
 end
+
+#####################################################
+# We have HalfSpace constraints of the form: ax - b <= 0
+# if this constraint holds, we are in an "avoid set"
+# we can rewrite as: b - ax >=0
+# we then take multiple expressions and look at their max:
+# max(b₁ - a₁x, b₂ - a₂x, ...)
+# if max(b₁ - a₁x, b₂ - a₂x, ...) > 0 
+# then at least one of
+# the "avoid sets" has been reached :/
+# but if the problem is unsat -- no avoid set has been reached!
+# What's nice about this formulation is that the avoid sets can be 
+# mutually exclusive, the disjunction in the max
+# handles it
+#####################################################
+vars = [:x, :y]
+var_ranges = Dict(:x => [0.,1.], :y=> [-2. , 1.2])
+var2JuMPmap = Dict() # maps symbols -> JuMP variables
+# we have halfspace constraints of the form: [c1, c2]' * [x, y] <= b where b is a scalar
+h1 = HalfSpace([100., -1.], -15.)
+h2 = HalfSpace([20., -0.1], -5.)
+h3 = HalfSpace([120., 1.], -5.)
+constraints = [h1, h2, h3]
+
+model = JuMP.Model(Gurobi.Optimizer)
+
+jump_vars = [get_jump_var(model, v, var2JuMPmap, var_ranges) for v in vars]
+exprs = [c.b - dot(c.a, jump_vars) for c in constraints] 
+expr_bounds = [get_bound(c, [var_ranges[v] for v in vars]) for c in constraints]
+expr_bounds = hcat(expr_bounds...)[1,:], hcat(expr_bounds...)[2,:] 
+max_out = add_max(model, exprs, expr_bounds)
+@constraint(model, max_out >= 0)
+optimize!(model)
+termination_status(model)
+
+vals = value.(jump_vars)
+
+h1.b - dot(h1.a, vals)
+h2.b - dot(h2.a, vals)
+h3.b - dot(h3.a, vals)
 
 
