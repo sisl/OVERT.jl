@@ -7,6 +7,7 @@ include("../../models/tora/tora.jl")
 
 controller_name = ARGS[1] # e.g. "big"
 controller = "nnet_files/jair/tora_$(controller_name)_controller.nnet"
+println("controller is: $controller")
 
 query = OvertQuery(
 	Tora,      # problem
@@ -40,4 +41,4 @@ safe = all(safe_steps)
 dt_check = time() - t1
 
 using JLD2
-JLD2.@save "examples/jmlr/data/tora_reachability_$(controller_name)_controller_data.jld2" query input_set safe_set concrete_state_sets symbolic_state_sets concrete_meas_sets symbolic_meas_sets reachable_state_sets dt safe violations dt_check
+JLD2.@save "examples/jmlr/data/tora_reachability_$(controller_name)_controller_data.jld2" query input_set safe_set concrete_state_sets symbolic_state_sets concrete_meas_sets symbolic_meas_sets reachable_state_sets dt safe violations dt_check concretization_intervals
