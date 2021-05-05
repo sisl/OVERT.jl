@@ -5,6 +5,7 @@ include("../../MIP/src/overt_to_mip.jl")
 include("../../MIP/src/mip_utils.jl")
 include("../../models/car/simple_car.jl")
 using JLD2
+using LazySets
 
 function run_query(query_number, avoid_set, controller_name; threads=0)
 	controller = "nnet_files/jair/car_"*controller_name*"_controller.nnet"
@@ -15,7 +16,7 @@ function run_query(query_number, avoid_set, controller_name; threads=0)
 		controller,    # network file
 		Id(),      	# last layer activation layer Id()=linear
 		"MIP",     	# query solver, "MIP" or "ReluPlex"
-		25,        	# ntime
+		10,        	# ntime
 		0.2,       	# dt
 		-1,        	# N_overt
 		)
@@ -40,14 +41,14 @@ function run_car_satisfiability(; controller_name="smallest", threads=0)
 	# we will perform 4 separate queries and "AND" them together to look
 	# for a point where all properties hold
 
-	# query 1
-	avoid_set1 = MyHyperrect(low=[-Inf, -Inf, -Inf, -Inf], high=[-0.6, Inf, Inf, Inf]) 
-	# query 2
-	avoid_set2 = MyHyperrect(low=[0.6, -Inf, -Inf, -Inf], high=[Inf, Inf, Inf, Inf]) 
-	# query 3
-	avoid_set3 = MyHyperrect(low=[-Inf, -Inf, -Inf, -Inf], high=[Inf, -0.2, Inf, Inf]) 
-	# query 4
-	avoid_set4 = MyHyperrect(low=[-Inf, 0.2, -Inf, -Inf], high=[Inf, Inf, Inf, Inf])
+	# query 1  x1 <= -0.6
+	avoid_set1 = HalfSpace([1.0, 0.0, 0.0, 0.0], -0.6)
+	# query 2 x1 >= 0.6  ->  -0.6 >= -x1   ->  -x1 <= -0.6
+	avoid_set2 = HalfSpace([-1.0, 0.0, 0.0, 0.0], -0.6)
+	# query 3  x2 <= -0.2
+	avoid_set3 = HalfSpace([1.0, 0.0, 0.0, 0.0], -0.2) 
+	# query 4  x2 >= 0.2  aka -x2 <= -0.2
+	avoid_set4 = HalfSpace([-1.0, 0.0, 0.0, 0.0], -0.2)
 	avoid_sets = [avoid_set1, avoid_set2, avoid_set3, avoid_set4]
 
 	SAT = []
@@ -76,8 +77,8 @@ function run_car_satisfiability(; controller_name="smallest", threads=0)
 		println("The property does not hold.")
 	end
 
-	JLD2.@save "examples/jair/data/new/car_satisfiability_"*string(controller_name)*"_controller_data_final_result.jld2" SAT timesteps_where_properties_hold
+	JLD2.@save "examples/jmlr/data/car_satisfiability_"*string(controller_name)*"_controller_data_final_result.jld2" SAT timesteps_where_properties_hold
 end
 
-# 0 threads means "let gurobi decide how mayn threads it wants"
-run_car_satisfiability(controller_name="big", threads=0)
+# 0 threads means "let gurobi decide how many threads it wants"
+run_car_satisfiability(controller_name=ARGS[1], threads=0)

@@ -16,7 +16,7 @@ function run_query(query_number, avoid_set, controller_name)
 		controller, # network file
 		Id(),    # last layer activation layer Id()=linear, or ReLU()=relu
 		"MIP",     # query solver, "MIP" or "ReluPlex"
-		15,        # ntime
+		2,        # ntime
 		0.1,       # dt
 		-1,        # N_overt
 		)

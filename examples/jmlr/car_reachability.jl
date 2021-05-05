@@ -29,8 +29,6 @@ t2 = Dates.time()
 dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
-JLD2.@save "examples/jmlr/data/car_reachability_"*string(controller_name)*"_controller_data.jld2" query input_set avoid_set SATii valii statii dt
-
 # clean up sets
 init_set0, reachable_state_sets = clean_up_sets(concrete_state_sets, symbolic_state_sets, concretization_intervals)
 
