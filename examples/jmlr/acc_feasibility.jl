@@ -18,7 +18,7 @@ query = OvertQuery(
     controller_filepath,    # network file
     Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
     "MIP",     	# query solver, "MIP" or "ReluPlex"
-    35,        	# ntime
+    55,        	# ntime
     0.1,       	# dt
     -1,        	# N_overt
     )
@@ -50,4 +50,4 @@ SATus, vals, stats = symbolic_satisfiability(query, input_set, output_constraint
 t2 = Dates.time()
 dt = t2 - t1
 
-JLD2.@save "examples/jmlr/data/acc_satisfiability_data.jld2" query input_set output_constraint SATus vals stats dt controller
+JLD2.@save "examples/jmlr/data/acc_satisfiability_data_55.jld2" query input_set output_constraint SATus vals stats dt controller

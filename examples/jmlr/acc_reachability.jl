@@ -17,7 +17,7 @@ query = OvertQuery(
     controller_filepath,    # network file
     Id(),      	# last layer activation layer Id()=linear, or ReLU()=relu
     "MIP",     	# query solver, "MIP" or "ReluPlex"
-    35,        	# ntime
+    55,        	# ntime
     0.1,       	# dt
     -1,        	# N_overt
     )
@@ -36,7 +36,7 @@ input_set = Hyperrectangle(
     high=[v_range[2] for v_range in var_list]
     )
 
-concretization_intervals = [20, 15]
+concretization_intervals = [20, 20, 15]
 t1 = Dates.time()
 concrete_state_sets, symbolic_state_sets, concrete_meas_sets, symbolic_meas_sets = symbolic_reachability_with_concretization(query, input_set, concretization_intervals)
 t2 = Dates.time()
@@ -56,4 +56,4 @@ safe, violations = check_avoid_set_intersection(reachable_meas_sets, input_set, 
 dt_check = time() - t1
 
  
-JLD2.@save "examples/jmlr/data/acc_reachability_data.jld2" query input_set concretization_intervals concrete_state_sets concrete_meas_sets symbolic_state_sets symbolic_meas_sets dt controller avoid_sets reachable_state_sets safe violations dt_check
+JLD2.@save "examples/jmlr/data/acc_reachability_data_55.jld2" query input_set concretization_intervals concrete_state_sets concrete_meas_sets symbolic_state_sets symbolic_meas_sets dt controller avoid_sets reachable_meas_sets safe violations dt_check
