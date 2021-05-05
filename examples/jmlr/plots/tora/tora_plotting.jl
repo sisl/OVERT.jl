@@ -14,7 +14,7 @@ include("../../../../models/tora/tora.jl")
 
 using JLD2
 
-controller = "smallest"
+controller = ARGS[1] #"smallest"
 
 if controller == "smallest"
     JLD2.@load "examples/jmlr/data/tora/tora_reachability_smallest_controller_data_1step.jld2"
@@ -30,7 +30,15 @@ elseif controller == "smaller"
 
     JLD2.@load "examples/jmlr/data/tora/tora_reachability_smaller_controller_data.jld2"
 elseif controller == "big"
-    ##
+    JLD2.@load "examples/jmlr/data/tora/tora_reachability_big_controller_data_1step.jld2"
+    one_step_state_sets = symbolic_state_sets 
+    one_step_meas_sets = symbolic_meas_sets
+
+    JLD2.@load "examples/jmlr/data/tora/tora_reachability_big_controller_data.jld2"
+end
+
+if (!@isdefined concretization_intervals) || length(concretization_intervals) == query.ntime
+    concretization_intervals = [length(s) for s in concrete_state_sets] .- 1
 end
 
 concrete_state_sets = vcat(concrete_state_sets...)
