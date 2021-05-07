@@ -9,6 +9,7 @@ using JLD2
 using LaTeXStrings
 
 file_dir = join(split(@__FILE__, "/")[1:end-1], "/") # get directory of this script
+println("Writing results to $file_dir directory.")
 ϵ = 0.1
 δ = 0.001
 
@@ -22,6 +23,18 @@ function sincos(ϵ, δ; N=-1)
     Δt = time() - t
     return result, Δt
 end   
+
+function xy(ϵ, δ; N=-1)
+    dyn = :(x*y)
+    x = [-1.5, 3.5]
+    y = [-1.2, 2.2]
+    domain = Dict(zip([:x, :y], [x, y]))
+    oa = overapprox_nd(dyn, domain, N=N, ϵ=ϵ)
+    t = time()
+    result = check_overapprox(oa, domain, [:x, :y], "xy_example", jobs=2, delta_sat=δ)
+    Δt = time() - t
+    return result, Δt
+end 
 
 # runs on laptop!
 function acc(ϵ, δ)
@@ -58,6 +71,7 @@ function simple_car(ϵ, δ)
     input_domains =  [posx, posy, yaw, vel]
     input_set = Hyperrectangle(low=[i[1] for i in input_domains], high=[i[2] for i in input_domains])
     bounds = find_controller_bound(file_dir*"/../nnet_files/jair/car_smallest_controller.nnet", input_set, Id()) # returns 2D
+    printnln("Found controller bound.")
     domain = Dict(zip(simple_car_input_vars, input_domains))
     domain[simple_car_control_vars[1]] = [low(bounds)[1]..., high(bounds)[1]...]  # u is 2d
     domain[simple_car_control_vars[2]] = [low(bounds)[2]..., high(bounds)[2]...]  # u is 2d
@@ -66,6 +80,7 @@ function simple_car(ϵ, δ)
     oa_dim2 = overapprox_nd(simple_car_ẏ, domain, N=-1, ϵ=ϵ)
 
     result_dim1 = check_overapprox(oa_dim1, domain, [simple_car_input_vars..., simple_car_control_vars...], "simple_car_dim1", jobs=10, delta_sat=δ)
+    println("Finished checking dim 1")
     result_dim2 = check_overapprox(oa_dim2, domain, [simple_car_input_vars..., simple_car_control_vars...], "simple_car_dim2", jobs=10, delta_sat=δ)
     return result_dim1 && result_dim2
 end
@@ -139,6 +154,22 @@ function run_sin_cos(ϵ, δ; N=-1)
     close(file)
 end
 
-run_sin_cos(ϵ, δ, N=1)
+function run_xy(ϵ, δ; N=-1)
+    result, Δt = xy(ϵ, δ, N=N)
+    file = open(file_dir*"/xy_time_Nis"*string(N)*".txt", "w")
+    write(file, "Time to check validity of overapproximation using dreal: ϵ= "*string(ϵ)*", δ="*string(δ)*"\n")
+    write(file, "Result = "*string(result)*"\n")
+    write(file, "xy time (sec): "*string(Δt)*"\n")
+    write(file, "N="*string(N))
+    close(file)
+end
 
+function run_simple_car(ϵ, δ; N=-1)
+    simple_car(ϵ, δ)
+    println("simple car done")
+end
+
+#run_xy(ϵ, δ; N=1)
+#run_sin_cos(ϵ, δ, N=1)
+run_simple_car(ϵ, δ, N=1)
 
