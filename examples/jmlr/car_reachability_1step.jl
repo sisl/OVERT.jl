@@ -6,6 +6,7 @@ include("../../MIP/src/mip_utils.jl")
 include("../../models/car/simple_car.jl")
 using JLD2
 using LazySets
+ENV["JULIA_DEBUG"] = Main
 
 controller_name = ARGS[1]
 controller = "nnet_files/jair/car_"*controller_name*"_controller.nnet"
@@ -29,9 +30,6 @@ t2 = Dates.time()
 dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
-# clean up sets
-init_set0, reachable_state_sets = clean_up_sets(concrete_state_sets, symbolic_state_sets, concretization_intervals)
-
 # In this example, our property is the following:
 # We want the car to reach the box [-.6, .6] [-.2,.2]
 # at SOME point in the time history
@@ -45,10 +43,10 @@ c3 = HalfSpace([-1.0, 0.0, 0.0, 0.0], 0.2)
 c4 = HalfSpace([1.0, 0.0, 0.0, 0.0], 0.2)
 goal_set = HPolyhedron([c1, c2, c3, c4])
 t1 = time()
-goal_reached_steps = reachable_state_sets .⊆ Ref(goal_set)
+goal_reached_steps = symbolic_state_sets .⊆ Ref(goal_set)
 goal_reached = any(goal_reached_steps)
 dt_check = time() - t1
 println("Goal reached: $goal_reached")
 println("Goal reached at step: $(findfirst(goal_reached_steps))")
 
-JLD2.@save "examples/jmlr/data/car_reachability_"*string(controller_name)*"_controller_data_1step.jld2" query input_set concretization_intervals goal_set concrete_state_sets symbolic_state_sets concrete_meas_sets symbolic_meas_sets reachable_state_sets dt goal_reached goal_reached_steps dt_check 
+JLD2.@save "examples/jmlr/data/car_reachability_"*string(controller_name)*"_controller_data_1step.jld2" query input_set concretization_intervals goal_set concrete_state_sets symbolic_state_sets concrete_meas_sets symbolic_meas_sets dt goal_reached goal_reached_steps dt_check 

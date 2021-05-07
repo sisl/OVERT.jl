@@ -6,6 +6,7 @@ include("../../MIP/src/mip_utils.jl")
 include("../../models/car/simple_car.jl")
 using JLD2
 using LazySets
+ENV["JULIA_DEBUG"] = Main
 
 controller_name = ARGS[1]
 controller = "nnet_files/jair/car_"*controller_name*"_controller.nnet"
@@ -16,13 +17,13 @@ query = OvertQuery(
 	controller,    # network file
 	Id(),      	# last layer activation layer Id()=linear
 	"MIP",     	# query solver, "MIP" or "ReluPlex"
-	2,        	# ntime
+	10,        	# ntime
 	0.2,       	# dt
 	-1,        	# N_overt
 	)
 
 input_set = Hyperrectangle(low=[9.5, -4.5, 2.1, 1.5], high=[9.55, -4.45, 2.11, 1.51])
-concretization_intervals = [2]
+concretization_intervals = [5, 5]
 t1 = Dates.time()
 concrete_state_sets, symbolic_state_sets, concrete_meas_sets, symbolic_meas_sets = symbolic_reachability_with_concretization(query, input_set, concretization_intervals)
 t2 = Dates.time()
