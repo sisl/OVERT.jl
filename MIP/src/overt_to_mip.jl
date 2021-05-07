@@ -24,7 +24,7 @@ end
 function OvertMIP(overt_app::OverApproximation; threads=0)
     # for Gurobi, 0 threads is automatic (usually most of the cores in the machine)
      overt_mip_model = OvertMIP(overt_app,
-                         Model(with_optimizer(Gurobi.Optimizer, OutputFlag=0, Threads=threads)),
+                         Model(with_optimizer(Gurobi.Optimizer, OutputFlag=1, Threads=threads, NumericFocus=3)),
                          #, NumericFocus=3, MIPGap=1e-9)),
                          Dict{Symbol, JuMP.VariableRef}(),
                          "Gurobi")
@@ -133,6 +133,7 @@ turn inequality constraints to mip
 function ineq_2_mip(expr::Expr, overt_mip_model::OvertMIP)
     leftvar = get_mip_var(expr.args[2], overt_mip_model)
     ritevar = get_mip_var(expr.args[3], overt_mip_model)
+    @debug "ineq_2_mip: Constraint is: $leftvar <= $ritevar"
     @constraint(overt_mip_model.model, leftvar <= ritevar )
 end
 
@@ -151,6 +152,7 @@ function affine_to_mip(expr::Expr, overt_mip_model::OvertMIP)
         lhs -= mip_var*c
     end
     lhs -= scalar
+    @debug "affine_to_mip: Constraint is: $lhs == 0"
     @constraint(overt_mip_model.model, lhs == 0)
 end
 
@@ -176,6 +178,7 @@ function max_2_mip(expr::Expr, overt_mip_model::OvertMIP)
             max_alone_2_mip(e.args[3], tmp_var, overt_mip_model)
         end
     end
+    @debug "max_2_mip: Constraint is: $lhs == 0"
     @constraint(overt_mip_model.model, lhs == 0)
 end
 
@@ -198,6 +201,11 @@ function max_alone_2_mip(expr::Expr, outvar::JuMP.VariableRef, overt_mip_model::
     @constraint(overt_mip_model.model, outvar >= var_mip*coef + scalar)
     @constraint(overt_mip_model.model, outvar <= a*U)
     @constraint(overt_mip_model.model, outvar <= var_mip*coef + scalar - L*(1-a))
+
+    @debug "max_alone_2_mip: $outvar >= 0"
+    @debug "max_alone_2_mip: $outvar >= $var_mip*$coef + $scalar"
+    @debug "max_alone_2_mip: $outvar <= $a*$U"
+    @debug "max_alone_2_mip: $outvar <= $var_mip*$coef + $scalar - $L*(1-$a)"
 end
 
 
@@ -245,10 +253,20 @@ function max_min_2_mip(expr::Expr, outvar::JuMP.VariableRef, overt_mip_model::Ov
     @constraint(overt_mip_model.model, x3 <= coef1*var1_mip + scalar1)
     @constraint(overt_mip_model.model, x3 <= coef2*var2_mip + scalar2)
 
+    @debug "max_min_2_mip: $x3 >= $coef1*$var1_mip + $scalar1 - (1 - $b) * ($U1 - $L2)"
+    @debug "max_min_2_mip: $x3 >= $coef2*$var2_mip + $scalar2 - $b * ($U2 - $L1)"
+    @debug "max_min_2_mip: $x3 <= $coef1*$var1_mip + $scalar1"
+    @debug "max_min_2_mip: $x3 <= $coef2*$var2_mip + $scalar2"
+
     @constraint(overt_mip_model.model, outvar >= 0)
     @constraint(overt_mip_model.model, outvar >= x3)
     @constraint(overt_mip_model.model, outvar <= a*U3)
     @constraint(overt_mip_model.model, outvar <= x3 - L3*(1-a))
+
+    @debug "max_min_2_mip: $outvar >= 0"
+    @debug "max_min_2_mip: $outvar >= $x3"
+    @debug "max_min_2_mip: $outvar <= $a*$U3"
+    @debug "max_min_2_mip: $outvar <= $x3 - $L3*(1-$a)"
 end
 
 function mip_summary(model)
