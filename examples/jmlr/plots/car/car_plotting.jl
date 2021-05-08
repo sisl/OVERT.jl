@@ -60,7 +60,7 @@ fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$y\$", xlabel="\$x
 # hack for legend
 push!(fig, PGFPlots.Plots.Linear([9., 9.], [-4., -4.], style=mc_style_solid, legendentry="Monte Carlo Simulations convex hull"))
 
-push!(fig, PGFPlots.Plots.Linear([9., 9.], [-4., -4.], style=mc_style_transparent, legendentry="Monte Carlo Simulations hyperrectangular hull"))
+# push!(fig, PGFPlots.Plots.Linear([9., 9.], [-4., -4.], style=mc_style_transparent, legendentry="Monte Carlo Simulations hyperrectangular hull"))
 
 # plot init set in both concrete and hybrid colors
 inputx, inputy = get_rectangle(data["input_set"], dims)
@@ -84,7 +84,7 @@ for t in 1:data["query"].ntime
     if t == data["query"].ntime
         push!(fig, PGFPlots.Plots.Linear( get_rectangle(one_step_state_sets[t], dims)..., style=conc_style_solid))
         push!(fig, PGFPlots.Plots.Linear( get_rectangle(reachable_state_sets[t], dims)..., style=sym_style_solid))
-        push!(fig, PGFPlots.Plots.Linear( get_rectangle(mc_state_sets[t+1], dims)..., style=mc_style_transparent))
+        # push!(fig, PGFPlots.Plots.Linear( get_rectangle(mc_state_sets[t+1], dims)..., style=mc_style_transparent))
         # plot mc_sim points 
         points = xvec[:, t, dims]
         #plot hull
@@ -95,7 +95,7 @@ for t in 1:data["query"].ntime
     else
         push!(fig, PGFPlots.Plots.Linear( get_rectangle(one_step_state_sets[t], dims)..., style=conc_style_transparent))
         push!(fig, PGFPlots.Plots.Linear( get_rectangle(reachable_state_sets[t], dims)..., style=sym_style_transparent))
-        push!(fig, PGFPlots.Plots.Linear( get_rectangle(mc_state_sets[t+1], dims)..., style=mc_style_transparent))
+        # push!(fig, PGFPlots.Plots.Linear( get_rectangle(mc_state_sets[t+1], dims)..., style=mc_style_transparent))
         # plot mc simulations hull
         points = xvec[:, t, dims]
         border_idx = chull(points).vertices
