@@ -12,8 +12,6 @@ include("../../../../MIP/src/overt_to_mip.jl")
 include("../../../../MIP/src/mip_utils.jl")
 include("../../../../models/tora/tora.jl")
 
-using JLD2
-
 controller = ARGS[1] #"smallest"
 
 if controller == "smallest"
@@ -145,10 +143,16 @@ for t in 1:query.ntime
     else
         push!(fig, PGFPlots.Plots.Linear( get_rectangle(one_step_state_sets[t], dims)..., style=conc_style_transparent))
         push!(fig, PGFPlots.Plots.Linear( get_rectangle(reachable_state_sets[t], dims)..., style=sym_style_transparent))
+        points = xvec[:, t, dims]
+        #plot hull
+        border_idx = chull(points).vertices
+        x = points[border_idx, 1]
+        y = points[border_idx, 2]
+        push!(fig, PGFPlots.Plots.Linear([x..., x[1]], [y..., y[1]], style=mc_style_solid))
     end
 end
 
 fig.legendStyle =  "at={(1.05,1.0)}, anchor=north west"
 
-save("examples/jmlr/plots/tora/tora_$(controller)_x23.tex", fig)
-save("examples/jmlr/plots/tora/tora_$(controller)_x23.pdf", fig)
+PGFPlots.save("examples/jmlr/plots/tora/tora_$(controller)_x23.tex", fig)
+PGFPlots.save("examples/jmlr/plots/tora/tora_$(controller)_x23.pdf", fig)
