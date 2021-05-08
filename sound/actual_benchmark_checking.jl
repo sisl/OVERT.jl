@@ -24,14 +24,43 @@ function sincos(ϵ, δ; N=-1)
     return result, Δt
 end   
 
-function xy(ϵ, δ; N=-1)
+function xy(ϵ, δ; N=-1, jobs=2)
     dyn = :(x*y)
-    x = [-1.5, 3.5]
-    y = [-1.2, 2.2]
+    x = [-1.5, -1.4] # x = [-1.5, 3.5]
+    y = [-0.738, -0.6663] # y = [-1.2, 2.2]
     domain = Dict(zip([:x, :y], [x, y]))
     oa = overapprox_nd(dyn, domain, N=N, ϵ=ϵ)
     t = time()
-    result = check_overapprox(oa, domain, [:x, :y], "xy_example", jobs=2, delta_sat=δ)
+    result = check_overapprox(oa, domain, [:x, :y], "xy_example", jobs=jobs, delta_sat=δ)
+    Δt = time() - t
+    return result, Δt
+end 
+
+function check_sat_xy(δ; jobs=2)
+    # expect result to be sat
+
+    # sq = SoundnessQuery(ϕ, # ϕ
+    #                     defs,
+    #                     ϕ̂, # definitions for ϕ̂
+    #                     domain)
+
+    # result = check("dreal", sq, problem_name*"_soundness_query_"*string(vari)*".smt2", δ=delta_sat, jobs=jobs) # TODO: pass dreal delta
+    # println("result for var ",vari," is: ", result)
+    # R &= occursin("unsat", result)
+    # # readline() # to make things interactive for debugging
+
+    # R ? println("all checks pass for "*problem_name*"!") : println("Some checks fail :( for "*problem_name)
+    # return R
+end
+
+function xcosy(ϵ, δ; N=-1, jobs=56)
+    dyn = :(x*cos(y))
+    x = [-1., 1.] #[-1.5, -1.4]
+    y = [-1., 3.0]#[2.3, 2.4]
+    domain = Dict(zip([:x, :y], [x, y]))
+    oa = overapprox_nd(dyn, domain, N=N, ϵ=ϵ)
+    t = time()
+    result = check_overapprox(oa, domain, [:x, :y], "xcosy_example", jobs=jobs, delta_sat=δ)
     Δt = time() - t
     return result, Δt
 end 
@@ -63,25 +92,25 @@ end
 
 # first several checks run on laptop, then starts to slow down. 
 # ran for a month on 25 cores on jodhpur and didn't finish :///
-function simple_car(ϵ, δ)
+function simple_car(ϵ, δ; N=-1)
     posx = [9.5, 9.55]
     posy = [-4.5, -4.45]
     yaw = [2.1, 2.11]
     vel = [1.5, 1.51]
     input_domains =  [posx, posy, yaw, vel]
     input_set = Hyperrectangle(low=[i[1] for i in input_domains], high=[i[2] for i in input_domains])
-    bounds = find_controller_bound(file_dir*"/../nnet_files/jair/car_smallest_controller.nnet", input_set, Id()) # returns 2D
-    printnln("Found controller bound.")
+    c_bounds = find_controller_bound(file_dir*"/../nnet_files/jair/car_smallest_controller.nnet", input_set, Id()) # returns 2D
+    println("Found controller bound.")
     domain = Dict(zip(simple_car_input_vars, input_domains))
-    domain[simple_car_control_vars[1]] = [low(bounds)[1]..., high(bounds)[1]...]  # u is 2d
-    domain[simple_car_control_vars[2]] = [low(bounds)[2]..., high(bounds)[2]...]  # u is 2d
+    domain[simple_car_control_vars[1]] = [low(c_bounds)[1]..., high(c_bounds)[1]...]  # u is 2d
+    domain[simple_car_control_vars[2]] = [low(c_bounds)[2]..., high(c_bounds)[2]...]  # u is 2d
 
-    oa_dim1 = overapprox_nd(simple_car_ẋ, domain, N=-1, ϵ=ϵ)
-    oa_dim2 = overapprox_nd(simple_car_ẏ, domain, N=-1, ϵ=ϵ)
+    oa_dim1 = overapprox_nd(simple_car_ẋ, domain, N=N, ϵ=ϵ)
+    oa_dim2 = overapprox_nd(simple_car_ẏ, domain, N=N, ϵ=ϵ)
 
-    result_dim1 = check_overapprox(oa_dim1, domain, [simple_car_input_vars..., simple_car_control_vars...], "simple_car_dim1", jobs=10, delta_sat=δ)
+    result_dim1 = check_overapprox(oa_dim1, domain, [simple_car_input_vars..., simple_car_control_vars...], "simple_car_dim1", jobs=56, delta_sat=δ)
     println("Finished checking dim 1")
-    result_dim2 = check_overapprox(oa_dim2, domain, [simple_car_input_vars..., simple_car_control_vars...], "simple_car_dim2", jobs=10, delta_sat=δ)
+    result_dim2 = check_overapprox(oa_dim2, domain, [simple_car_input_vars..., simple_car_control_vars...], "simple_car_dim2", jobs=56, delta_sat=δ)
     return result_dim1 && result_dim2
 end
 

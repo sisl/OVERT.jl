@@ -27,8 +27,9 @@ function run_query(query_number, avoid_set, controller_name; threads=0)
 	println("satii is: ", SATii)
 	t2 = Dates.time()
 	dt = (t2-t1)
+	println("dt is $dt")
 
-	JLD2.@save "examples/jair/data/new/car_satisfiability_"*string(controller_name)*"_controller_data_q"*string(query_number)*".jld2" query input_set avoid_set SATii valii statii dt
+	JLD2.@save "examples/jmlr/data/car_satisfiability_"*string(controller_name)*"_controller_data_q"*string(query_number)*".jld2" query input_set avoid_set SATii valii statii dt
 
 	println("satii after save is: ", SATii)
 	return SATii
