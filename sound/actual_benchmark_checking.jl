@@ -36,6 +36,23 @@ function xy(ϵ, δ; N=-1, jobs=2)
     return result, Δt
 end 
 
+function check_sat_xy(δ; jobs=2)
+    # expect result to be sat
+
+    # sq = SoundnessQuery(ϕ, # ϕ
+    #                     defs,
+    #                     ϕ̂, # definitions for ϕ̂
+    #                     domain)
+
+    # result = check("dreal", sq, problem_name*"_soundness_query_"*string(vari)*".smt2", δ=delta_sat, jobs=jobs) # TODO: pass dreal delta
+    # println("result for var ",vari," is: ", result)
+    # R &= occursin("unsat", result)
+    # # readline() # to make things interactive for debugging
+
+    # R ? println("all checks pass for "*problem_name*"!") : println("Some checks fail :( for "*problem_name)
+    # return R
+end
+
 function xcosy(ϵ, δ; N=-1, jobs=56)
     dyn = :(x*cos(y))
     x = [-1., 1.] #[-1.5, -1.4]
