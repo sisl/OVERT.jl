@@ -6,7 +6,7 @@ using SymEngine
 using Plots
 plotly()
 
-plotflag = false
+plotflag = true
 
 """
     overapprox_nd(expr,
@@ -202,14 +202,14 @@ function expand_multiplication_with_scaling(x, y, bound; ξ=0.1)
     Re write multiplication e.g. x*y using exp(log()) and affine expressions
     e.g. x*y, x ∈ [a,b] ∧ y ∈ [c,d], ξ>0
          x2 = (x - a)/(b - a) + ξ  , x2 ∈ [ξ, 1 + ξ] aka x2 > 0   (recall, b > a)
-            x = (b - a)x2 + a - ξ
+            x = (b - a)(x2 - ξ) + a
          y2 = (y - c)/(d - c) + ξ , y2 ∈ [ξ, 1 + ξ] aka y2 > 0   (recall, d > c)
-            y = (d - c)y2 + c - ξ
-        x*y = ((b - a)x2 + a - ξ)*((d - c)y2 + c - ξ)
-            = (b - a)*(d - c)*x2*y2  + (d - c)(a - ξ)*y2 + (b - a)(c - ξ)*x2 + (a - ξ)*(c - ξ)
-            = (b - a)*(d - c)*exp(log(x2*y2)) + (d - c)(a - ξ)*y2 + (b - a)(c - ξ)*x2 + (a - ξ)*(c - ξ)
-            = (b - a)*(d - c)*exp(log(x2) + log(y2)) + (d - c)(a - ξ)*y2 + (b - a)(c - ξ)*x2 + (a - ξ)*(c - ξ)
-        In this final form, everything is decomposed into unary functions, +, and affine functions!
+            y = (d - c)(y2 - ξ) + c
+        x*y = ((b - a)(x2 - ξ) + a )*((d - c)(y2 - ξ) + c)
+            = (b - a)*(d - c)*x2*y2  + (b - a)(c - ξ(d - c))*x2 + (d - c)(a - ξ(b - a))*y2 + (c - ξ(d - c))(a - ξ(b - a))
+            = (b - a)*(d - c)*exp(log(x2*y2)) + (b - a)(c - ξ(d - c))*x2 + (d - c)(a - ξ(b - a))*y2 + (c - ξ(d - c))(a - ξ(b - a))
+            = (b - a)*(d - c)*exp(log(x2) + log(y2)) + (b - a)(c - ξ(d - c))*x2 + (d - c)(a - ξ(b - a))*y2 + (c - ξ(d - c))(a - ξ(b - a))
+        In this final form, everything is decomposed into unary functions, +/-, and affine functions!
     """
 
     x2 = add_var(bound)
@@ -228,13 +228,16 @@ function expand_multiplication_with_scaling(x, y, bound; ξ=0.1)
     bound.ranges[x2] = [ξ, 1. + ξ]
     bound.ranges[y2] = [ξ, 1. + ξ]
 
-
     b_minus_a_times_d_minus_c = (b - a)*(d - c)
-    d_minus_c_times_a_minus_ξ = (d - c)*(a - ξ)
-    b_minus_a_times_c_minus_ξ = (b - a)*(c - ξ)
-    a_minus_ξ_times_c_minus_ξ = (a - ξ)*(c - ξ)
+    mult_expr = :($b_minus_a_times_d_minus_c*exp(log($x2) + log($y2)))
+    x_coeff = (b - a)*(c - ξ*(d - c))
+    xterm = :($x_coeff*$x2)
+    y_coeff = (d - c)*(a - ξ*(b - a))
+    yterm = :($y_coeff*$y2)
+    constant_term = (c - ξ*(d - c))*(a - ξ*(b - a))
 
-    expr = :($b_minus_a_times_d_minus_c*exp(log($x2) + log($y2)) + $d_minus_c_times_a_minus_ξ*$y2 + $b_minus_a_times_c_minus_ξ*$x2 + $a_minus_ξ_times_c_minus_ξ )
+    expr = :($mult_expr + $xterm + $yterm + $constant_term)
+    @debug "expanded multiplication expr is: $expr"
     return expr, bound
 end
 
