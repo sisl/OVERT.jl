@@ -111,3 +111,52 @@ fig.legendStyle =  "at={(1.05,1.0)}, anchor=north west"
 
 save("examples/jmlr/plots/acc/acc.tex", fig)
 save("examples/jmlr/plots/acc/acc.pdf", fig)
+
+############################################################
+### Third plot: 2D plots of either velocity or accel 
+############################################################
+concrete_set_style = "solid, black, mark=none, fill=black"
+symbolic_set_style = "solid, ego_color, mark=none, fill=ego_color"
+mc_set_style = "solid, blue, mark=none, fill=blue"
+concrete_set_trans = concrete_set_style*", fill opacity=0.5"
+symbolic_set_trans = symbolic_set_style*", fill opacity=0.5"
+mc_set_trans = mc_set_style*", fill opacity=0.5"
+
+dims=[2,5] # velocity
+fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$v_{lead}~(m/s)\$", xlabel="\$v_{ego}~(m/s)\$", title="ACC Velocity Reachable Sets")
+
+# plot init set in both concrete and hybrid colors
+inputx, inputy = get_rectangle(input_set, dims)
+push!(fig, PGFPlots.Plots.Linear(inputx, inputy, style=concrete_set_style, legendentry="Concrete Sets"))
+push!(fig, PGFPlots.Plots.Linear(inputx, inputy, style=symbolic_set_style, legendentry="OVERT Hybrid Symbolic Sets"))
+push!(fig, PGFPlots.Plots.Linear(inputx, inputy, style=mc_set_style, legendentry="Monte Carlo Simulations"))
+
+for t in 1:query.ntime
+    if t == query.ntime
+        push!(fig, PGFPlots.Plots.Linear( get_rectangle(one_step_state_sets[t], dims)..., style=concrete_set_style))
+        push!(fig, PGFPlots.Plots.Linear( get_rectangle(reachable_state_sets[t], dims)..., style=symbolic_set_style))
+        # push!(fig, PGFPlots.Plots.Linear( get_rectangle(mc_state_sets[t+1], dims)..., style=mc_style_transparent))
+        # plot mc_sim points 
+        points = xvec[:, t, dims]
+        #plot hull
+        border_idx = chull(points).vertices
+        x = points[border_idx, 1]
+        y = points[border_idx, 2]
+        push!(fig, PGFPlots.Plots.Linear([x..., x[1]], [y..., y[1]], style=mc_set_style))
+    else
+        push!(fig, PGFPlots.Plots.Linear( get_rectangle(one_step_state_sets[t], dims)..., style=concrete_set_trans))
+        push!(fig, PGFPlots.Plots.Linear( get_rectangle(reachable_state_sets[t], dims)..., style=symbolic_set_trans))
+        # push!(fig, PGFPlots.Plots.Linear( get_rectangle(mc_state_sets[t+1], dims)..., style=mc_style_transparent))
+        # plot mc simulations hull
+        points = xvec[:, t, dims]
+        border_idx = chull(points).vertices
+        x = points[border_idx, 1]
+        y = points[border_idx, 2]
+        push!(fig, PGFPlots.Plots.Linear([x..., x[1]], [y..., y[1]], style=mc_set_style))
+    end
+end
+
+fig.legendStyle =  "at={(1.05,1.0)}, anchor=north west"
+
+PGFPlots.save("examples/jmlr/plots/acc/acc_x$(dims[1])$(dims[2]).tex", fig)
+PGFPlots.save("examples/jmlr/plots/acc/acc_x$(dims[1])$(dims[2]).pdf", fig)

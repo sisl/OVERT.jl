@@ -14,7 +14,7 @@ include("../../../../OverApprox/src/overapprox_nd_relational.jl")
 include("../../../../OverApprox/src/overt_parser.jl")
 include("../../../../MIP/src/overt_to_mip.jl")
 include("../../../../MIP/src/mip_utils.jl")
-include("../../../../models/car_10step/simple_car.jl")
+include("../../../../models/car/simple_car.jl")
 
 controller = ARGS[1] # "smallest"
 
@@ -55,14 +55,14 @@ goal_style = "solid, goal_color, thick, mark=none, fill=goal_color"
 ##### plot 1: 2D sets of x1 vs x2  ######
 #########################################
 dims=[1,2]
-fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$y\$", xlabel="\$x\$", title="Car Position Reachable Sets")
+fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$y~(m)\$", xlabel="\$x~(m)\$", title="Car Position Reachable Sets")
 
 # push!(fig, PGFPlots.Plots.Linear([9., 9.], [-4., -4.], style=mc_style_transparent, legendentry="Monte Carlo Simulations hyperrectangular hull"))
 
 # plot init set in both concrete and hybrid colors
 inputx, inputy = get_rectangle(data["input_set"], dims)
-push!(fig, PGFPlots.Plots.Linear(inputx, inputy, style=conc_style_transparent, legendentry="Concrete Sets"))
-push!(fig, PGFPlots.Plots.Linear(inputx, inputy, style=sym_style_transparent, legendentry="OVERT Hybrid Symbolic Sets"))
+push!(fig, PGFPlots.Plots.Linear(inputx, inputy, style=conc_style_solid, legendentry="Concrete Sets"))
+push!(fig, PGFPlots.Plots.Linear(inputx, inputy, style=sym_style_solid, legendentry="OVERT Hybrid Symbolic Sets"))
 
 # hack for legend
 push!(fig, PGFPlots.Plots.Linear([9., 9.], [-4., -4.], style=mc_style_solid, legendentry="Monte Carlo Simulations convex hull"))
@@ -81,7 +81,7 @@ y = points[border_idx, 2]
 push!(fig, PGFPlots.Plots.Linear([x..., x[1]], [y..., y[1]], style=mc_style_solid))
 
 for t in 1:data["query"].ntime
-    if t == data["query"].ntime
+    # if t == data["query"].ntime
         push!(fig, PGFPlots.Plots.Linear( get_rectangle(one_step_state_sets[t], dims)..., style=conc_style_solid))
         push!(fig, PGFPlots.Plots.Linear( get_rectangle(reachable_state_sets[t], dims)..., style=sym_style_solid))
         # push!(fig, PGFPlots.Plots.Linear( get_rectangle(mc_state_sets[t+1], dims)..., style=mc_style_transparent))
@@ -92,17 +92,17 @@ for t in 1:data["query"].ntime
         x = points[border_idx, 1]
         y = points[border_idx, 2]
         push!(fig, PGFPlots.Plots.Linear([x..., x[1]], [y..., y[1]], style=mc_style_solid))
-    else
-        push!(fig, PGFPlots.Plots.Linear( get_rectangle(one_step_state_sets[t], dims)..., style=conc_style_transparent))
-        push!(fig, PGFPlots.Plots.Linear( get_rectangle(reachable_state_sets[t], dims)..., style=sym_style_transparent))
-        # push!(fig, PGFPlots.Plots.Linear( get_rectangle(mc_state_sets[t+1], dims)..., style=mc_style_transparent))
-        # plot mc simulations hull
-        points = xvec[:, t, dims]
-        border_idx = chull(points).vertices
-        x = points[border_idx, 1]
-        y = points[border_idx, 2]
-        push!(fig, PGFPlots.Plots.Linear([x..., x[1]], [y..., y[1]], style=mc_style_solid))
-    end
+    # else
+    #     push!(fig, PGFPlots.Plots.Linear( get_rectangle(one_step_state_sets[t], dims)..., style=conc_style_transparent))
+    #     push!(fig, PGFPlots.Plots.Linear( get_rectangle(reachable_state_sets[t], dims)..., style=sym_style_transparent))
+    #     # push!(fig, PGFPlots.Plots.Linear( get_rectangle(mc_state_sets[t+1], dims)..., style=mc_style_transparent))
+    #     # plot mc simulations hull
+    #     points = xvec[:, t, dims]
+    #     border_idx = chull(points).vertices
+    #     x = points[border_idx, 1]
+    #     y = points[border_idx, 2]
+    #     push!(fig, PGFPlots.Plots.Linear([x..., x[1]], [y..., y[1]], style=mc_style_solid))
+    # end
 end
 
 fig.legendStyle =  "at={(1.05,1.0)}, anchor=north west"
@@ -124,7 +124,7 @@ final_data = load("examples/jmlr/data/car_10step/car_satisfiability_$(controller
 x0 = [q2_data["statii"][1][Symbol("$(v)_1")] for v in q2_data["query"].problem.input_vars] 
 xvec_mc = monte_carlo_one_simulate(q2_data["query"], x0)
 
-fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$y\$", xlabel="\$x\$", title="Car Counter Example")
+fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$y~(m)\$", xlabel="\$x~(m)\$", title="Car Counter Example")
 
 dims=[1,2]
 # plot goal set 
