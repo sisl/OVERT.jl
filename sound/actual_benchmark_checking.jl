@@ -7,7 +7,7 @@ include("../MIP/src/overt_to_mip.jl")
 include("../MIP/src/mip_utils.jl")
 using JLD2
 using LaTeXStrings
-
+file_dir = "sound"
 file_dir = join(split(@__FILE__, "/")[1:end-1], "/") # get directory of this script
 println("Writing results to $file_dir directory.")
 ϵ = 0.1
@@ -36,21 +36,71 @@ function xy(ϵ, δ; N=-1, jobs=2)
     return result, Δt
 end 
 
+function xy_SAT(ϵ, δ; N=-1, jobs=2)
+    # expect this to produce bad bounds and return SAT
+    dyn = :(x*y)
+    x = [-1.5, -1.4] # x = [-1.5, 3.5]
+    y = [-0.738, -0.6663] # y = [-1.2, 2.2]
+    domain = Dict(zip([:x, :y], [x, y]))
+    oa = overapprox_nd(dyn, domain, N=N, ϵ=-ϵ) # < note how I am NEGATING ϵ
+    t = time()
+    result = check_overapprox(oa, domain, [:x, :y], "xy_SAT_example", jobs=jobs, delta_sat=δ)
+    Δt = time() - t
+    return result, Δt
+end 
+
 function check_sat_xy(δ; jobs=2)
     # expect result to be sat
+    ϕ = [:(y == log(x))]
+    ϕ̂ = [:(y == x)]
+    defs = []
+    x = [1, 2.2]
+    domain = Dict(zip([:x], [x]))
+    sq = SoundnessQuery(ϕ, # ϕ
+                        defs,
+                        ϕ̂, # definitions for ϕ̂
+                        domain)
 
-    # sq = SoundnessQuery(ϕ, # ϕ
-    #                     defs,
-    #                     ϕ̂, # definitions for ϕ̂
-    #                     domain)
+    result = check("dreal", sq, "expect_sat_soundness_query.smt2", δ=δ, jobs=jobs) # TODO: pass dreal delta
+    println("result is: ", result)
+    R = occursin("unsat", result)
 
-    # result = check("dreal", sq, problem_name*"_soundness_query_"*string(vari)*".smt2", δ=delta_sat, jobs=jobs) # TODO: pass dreal delta
-    # println("result for var ",vari," is: ", result)
-    # R &= occursin("unsat", result)
-    # # readline() # to make things interactive for debugging
+    R ? println("all checks pass for check_sat_xy!") : println("Some checks fail :( for check_sat_xy")
+    return R
+end
 
-    # R ? println("all checks pass for "*problem_name*"!") : println("Some checks fail :( for "*problem_name)
-    # return R
+function check_xy_whole(ϵ, δ; N=-1, jobs=56)
+    # don't trust re-writing. check that too. 
+    expr = :(x*y)
+    x_range = [-1.5, -1.4] # x = [-1.5, 3.5]
+    y_range = [-0.738, -0.6663] # y = [-1.2, 2.2]
+    domain = Dict(zip([:x, :y], [x_range, y_range]))
+    oa = overapprox_nd(expr, domain, N=N, ϵ=ϵ) 
+
+    ϕ = [:($(oa.output) == $expr)]
+    ####
+    all_approx_constraints = [oa.approx_eq..., oa.approx_ineq...]
+    all_approx_constraints = [((constraint.args[1] == :≤) || (constraint.args[1] == :≦) ) ? :($(constraint.args[2]) <= $(constraint.args[3])) : constraint for constraint in all_approx_constraints]
+    all_approx_constraints = [((constraint.args[1] == :≥) || (constraint.args[1] ==  :≧)) ? :($(constraint.args[2]) >= $(constraint.args[3])) : constraint for constraint in all_approx_constraints]
+    ####
+    # all_dependencies = all_approx_constraints[get_all_dependecies([oa.output], all_approx_constraints, [:x, :y], [])]
+    ## ^ should be all constraints :// but isn't...
+    ϕ̂_idx = map( x-> oa.output ∈ Expr.(free_symbols(Basic(x))), all_approx_constraints)
+    ϕ̂ = all_approx_constraints[ϕ̂_idx]
+    defs = all_approx_constraints[.!ϕ̂_idx]
+
+    sq = SoundnessQuery(ϕ, # ϕ
+                        defs,
+                        ϕ̂, # definitions for ϕ̂
+                        domain)
+
+    result = check("dreal", sq, "mult_soundness_query.smt2", δ=δ, jobs=jobs) # TODO: pass dreal delta
+    println("result is: ", result)
+    R = occursin("unsat", result)
+
+    R ? println("all checks pass for mult_xy!") : println("Some checks fail :( for mult_xy")
+    return R
+    # why is this sat?? :((
 end
 
 function xcosy(ϵ, δ; N=-1, jobs=56)

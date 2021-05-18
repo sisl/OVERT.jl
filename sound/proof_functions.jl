@@ -103,6 +103,7 @@ function check_overapprox(oa, domain, input_vars, problem_name; jobs=1, delta_sa
                             defs,
                             ϕ̂, # definitions for ϕ̂
                             domain)
+        # println("Soundness Query: $sq")
 
         result = check("dreal", sq, problem_name*"_soundness_query_"*string(vari)*".smt2", δ=delta_sat, jobs=jobs) # TODO: pass dreal delta
         println("result for var ",vari," is: ", result)
