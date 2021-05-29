@@ -6,7 +6,7 @@ using SymEngine
 using Plots
 plotly()
 
-plotflag = true
+plotflag = false
 
 """
     overapprox_nd(expr,
