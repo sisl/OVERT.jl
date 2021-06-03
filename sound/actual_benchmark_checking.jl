@@ -1,10 +1,10 @@
-include("proof_functions.jl")
-include("../models/acc/acc.jl")
-include("../models/car/simple_car.jl")
-include("../models/single_pendulum/single_pend.jl")
-include("../models/tora/tora.jl")
-include("../MIP/src/overt_to_mip.jl")
-include("../MIP/src/mip_utils.jl")
+include("sound/proof_functions.jl")
+include("models/acc/acc.jl")
+include("models/car/simple_car.jl")
+include("models/single_pendulum/single_pend.jl")
+include("models/tora/tora.jl")
+include("MIP/src/overt_to_mip.jl")
+include("MIP/src/mip_utils.jl")
 using JLD2
 using LaTeXStrings
 file_dir = "sound"
@@ -100,7 +100,7 @@ function check_xy_whole(ϵ, δ; N=-1, jobs=56)
 
     R ? println("all checks pass for mult_xy!") : println("Some checks fail :( for mult_xy")
     return R
-    # why is this sat?? :((
+    # why is this sat?? :(( Because phihat isn't constrained to take on any particular value in it's range at any particular time. the correct way to do this is to propagate bounds.
 end
 
 function xcosy(ϵ, δ; N=-1, jobs=56)
@@ -248,7 +248,7 @@ function run_simple_car(ϵ, δ; N=-1)
     println("simple car done")
 end
 
-#run_xy(ϵ, δ; N=1)
-#run_sin_cos(ϵ, δ, N=1)
-run_simple_car(ϵ, δ, N=1)
+run_xy(ϵ, δ; N=1)
+run_sin_cos(ϵ, δ, N=1)
+#run_simple_car(ϵ, δ, N=1)
 
