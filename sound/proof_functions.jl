@@ -25,95 +25,15 @@ end
 
 ##################### MODE 3: BUILD UP PROOFS OF EACH LEVEL OF THE APPROX
 
-# # get dependencies of variables
-# function get_dependency(var, list, input_vars, exclude_vars)
-#     # for this var, retrieve all constraints that include this var but do NOT include exclude_vars AND exclude all constraints with vars that are "greater" than var
-#     function map_fun(list_item)
-#         vars_in_c = Expr.(free_symbols(Basic(list_item)))
-#         vars_in_c_excluding_inputs = setdiff(vars_in_c, input_vars)
-#         return (var in vars_in_c) && !any(exclude_vars .∈ Ref(vars_in_c)) && all(special_compare.(vars_in_c_excluding_inputs, Ref(var)))
-#     end
-#     idxs = map(map_fun, list)
-#     new_free_vars = setdiff(Expr.(free_symbols(Basic.(list[idxs]))), [exclude_vars..., var])
-#     return idxs, new_free_vars # return boolean indices and free variables
+## works but not needed
+# function special_compare(v1, v2)
+#     # returns TRUE is v1 <= v2
+#     # for variables of the form: :v_1, :v_2, etc. 
+#     @debug("special_compare: ", v1, v2)
+#     v1num = Meta.parse(match(r"(?<=_)(.*)", string(v1)).captures[1])
+#     v2num = Meta.parse(match(r"(?<=_)(.*)", string(v2)).captures[1])
+#     return v1num <= v2num 
 # end
-# function get_all_dependecies(vars, constraint_list, input_vars, exclude_vars)
-#     free_vars = Set(vars) 
-#     all_free_vars = Set(vars) 
-#     idxs = Bool.(zeros(length(constraint_list)))
-#     # get all dependent constraint indices for the vars in free_vars
-#     for v in free_vars
-#         idxs_i, new_free_vars_i = get_dependency(v, constraint_list, input_vars, exclude_vars)
-#         idxs .|= idxs_i
-#         if length(new_free_vars_i) > 0
-#             push!(all_free_vars, new_free_vars_i...)
-#         end
-#     end
-#     new_free_vars = setdiff(all_free_vars, free_vars)
-#     old_free_vars = setdiff(all_free_vars, new_free_vars)
-#     if length(new_free_vars) == 0
-#         return idxs
-#     else
-#         if length(old_free_vars) > 0
-#             push!(exclude_vars, old_free_vars...)
-#         end
-#         idxs .|= get_all_dependecies(new_free_vars, constraint_list, input_vars, exclude_vars) 
-#         return idxs
-#     end
-# end
-
-function special_compare(v1, v2)
-    # returns TRUE is v1 <= v2
-    # for variables of the form: :v_1, :v_2, etc. 
-    @debug("special_compare: ", v1, v2)
-    v1num = Meta.parse(match(r"(?<=_)(.*)", string(v1)).captures[1])
-    v2num = Meta.parse(match(r"(?<=_)(.*)", string(v2)).captures[1])
-    return v1num <= v2num 
-end
-
-# # iterate through pieces of og function
-# # (imagine sorted now but doesn't have to be i think)
-# # e.g. take v1 = f(x)
-# function check_overapprox(oa, domain, input_vars, problem_name; jobs=1, delta_sat=0.001)
-#     # NOTE THIS CODE RELIES ON THE VARIABLE ORDERING!
-#     vars = sort!(collect(keys(oa.fun_eq))) # sort just there for debugging
-#     R = true
-#     for vari in vars
-#         ϕ = [:($vari == $(oa.fun_eq[vari]) )]
-#         # for each variable vi in og func, consider all approx constraints that have ALL vars leq to it (plus input var(s))
-#         all_approx_constraints = [oa.approx_eq..., oa.approx_ineq...]
-#         all_approx_constraints = [((constraint.args[1] == :≤) || (constraint.args[1] == :≦) ) ? :($(constraint.args[2]) <= $(constraint.args[3])) : constraint for constraint in all_approx_constraints]
-#         all_approx_constraints = [((constraint.args[1] == :≥) || (constraint.args[1] ==  :≧)) ? :($(constraint.args[2]) >= $(constraint.args[3])) : constraint for constraint in all_approx_constraints]
-
-#         all_dependencies = all_approx_constraints[get_all_dependecies([vari], all_approx_constraints, input_vars, [])]
-
-#         defs = []
-#         ϕ̂ = []
-#         for c in all_dependencies
-#             vars_in_c = Expr.(free_symbols(Basic(c))) # use SymEngine free_symbols function
-#             if vari ∉ vars_in_c
-#                 push!(defs, c)
-#             else
-#                 push!(ϕ̂, c)
-#             # things that go in phi hat are those with the output variable in them? e.g. v6 ? (everything else in defs?) [kind of like mode 2 but only 1 piece at a time for the og func?]
-#             end
-#         end
-
-#         sq = SoundnessQuery(ϕ, # ϕ
-#                             defs,
-#                             ϕ̂, # definitions for ϕ̂
-#                             domain)
-#         # println("Soundness Query: $sq")
-
-#         result = check("dreal", sq, problem_name*"_soundness_query_"*string(vari)*".smt2", δ=delta_sat, jobs=jobs) # TODO: pass dreal delta
-#         println("result for var ",vari," is: ", result)
-#         R &= occursin("unsat", result)
-#         # readline() # to make things interactive for debugging
-#     end
-#     R ? println("all checks pass for "*problem_name*"!") : println("Some checks fail :( for "*problem_name)
-#     return R
-# end
-#check_overapprox(oa, domain, input_vars)
 
 function get_free_vars(e::Expr)
     return Symbol.(free_symbols(Basic(e)))
@@ -175,10 +95,6 @@ function __check_overapprox(current_var, defs, oa, domain, input_vars, problem_n
     # base case: IS an input var, not v_i variable
     if current_var ∈ input_vars
         return [], true
-    # check if v1 base case: RHS only contains inputs 
-        # if v1 def is affine add to defs and return
-        # if v1 not affine, check for bounds for v1 in oa.approx_ineq, put those into phi hat and v1 into phi and gen proof goal 
-            # then, move ineqs to defs and return 
     # if not base case
     else
         # check_overapprox of free_vars in RHS expression --> should return defs for each one, merge these into existing defs 
@@ -188,11 +104,8 @@ function __check_overapprox(current_var, defs, oa, domain, input_vars, problem_n
         data = [__check_overapprox(v, [], oa, domain, input_vars, problem_name; jobs=jobs, delta_sat=delta_sat) for v in free_vars]
         # check that each free var is either bounded by two inequalities of the right signs or one equality
         println("current_var again= $(current_var)")
-        #println("data = $data")
         dependencies = vcat([d[1] for d in data]...)
-        #println("dependencies = $dependencies")
         defs = vcat(defs, dependencies)
-        #println("defs after recursing are: $defs")
         results = [d[2] for d in data]
         is_unsat = all(results)
         # if v_2 affine, add to defs and return
@@ -206,7 +119,6 @@ function __check_overapprox(current_var, defs, oa, domain, input_vars, problem_n
             bound_vars = setdiff(Set(vcat(get_free_vars.(cur_var_bounds)...)), current_var) # get the new vars, e.g. v2, v4
             println("bound_vars = $(bound_vars)")
             bound_var_defs = [get_approx_equality_def(v, oa.approx_eq) for v in bound_vars] # get the definitions for the new vars v2 = ... and v4 = ...
-            #println("bound_var_defs = $(bound_var_defs)")
             defs = vcat(defs, bound_var_defs) # add to defs
             # construct proof goal and run 
             ϕ = [:($(current_var) == $(oa.fun_eq[current_var]))]
@@ -223,7 +135,7 @@ function __check_overapprox(current_var, defs, oa, domain, input_vars, problem_n
 end
 
 function replace_unicode(oa::OverApproximation)
-    # why did we use ≦ in the oa ???
+    # why did we use ≦ in the oa ??? This removes it and replaces with <= or >=
     oa_approx_ineq_fixed = [( (c.args[1] == :≤) || (c.args[1] == :≦) ) ? :($(c.args[2]) <= $(c.args[3]))  : c for c in oa.approx_ineq ]
     oa_approx_ineq_double_fixed = [( (c.args[1] == :≥) || (c.args[1] == :≧) ) ? :($(c.args[2]) >= $(c.args[3]))  : c for c in oa_approx_ineq_fixed]
     oa.approx_ineq = oa_approx_ineq_double_fixed
