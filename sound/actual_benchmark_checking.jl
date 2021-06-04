@@ -70,7 +70,7 @@ function check_sat_xy(δ; jobs=2)
 end
 
 function check_xy_whole(ϵ, δ; N=-1, jobs=56)
-    # don't trust re-writing. check that too. 
+    # not the right way to do this. expect sat.
     expr = :(x*y)
     x_range = [-1.5, -1.4] # x = [-1.5, 3.5]
     y_range = [-0.738, -0.6663] # y = [-1.2, 2.2]
@@ -100,13 +100,14 @@ function check_xy_whole(ϵ, δ; N=-1, jobs=56)
 
     R ? println("all checks pass for mult_xy!") : println("Some checks fail :( for mult_xy")
     return R
-    # why is this sat?? :(( Because phihat isn't constrained to take on any particular value in it's range at any particular time. the correct way to do this is to propagate bounds.
+    # why is this sat?? :(( Because phihat isn't constrained to take on any particular value in it's range at any particular time. the correct way to do this is to propagate bounds. And even then only 1 nesting level of the overapprox can be checked at once without teh use of quantifiers.
 end
 
+# slows down...
 function xcosy(ϵ, δ; N=-1, jobs=56)
     dyn = :(x*cos(y))
     x = [-1., 1.] #[-1.5, -1.4]
-    y = [-1., 3.0]#[2.3, 2.4]
+    y = [2., 3.0]#[2.3, 2.4]
     domain = Dict(zip([:x, :y], [x, y]))
     oa = overapprox_nd(dyn, domain, N=N, ϵ=ϵ)
     t = time()
@@ -248,7 +249,11 @@ function run_simple_car(ϵ, δ; N=-1)
     println("simple car done")
 end
 
-run_xy(ϵ, δ; N=1)
 run_sin_cos(ϵ, δ, N=1)
+run_xy(ϵ, δ; N=1)
+xy_SAT(ϵ, δ)
+check_sat_xy(δ)
+xcosy(ϵ, δ)
+run_benchmarks_and_time(ϵ, δ)
 #run_simple_car(ϵ, δ, N=1)
 
