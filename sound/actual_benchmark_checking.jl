@@ -22,7 +22,29 @@ function sincos(ϵ, δ; N=-1)
     result = check_overapprox(oa, domain, [:x], "sincosexample", jobs=2, delta_sat=δ)
     Δt = time() - t
     return result, Δt
-end   
+end
+
+function sincosysq(ϵ, δ; N=-1, jobs=4)
+    dyn = :(sin(cos(x + y^2)))
+    x_domain = [0, π]
+    y_domain = [-0.25, 1]
+    domain = Dict(zip([:x, :y], [x_domain, y_domain]))
+    oa = overapprox_nd(dyn, domain, N=N, ϵ=ϵ)
+    t = time()
+    result = check_overapprox(oa, domain, [:x, :y], "sincos_ysq_example", jobs=jobs, delta_sat=δ)
+    Δt = time() - t
+
+    # write to file
+    file = open(file_dir*"/sinccosysq_time.txt", "w")
+    write(file, "Time to check validity of overapproximation using dreal: ϵ= "*string(ϵ)*", δ="*string(δ)*"\n")
+    write(file, "sincosysq check time (sec): "*string(Δt)*"\n")
+    write(file, "jobs = "*string(jobs)*"\n")
+    write(file, "N=$N\n")
+    write(file, "All unsat? $result\n")
+    close(file)
+
+    return result, Δt
+end
 
 function xy(ϵ, δ; N=-1, jobs=2)
     dyn = :(x*y)
@@ -117,7 +139,7 @@ function xcosy(ϵ, δ; N=-1, jobs=56)
 end 
 
 # runs on laptop!
-function acc(ϵ, δ)
+function acc(ϵ, δ; jobs=4)
     # Checking acc
     # In ACC, the derivaties of dimensions 3 and 6 are overapproximated
     x_lead = [90,110]
@@ -136,14 +158,15 @@ function acc(ϵ, δ)
     oa_dim3 = overapprox_nd(acc_ẋ₃, domain, N=-1, ϵ=ϵ)
     oa_dim6 = overapprox_nd(acc_ẋ₆, domain, N=-1, ϵ=ϵ)
 
-    result_dim3 = check_overapprox(oa_dim3, domain, [acc_input_vars..., acc_control_vars...], "acc_dim3", jobs=2, delta_sat=δ)
-    result_dim6 = check_overapprox(oa_dim6, domain, [acc_input_vars..., acc_control_vars...], "acc_dim6", jobs=2, delta_sat=δ)
+    println("Using $jobs jobs")
+    result_dim3 = check_overapprox(oa_dim3, domain, [acc_input_vars..., acc_control_vars...], "acc_dim3", jobs=jobs, delta_sat=δ)
+    result_dim6 = check_overapprox(oa_dim6, domain, [acc_input_vars..., acc_control_vars...], "acc_dim6", jobs=jobs, delta_sat=δ)
     return result_dim3 && result_dim6
 end
 
 # first several checks run on laptop, then starts to slow down. 
 # ran for a month on 25 cores on jodhpur and didn't finish :///
-function simple_car(ϵ, δ; N=-1)
+function simple_car(ϵ, δ; N=-1, jobs=4)
     posx = [9.5, 9.55]
     posy = [-4.5, -4.45]
     yaw = [2.1, 2.11]
@@ -166,7 +189,7 @@ function simple_car(ϵ, δ; N=-1)
 end
 
 # runs on laptop!
-function single_pendulum(ϵ, δ)
+function single_pendulum(ϵ, δ; jobs=4)
     θ = [1., 1.2]
     θ_dot = [0., 0.2]
     input_domains = [θ, θ_dot]
@@ -177,12 +200,13 @@ function single_pendulum(ϵ, δ)
     domain[single_pend_control_vars[1]] = [low(bounds)..., high(bounds)...]  # u is 1d
     oa = overapprox_nd(single_pend_θ_doubledot, domain, N=-1, ϵ=ϵ)
 
-    result = check_overapprox(oa, domain, [single_pend_input_vars..., single_pend_control_vars...], "single_pend", jobs=1, delta_sat=δ)
+    println("Using $jobs jobs")
+    result = check_overapprox(oa, domain, [single_pend_input_vars..., single_pend_control_vars...], "single_pend", jobs=jobs, delta_sat=δ)
     return result
 end
 
 # runs on laptop!!!
-function tora(ϵ, δ)
+function tora(ϵ, δ; jobs=4)
     x1 = [0.6, 0.7]
     x2 = [-0.7, -0.6]
     x3 = [-0.4, -0.3]
@@ -195,23 +219,27 @@ function tora(ϵ, δ)
     domain[tora_control_vars[1]] = [low(bounds)..., high(bounds)...]  # u is 1d
     oa = overapprox_nd(tora_dim2, domain, N=-1, ϵ=ϵ)
 
-    result = check_overapprox(oa, domain, [tora_input_vars..., tora_control_vars...], "tora", jobs=1, delta_sat=δ)
+    println("Using $jobs jobs")
+    result = check_overapprox(oa, domain, [tora_input_vars..., tora_control_vars...], "tora", jobs=jobs, delta_sat=δ)
     return result
 end
 
-function run_benchmarks_and_time(ϵ, δ)
+function run_benchmarks_and_time(ϵ, δ; jobs=4)
     t = time()
-    acc(ϵ, δ)
+    acc(ϵ, δ; jobs=jobs)
     acc_Δt = time() - t
     println("acc done")
+    #
     # simple_car(ϵ, δ)
     # println("simple car done")
+    #
     t = time()
-    single_pendulum(ϵ, δ)
+    single_pendulum(ϵ, δ; jobs=jobs)
     sing_pend_Δt = time() - t
     println("single pendulum done")
+    #
     t = time()
-    tora(ϵ, δ)
+    tora(ϵ, δ; jobs=jobs)
     tora_Δt = time() - t
     println("tora done")
 
@@ -221,6 +249,7 @@ function run_benchmarks_and_time(ϵ, δ)
     write(file, "acc check time (sec): "*string(acc_Δt)*"\n")
     write(file, "single pendulum check time (sec): "*string(sing_pend_Δt)*"\n")
     write(file, "tora check time (sec): "*string(tora_Δt)*"\n")
+    write(file, "jobs = "*string(jobs)*"\n")
     close(file)
 end
 
@@ -249,11 +278,12 @@ function run_simple_car(ϵ, δ; N=-1)
     println("simple car done")
 end
 
-run_sin_cos(ϵ, δ, N=1)
-run_xy(ϵ, δ; N=1)
-xy_SAT(ϵ, δ)
-check_sat_xy(δ)
-xcosy(ϵ, δ)
-run_benchmarks_and_time(ϵ, δ)
+# run_sin_cos(ϵ, δ, N=1)
+# run_xy(ϵ, δ; N=1)
+# xy_SAT(ϵ, δ)
+# check_sat_xy(δ)
+# xcosy(ϵ, δ)
+# run_benchmarks_and_time(ϵ, δ; jobs=1)
 #run_simple_car(ϵ, δ, N=1)
+sincosysq(ϵ, δ; N=1, jobs=1)
 
