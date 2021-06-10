@@ -91,7 +91,7 @@ end
     # begin the recursion from the output variable
     # output = oa.output 
 function __check_overapprox(current_var, defs, oa, domain, input_vars, problem_name; jobs=1, delta_sat=0.001)
-    println("\n current_var = $(current_var), \n defs = $defs") 
+    #println("\n current_var = $(current_var), \n defs = $defs") 
     # base case: IS an input var, not v_i variable
     if current_var ∈ input_vars
         return [], true
@@ -99,11 +99,11 @@ function __check_overapprox(current_var, defs, oa, domain, input_vars, problem_n
     else
         # check_overapprox of free_vars in RHS expression --> should return defs for each one, merge these into existing defs 
         free_vars = Set(get_free_vars(oa.fun_eq[current_var])) # get free vars in exact expression
-        println("free_vars = $(free_vars)")
+        #println("free_vars = $(free_vars)")
         # get dependencies of each free var (and also check proof goals of dependencies)
         data = [__check_overapprox(v, [], oa, domain, input_vars, problem_name; jobs=jobs, delta_sat=delta_sat) for v in free_vars]
         # check that each free var is either bounded by two inequalities of the right signs or one equality
-        println("current_var again= $(current_var)")
+        #println("current_var again= $(current_var)")
         dependencies = vcat([d[1] for d in data]...)
         defs = vcat(defs, dependencies)
         results = [d[2] for d in data]
@@ -115,9 +115,9 @@ function __check_overapprox(current_var, defs, oa, domain, input_vars, problem_n
         # if v_2 not affine, check for bounds for v2 in oa.approx_ineq, gen proof goal...
             cur_var_bounds = filter(e -> current_var ∈ get_free_vars(e), oa.approx_ineq) # get the two inequalities: v2 <= v3 and v3 <= v4
             assert_ineq_bounded(cur_var_bounds, current_var)
-            println("cur_var_bounds = $(cur_var_bounds)")
+            #println("cur_var_bounds = $(cur_var_bounds)")
             bound_vars = setdiff(Set(vcat(get_free_vars.(cur_var_bounds)...)), current_var) # get the new vars, e.g. v2, v4
-            println("bound_vars = $(bound_vars)")
+            #println("bound_vars = $(bound_vars)")
             bound_var_defs = [get_approx_equality_def(v, oa.approx_eq) for v in bound_vars] # get the definitions for the new vars v2 = ... and v4 = ...
             defs = vcat(defs, bound_var_defs) # add to defs
             # construct proof goal and run 
@@ -129,8 +129,6 @@ function __check_overapprox(current_var, defs, oa, domain, input_vars, problem_n
             defs = vcat(defs, ϕ̂)
         end
     end
-
-    # I think actually cases 2 and 3 can be combined so long as case 1 is added where it just returns nothing if variable is an input 
     return defs, is_unsat
 end
 

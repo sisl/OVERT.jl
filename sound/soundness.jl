@@ -70,7 +70,7 @@ function Base.show(io::IO, f::SMTLibFormula)
     println(io, s)
 end
 
-function write_to_file(f::SMTLibFormula, fname; dirname="smtlibfiles/")
+function write_to_file(f::SMTLibFormula, fname; dirname="sound/smtlibfiles/")
     # print expressions to file
     if DEBUG
         println(join(f.formula, "\n"))
