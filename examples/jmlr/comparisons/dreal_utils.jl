@@ -1,3 +1,5 @@
+using NeuralVerification: ReLU, Id, Network
+
 # helper functions for the conversion to smt2
 act_dict = Dict(ReLU()=> :relu)
 function network2expr(nn::Network, state::Array{Symbol})
@@ -86,7 +88,9 @@ function add_controller(u::Array{Symbol}, u_expr::Array{Expr}, x::Array{Symbol},
     u_expr_timed = [substitute(e, map) for e in u_expr]
     # assertion = convert_any_constraint(Expr)
     for (i,u_i) in enumerate(u_timed)
-        assertion = assert_literal(:($(u_i) == $(u_expr_timed[i])), formula.stats)
+        e = :($(u_i) == $(u_expr_timed[i]))
+        println("c.e = $e")
+        assertion = assert_literal(e, formula.stats)
         push!(formula.formula, assertion) # add assertion to formula
     end
     return u_timed
@@ -101,7 +105,34 @@ function test_add_controller()
     u_timed = add_controller(u, u_exprs, x, formula, N)
 end
 
-function add_dynamics()
+function add_dynamics(x::Array{Symbol}, u::Array{Symbol}, N::Int, dynamics_map::Dict, dt::T where T <: Real, formula::SMTLibFormula)
+    """
+    inputs:
+        # u is like [:u1, :u2]
+        # x is like [:x1, :x2]
+        # dynamics map is like: Dict(:x1 => :x2, :x2 => :(u1^2 - 5*x1), )
+
+    # state_vars = add dynamics [separate function]
+    # timestamp inputs and outputs 
+    # construct RHS integration
+    # assertion = convert_any_constraints(Expr)
+    #add assertion to formula
+    """
+    # timestamp inputs 
+    u_timed = [Meta.parse("$(v)_$N") for v in u]
+    x_timed =  [Meta.parse("$(v)_$N") for v in x]
+    map = Dict(zip([u...,x...], [u_timed...,x_timed...]))
+    for x_i in x
+        dx = substitute(dynamics_map[x_i], map)
+        x_i_n = Meta.parse("$(x_i)_$N")
+        x_i_np1 = Meta.parse("$(x_i)_$(N+1)")
+        # x_i_tp1 = x_t + xdot_t * dt
+        e = :($(x_i_np1) == $(x_i_n) + $dx*$dt)
+        println("d.e = $e")
+        assertion = assert_literal(e, formula.stats)
+        push!(formula.formula, assertion)
+    end
+    return [Meta.parse("$(v)_$(N+1)") for v in x]
 end
 
 function define_relu()
@@ -109,7 +140,6 @@ function define_relu()
 end
 
 function gen_full_formula(formula::SMTLibFormula, domain)
-    pushfirst!(formula.formula, define_domain(domain, formula.stats)...)
     pushfirst!(formula.formula, declare_reals(formula.stats)...)
     pushfirst!(formula.formula, define_relu()...)
     pushfirst!(formula.formula, header()...)
