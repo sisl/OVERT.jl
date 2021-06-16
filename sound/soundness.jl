@@ -10,7 +10,7 @@ include("../models/car/simple_car.jl")
 using Intervals
 using IterTools: ncycle
 
-global DEBUG = true
+global DEBUG = false
 
 """ Types """
 mutable struct SoundnessQuery
@@ -72,9 +72,8 @@ end
 
 function write_to_file(f::SMTLibFormula, fname; dirname="sound/smtlibfiles/")
     # print expressions to file
-    if DEBUG
-        println(join(f.formula, "\n"))
-    end
+    @debug println(join(f.formula, "\n"))
+
     # TODO: make dir before writing to file in it
     try
         mkdir(pwd() * "/" * dirname) # make dir if it doesn't exist
@@ -167,9 +166,9 @@ function check(solver::String, query::SoundnessQuery, fname::String; δ=0.001, j
     return result
 end
 
-function write_result(fname, result)
+function write_result(fname, result; specifier="w")
     # results will be put in a txt  file of the same name but with "result" appended
-    io = open(fname[1:end-5]*"_result.txt", "w")
+    io = open(fname[1:end-5]*"_result.txt", specifier)
     write(io, result...)
     close(io)
     return nothing

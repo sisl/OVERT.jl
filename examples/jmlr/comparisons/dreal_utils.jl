@@ -89,7 +89,7 @@ function add_controller(u::Array{Symbol}, u_expr::Array{Expr}, x::Array{Symbol},
     # assertion = convert_any_constraint(Expr)
     for (i,u_i) in enumerate(u_timed)
         e = :($(u_i) == $(u_expr_timed[i]))
-        println("c.e = $e")
+        #println("c.e = $e")
         assertion = assert_literal(e, formula.stats)
         push!(formula.formula, assertion) # add assertion to formula
     end
@@ -139,10 +139,44 @@ function define_relu()
     return ["(define-fun relu ((arg Real)) Real (max arg 0))"]
 end
 
-function gen_full_formula(formula::SMTLibFormula, domain)
+function gen_full_formula(formula::SMTLibFormula)
     pushfirst!(formula.formula, declare_reals(formula.stats)...)
     pushfirst!(formula.formula, define_relu()...)
     pushfirst!(formula.formula, header()...)
     push!(formula.formula, footer()...)
     return formula
+end
+
+function add_output_constraints!(formula::SMTLibFormula, c::Expr, x::Array{Symbol}, N::T where T <: Real)
+    x_N = [Meta.parse("$(v)_$N") for v in x]
+    map = Dict(zip([x...], [x_N...]))
+    c_timed = substitute(c, map)
+    push!(formula.formula, assert_literal(c_timed, formula.stats))
+end
+
+function run_dreal(full_fname::String; δ=0.001, jobs=1, dreal_path="/opt/dreal/4.21.06.1/bin/dreal")
+    # returns "true" if property is unsat (holds)
+    println("running dreal on file $(full_fname) with precision $δ and $jobs jobs.")
+    result = read(`$dreal_path $full_fname --precision $δ --jobs $jobs`, String)
+    @debug("result: ", result)
+    # write result file
+    println("Writing result to: $(full_fname)")
+    write_result(full_fname, result)
+    return occursin("unsat", result) 
+end
+
+function add_output_constraints_and_check_property(formula::SMTLibFormula, output_constraints::Array{Expr}, x::Array{Symbol}, t::T where T<:Real; δ=0.001, jobs=1)
+    unsat = true
+    # add output constraints 
+    ## create a separate file for each output constraint
+    for (i,c) in enumerate(output_constraints)
+        formula_i = deepcopy(formula)
+        add_output_constraints!(formula_i, c, x, t)
+        # write to file 
+        formula_i = gen_full_formula(formula_i::SMTLibFormula)
+        full_fname = write_to_file(formula_i::SMTLibFormula, "dreal_test_constraint$(i)_time$t.smt2"; dirname="examples/jmlr/comparisons/smtlibfiles/")
+        # call dreal on file
+        unsat &= run_dreal(full_fname; δ=δ, jobs=jobs)
+    end
+    return unsat
 end

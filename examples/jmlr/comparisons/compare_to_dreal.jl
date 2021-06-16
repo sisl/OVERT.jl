@@ -12,6 +12,10 @@ include("models/single_pendulum/single_pend.jl")
 dynamics_map = Dict(single_pend_input_vars[1]=>single_pend_input_vars[2],
                     single_pend_input_vars[2]=>single_pend_θ_doubledot)
 dt = 0.1
+output_constraints = [:(x1 <= -0.2167)] # (avoid set)
+N_steps=25
+experiment_name = "single_pendulum_small_controller"
+dirname="examples/jmlr/comparisons/"
 
 # inputs: state_vars::Array{Symbol}, control_vars::Array{Symbol}, input_set::dict{Symbol=>Array{Reals}}, controller_file, dynamics_map, dt, output_constraints
 
@@ -37,13 +41,23 @@ dt = 0.1
     timed_input_set = Dict((Meta.parse(string(k)*"_0"),v) for (k,v) in input_set)
     push!(formula.formula, define_domain(timed_input_set, formula.stats)...)
 
-for t = 0:N
+results = []
+write_result(dirname*experiment_name, experiment_name*"\n"; specifier="w")
+tstart = time()
+for t = 0:N_steps-1
     u_t = add_controller(control_vars, u_expr::Array{Expr}, state_vars, formula::SMTLibFormula, t)
     x_tp1 = add_dynamics(state_vars, control_vars, t, dynamics_map, dt, formula)
+    result = add_output_constraints_and_check_property(formula, output_constraints, state_vars, t+1)
+    t_sofar = time() - tstart
+    msg = "Property holds for timestep $(t+1) ? $result . Elapsed time: $(t_sofar) sec \n"
+    print(msg)
+    write_result(dirname*experiment_name, msg; specifier="a")
+    push!(results, result)
 end
-# add output constraints 
-# write to file 
-formula = gen_full_formula(formula::SMTLibFormula, timed_input_set)
-write_to_file(formula::SMTLibFormula, "dreal_test.smt2"; dirname="examples/jmlr/comparisons/")
-# call dreal on file
+ΔT = time() - tstart
+msg = "Property holds for all timesteps? $(all(results)). Total elpased time: ΔT"
+println(msg)
+write_result(experiment_name, msg; specifier="a")
+
+
 
