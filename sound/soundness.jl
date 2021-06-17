@@ -156,7 +156,8 @@ function check(solver::String, query::SoundnessQuery, fname::String; δ=0.001, j
         smtlibscript = soundnessquery2smt(query)
         full_fname = write_to_file(smtlibscript, fname)
         # call dreal from command line to execute on smtlibscript
-        result = read(`dreal $full_fname --precision $δ --jobs $jobs`, String)
+        DREAL_VERSION="4.20.12.1"
+        result = read(`/opt/dreal/$DREAL_VERSION/bin/dreal $full_fname --precision $δ --jobs $jobs`, String)
         @debug("result: ", result)
         # write result file
         write_result(full_fname, result)
