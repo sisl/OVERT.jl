@@ -6,7 +6,7 @@ include("../../MIP/src/mip_utils.jl")
 include("../../models/car/simple_car.jl")
 using JLD2
 using LazySets
-ENV["JULIA_DEBUG"] = Main
+#ENV["JULIA_DEBUG"] = Main
 
 controller_name = ARGS[1]
 controller = "nnet_files/jair/car_"*controller_name*"_controller.nnet"

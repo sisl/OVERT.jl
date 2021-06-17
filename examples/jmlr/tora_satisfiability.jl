@@ -16,7 +16,7 @@ function run_query(query_number, avoid_set, controller_name)
 		controller, # network file
 		Id(),    # last layer activation layer Id()=linear, or ReLU()=relu
 		"MIP",     # query solver, "MIP" or "ReluPlex"
-		2,        # ntime
+		15,        # ntime
 		0.1,       # dt
 		-1,        # N_overt
 		)
@@ -28,6 +28,7 @@ function run_query(query_number, avoid_set, controller_name)
 	SATus, vals, stats = symbolic_satisfiability(query, input_set, avoid_set)
 	t2 = Dates.time()
 	dt = (t2-t1)
+	println("dt is $dt")
 
 	JLD2.@save "examples/jmlr/data/tora_satisfiability_"*string(controller_name)*"_controller_data_q"*string(query_number)*".jld2" query input_set avoid_set SATus vals stats dt query_number controller_name
 
