@@ -1,10 +1,11 @@
-using NeuralVerification: ReLU, Id, Network
+using NeuralVerification: ReLU, Id, Network, Layer
 
 # helper functions for the conversion to smt2
 act_dict = Dict(ReLU()=> :relu)
 function network2expr(nn::Network, state::Array{Symbol})
     exprs = symbols.(state) # starts out as [x1, x2] -> [w1*x1+b1, w2*x2+b2]
     for l in nn.layers 
+        println("activation is: $(l.activation)")
         if l.activation == Id()
             exprs = l.weights*exprs + l.bias
         else
@@ -50,6 +51,10 @@ function test_network2expr()
     network = random_network([2,2,2], [ReLU(), Id()])
     state = [:x1, :x2]
     exprs = network2expr(network, state)
+    x_rand = rand(1,2)
+    # check equivalency by subbing in values to Expr?
+    map = Dict(zip(state, x_rand))
+    eval_expr = [eval(substitute(e, map)) for e in exprs]
 end
 
 function timestamp_expr(e::Expr, N)
@@ -65,12 +70,6 @@ function substitute(expression, map)
         e_string = replace(e_string, string(k)=>string(v))
     end
     return Meta.parse(e_string)
-end
-
-function test_substitute()
-    e = :(u_1*5 + x_1^2 - relu(W_11*x_1 + b))
-    map = Dict(:(u_1)=>:(u_1_1), :(x_1) => :(x_1_2), :b=>5)
-    println(substitute(e, map))
 end
 
 function add_controller(u::Array{Symbol}, u_expr::Array{Expr}, x::Array{Symbol}, formula::SMTLibFormula, N::Int)
