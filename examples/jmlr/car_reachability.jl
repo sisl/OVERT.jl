@@ -6,7 +6,7 @@ include("../../MIP/src/mip_utils.jl")
 include("../../models/car/simple_car.jl")
 using JLD2
 using LazySets
-ENV["JULIA_DEBUG"] = Main
+#ENV["JULIA_DEBUG"] = Main
 
 controller_name = ARGS[1]
 controller = "nnet_files/jair/car_"*controller_name*"_controller.nnet"
@@ -31,7 +31,7 @@ dt = (t2-t1)
 print("elapsed time= $(dt) seconds")
 
 # clean up sets
-init_set0, reachable_state_sets = clean_up_sets(concrete_state_sets, symbolic_state_sets, concretization_intervals)
+init_set0, reachable_state_sets = clean_up_sets(concrete_state_sets, symbolic_state_sets, concretization_intervals, dims=[1,2])
 
 # In this example, our property is the following:
 # We want the car to reach the box [-.6, .6] [-.2,.2]
