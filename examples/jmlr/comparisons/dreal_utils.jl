@@ -153,7 +153,7 @@ function add_output_constraints!(formula::SMTLibFormula, c::Expr, x::Array{Symbo
     push!(formula.formula, assert_literal(c_timed, formula.stats))
 end
 
-function run_dreal(full_fname::String; δ=0.001, jobs=1, dreal_path="/opt/dreal/4.21.06.1/bin/dreal")
+function run_dreal(full_fname::String; δ=0.001, jobs=1, dreal_path="/opt/dreal/4.20.12.1/bin/dreal")
     # returns "true" if property is unsat (holds)
     println("running dreal on file $(full_fname) with precision $δ and $jobs jobs.")
     result = read(`$dreal_path $full_fname --precision $δ --jobs $jobs`, String)
