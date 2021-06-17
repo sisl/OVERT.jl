@@ -1,0 +1,5 @@
+Time to check validity of overapproximation using dreal: ϵ= 0.1, δ=0.001
+acc check time (sec): 12.825981140136719
+single pendulum check time (sec): 0.1080780029296875
+tora check time (sec): 0.07455682754516602
+jobs = 1

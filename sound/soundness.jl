@@ -5,12 +5,12 @@
 include("../models/problems.jl")
 include("../models/car/car.jl")
 include("../models/car/simple_car.jl")
-using Flux
-using Flux: Data.DataLoader, Dense, Chain, ADAM, relu
+# using Flux
+# using Flux: Data.DataLoader, Dense, Chain, ADAM, relu
 using Intervals
 using IterTools: ncycle
 
-global DEBUG = true
+global DEBUG = false
 
 """ Types """
 mutable struct SoundnessQuery
@@ -70,11 +70,10 @@ function Base.show(io::IO, f::SMTLibFormula)
     println(io, s)
 end
 
-function write_to_file(f::SMTLibFormula, fname; dirname="smtlibfiles/")
+function write_to_file(f::SMTLibFormula, fname; dirname="sound/smtlibfiles/")
     # print expressions to file
-    if DEBUG
-        println(join(f.formula, "\n"))
-    end
+    @debug println(join(f.formula, "\n"))
+
     # TODO: make dir before writing to file in it
     try
         mkdir(pwd() * "/" * dirname) # make dir if it doesn't exist
@@ -160,6 +159,7 @@ function check(solver::String, query::SoundnessQuery, fname::String; δ=0.001, j
         result = read(`/opt/dreal/$DREAL_VERSION/bin/dreal $full_fname --precision $δ --jobs $jobs`, String)
         @debug("result: ", result)
         # write result file
+        println("Writing result to: $(full_fname)")
         write_result(full_fname, result)
     else
         throw(MyError("Not implemented"))
@@ -167,9 +167,9 @@ function check(solver::String, query::SoundnessQuery, fname::String; δ=0.001, j
     return result
 end
 
-function write_result(fname, result)
+function write_result(fname, result; specifier="w")
     # results will be put in a txt  file of the same name but with "result" appended
-    io = open(fname[1:end-5]*"_result.txt", "w")
+    io = open(fname[1:end-5]*"_result.txt", specifier)
     write(io, result...)
     close(io)
     return nothing
@@ -198,9 +198,16 @@ function define_domain(d, stats::FormulaStats)
     return assertions
 end
 
+function handle_unary_negation(n::T where T <: Real)
+    return n < 0 ? prefix_notate("-", [-n]) : string(n)
+end
+function handle_unary_negation(n::Symbol)
+    return string(n)
+end
+
 function define_box(v::String, lb, ub)
-    lb = lb < 0 ? prefix_notate("-", [-lb]) : string(lb)
-    ub = ub < 0 ? prefix_notate("-", [-ub]) : string(ub)
+    lb = handle_unary_negation(lb)
+    ub = handle_unary_negation(ub)
     lb_e = prefix_notate("<=", [v, ub])
     ub_e = prefix_notate(">=", [v, lb])
     return prefix_notate("and", [lb_e, ub_e])

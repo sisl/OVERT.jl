@@ -43,7 +43,7 @@ overapprox_nd(:(sin(sin(z + y))), Dict(:z=>[0,π], :y=>[-π,π]))
 overapprox_nd(:(2*x), Dict(:x=>[0,1]))
 
 # TODO: This isn't reduced to eval(log(2))*x because whole thing is affine...
-overapprox_nd(:(log(2)*x), Dict(:x=>[0,1]))
+overapprox_nd(:(log(2)*x), Dict(:x=>[0.,1.]))
 
 overapprox_nd(:(2*log(x)), Dict(:x=>[1,2]))
 
