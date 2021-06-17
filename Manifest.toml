@@ -1149,6 +1149,14 @@ git-tree-sha1 = "09589171688f0039f13ebe0fdcc7288f50228b52"
 uuid = "f09324ee-3d7c-5217-9330-fc30815ba969"
 version = "1.0.1"
 
+[[NeuralVerification]]
+deps = ["CDDLib", "GLPK", "GLPKMathProgInterface", "Interpolations", "JuMP", "LazySets", "LinearAlgebra", "Parameters", "PicoSAT", "Pkg", "Polyhedra", "Random", "Reexport", "Requires", "SCS"]
+git-tree-sha1 = "52ce4c88ed45fb8395e18d10ded5aaab89c89f13"
+repo-rev = "master"
+repo-url = "https://github.com/sisl/NeuralVerification.jl"
+uuid = "146f25fa-00e7-11e9-3ae5-fdbac6e12fa7"
+version = "0.1.0"
+
 [[Observables]]
 git-tree-sha1 = "3469ef96607a6b9a1e89e54e6f23401073ed3126"
 uuid = "510215fc-4207-5dde-b226-833fc4488ee2"
@@ -1171,6 +1179,12 @@ deps = ["Crayons", "JLFzf", "Markdown", "Pkg", "Printf", "REPL", "Tokenize"]
 git-tree-sha1 = "646c8cf453f25f12115ee09d57ca192c9af00618"
 uuid = "5fb14364-9ced-5910-84b2-373655c76a03"
 version = "0.5.10"
+
+[[OpenBLAS_jll]]
+deps = ["CompilerSupportLibraries_jll", "Libdl", "Pkg"]
+git-tree-sha1 = "0c922fd9634e358622e333fc58de61f05a048492"
+uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
+version = "0.3.9+5"
 
 [[OpenJpeg_jll]]
 deps = ["Libdl", "Libtiff_jll", "LittleCMS_jll", "Pkg", "libpng_jll"]
@@ -1254,6 +1268,12 @@ deps = ["Dates"]
 git-tree-sha1 = "c8abc88faa3f7a3950832ac5d6e690881590d6dc"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "1.1.0"
+
+[[PicoSAT]]
+deps = ["BinaryProvider", "Libdl", "Test"]
+git-tree-sha1 = "9bb3bdab71b8490583d0eb18a333d23339bfa22c"
+uuid = "ff2beb65-d7cd-5ff1-a187-74671133a339"
+version = "0.3.3"
 
 [[Pipe]]
 git-tree-sha1 = "6842804e7867b115ca9de748a0cf6b364523c16d"
@@ -1443,6 +1463,24 @@ deps = ["LinearAlgebra", "StaticArrays", "Statistics"]
 git-tree-sha1 = "2ed8d8a16d703f900168822d83699b8c3c1a5cd8"
 uuid = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 version = "1.0.2"
+
+[[SCS]]
+deps = ["BinaryProvider", "Libdl", "LinearAlgebra", "MathOptInterface", "MathProgBase", "Requires", "SCS_GPU_jll", "SCS_jll", "SparseArrays"]
+git-tree-sha1 = "efc1cf417dffb455b74a3d48857ae418098fc8a1"
+uuid = "c946c3f1-0d1f-5ce8-9dea-7daa1f7e2d13"
+version = "0.7.1"
+
+[[SCS_GPU_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "OpenBLAS_jll", "Pkg"]
+git-tree-sha1 = "9c0b47a387c4c7d8a66abb11977391a6602d2384"
+uuid = "af6e375f-46ec-5fa0-b791-491b0dfa44a4"
+version = "2.1.3+0"
+
+[[SCS_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "OpenBLAS_jll", "Pkg"]
+git-tree-sha1 = "4816f8272a3e9d08a32a4e94b367c7e84057c145"
+uuid = "f4f2fc5b-1d94-523c-97ea-2ab488bedf4b"
+version = "2.1.3+0"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
@@ -1692,7 +1730,7 @@ uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
 version = "2.9.10+3"
 
 [[XSLT_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Pkg", "XML2_jll"]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Pkg", "XML2_jll"]
 git-tree-sha1 = "2b3eac39df218762d2d005702d601cd44c997497"
 uuid = "aed1982a-8fda-507f-9586-7b0439959a61"
 version = "1.1.33+4"
