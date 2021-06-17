@@ -164,7 +164,7 @@ function run_dreal(full_fname::String; δ=0.001, jobs=1, dreal_path="/opt/dreal/
     return occursin("unsat", result) 
 end
 
-function add_output_constraints_and_check_property(formula::SMTLibFormula, output_constraints::Array{Expr}, x::Array{Symbol}, t::T where T<:Real; δ=0.001, jobs=1, dreal_path="/opt/dreal/4.21.06.1/bin/dreal")
+function add_output_constraints_and_check_property(formula::SMTLibFormula, output_constraints::Array{Expr}, x::Array{Symbol}, t::T where T<:Real; δ=0.001, jobs=1, dreal_path="/opt/dreal/4.21.06.1/bin/dreal", experiment_name="dreal_test")
     unsat = true
     # add output constraints 
     ## create a separate file for each output constraint
@@ -173,7 +173,7 @@ function add_output_constraints_and_check_property(formula::SMTLibFormula, outpu
         add_output_constraints!(formula_i, c, x, t)
         # write to file 
         formula_i = gen_full_formula(formula_i::SMTLibFormula)
-        full_fname = write_to_file(formula_i::SMTLibFormula, "dreal_test_constraint$(i)_time$t.smt2"; dirname="examples/jmlr/comparisons/smtlibfiles/")
+        full_fname = write_to_file(formula_i::SMTLibFormula, experiment_name*"_constraint$(i)_time$t.smt2"; dirname="examples/jmlr/comparisons/smtlibfiles/")
         # call dreal on file
         unsat &= run_dreal(full_fname; δ=δ, jobs=jobs, dreal_path=dreal_path)
     end

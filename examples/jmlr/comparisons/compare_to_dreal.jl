@@ -33,7 +33,7 @@ function compare_to_dreal(state_vars::Array{Symbol}, control_vars::Array{Symbol}
         # actual important lines of code:
         u_t = add_controller(control_vars, u_expr::Array{Expr}, state_vars, formula::SMTLibFormula, t)
         x_tp1 = add_dynamics(state_vars, control_vars, t, dynamics_map, dt, formula)
-        result = add_output_constraints_and_check_property(formula, output_constraints, state_vars, t+1; jobs=jobs, dreal_path=dreal_path)
+        result = add_output_constraints_and_check_property(formula, output_constraints, state_vars, t+1; jobs=jobs, dreal_path=dreal_path, experiment_name=experiment_name)
         # time stuff and results recording:
         t_sofar = time() - tstart
         msg = "Property holds for timestep $(t+1) ? $result . Elapsed time: $(t_sofar) sec \n"
