@@ -3,7 +3,7 @@ include("dreal_utils.jl")
 using LazySets
 using NeuralVerification
 
-function compare_to_dreal(state_vars::Array{Symbol}, control_vars::Array{Symbol}, input_set::Dict, controller_file::String, dynamics_map::Dict, dt::T where T<:Real, output_constraints::Array{Expr}, dirname::String, experiment_name::String, N_steps::T where T<:Real)
+function compare_to_dreal(state_vars::Array{Symbol}, control_vars::Array{Symbol}, input_set::Dict, controller_file::String, dynamics_map::Dict, dt::T where T<:Real, output_constraints::Array{Expr}, dirname::String, experiment_name::String, N_steps::T where T<:Real; dreal_path="/opt/dreal/4.21.06.1/bin/dreal")
     """
     # Basic overview of what this function does:
     # assert init state variables in init set 
@@ -33,7 +33,7 @@ function compare_to_dreal(state_vars::Array{Symbol}, control_vars::Array{Symbol}
         # actual important lines of code:
         u_t = add_controller(control_vars, u_expr::Array{Expr}, state_vars, formula::SMTLibFormula, t)
         x_tp1 = add_dynamics(state_vars, control_vars, t, dynamics_map, dt, formula)
-        result = add_output_constraints_and_check_property(formula, output_constraints, state_vars, t+1)
+        result = add_output_constraints_and_check_property(formula, output_constraints, state_vars, t+1; dreal_path=dreal_path)
         # time stuff and results recording:
         t_sofar = time() - tstart
         msg = "Property holds for timestep $(t+1) ? $result . Elapsed time: $(t_sofar) sec \n"
