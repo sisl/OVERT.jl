@@ -1,0 +1,11 @@
+single_pendulum_small_controller
+Property holds for timestep 1 ? true . Elapsed time: 2.575288772583008 sec 
+Property holds for timestep 2 ? true . Elapsed time: 4.869985818862915 sec 
+Property holds for timestep 3 ? true . Elapsed time: 7.397339820861816 sec 
+Property holds for timestep 4 ? true . Elapsed time: 10.175753831863403 sec 
+Property holds for timestep 5 ? true . Elapsed time: 13.23288083076477 sec 
+Property holds for timestep 6 ? true . Elapsed time: 23.952358961105347 sec 
+Property holds for timestep 7 ? true . Elapsed time: 39.84524393081665 sec 
+Property holds for timestep 8 ? true . Elapsed time: 123.89948987960815 sec 
+Property holds for timestep 9 ? true . Elapsed time: 974.6457159519196 sec 
+Property holds for timestep 10 ? true . Elapsed time: 18374.33793783188 sec 
