@@ -13,6 +13,6 @@ N_steps=25
 experiment_name = "single_pendulum_small_controller"
 dirname="examples/jmlr/comparisons/"
 
-ΔT = compare_to_dreal(state_vars, control_vars, input_set, controller_file, dynamics_map, dt, output_constraints, dirname, experiment_name, N_steps; jobs=28)include("compare_to_dreal.jl")
+ΔT = compare_to_dreal(state_vars, control_vars, input_set, controller_file, dynamics_map, dt, output_constraints, dirname, experiment_name, N_steps; jobs=28)
 
 
