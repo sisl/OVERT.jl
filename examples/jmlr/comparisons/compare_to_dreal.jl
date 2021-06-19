@@ -29,18 +29,20 @@ function compare_to_dreal(state_vars::Array{Symbol}, control_vars::Array{Symbol}
     results = []
     write_result(dirname*experiment_name, experiment_name*"\n"; specifier="w")
     tstart = time()
+    t_dreal_total = 0
     for t = 0:N_steps-1
         # actual important lines of code:
         u_t = add_controller(control_vars, u_expr::Array{Expr}, state_vars, formula::SMTLibFormula, t)
         x_tp1 = add_dynamics(state_vars, control_vars, t, dynamics_map, dt, formula)
-        result = add_output_constraints_and_check_property(formula, output_constraints, state_vars, t+1; jobs=jobs, dreal_path=dreal_path, experiment_name=experiment_name)
+        result, t_dreal = add_output_constraints_and_check_property(formula, output_constraints, state_vars, t+1; jobs=jobs, dreal_path=dreal_path, experiment_name=experiment_name)
         # time stuff and results recording:
         t_sofar = time() - tstart
-        msg = "Property holds for timestep $(t+1) ? $result . Elapsed time: $(t_sofar) sec \n"
+        t_dreal_total += t_dreal
+        msg = "Property holds for timestep $(t+1) ? $result . Elapsed time: $(t_sofar) sec. Total time spent IN dreal: $(t_dreal_total) \n"
         print(msg)
         write_result(dirname*experiment_name, msg; specifier="a")
         push!(results, result)
-        if t_sofar > 18*60*60
+        if t_sofar > 12*60*60
             write_result(dirname*experiment_name, "Breaking after $(t_sofar/60/60) hours. TIMEOUT. \n"; specifier="a")
             break;
         end
