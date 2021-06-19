@@ -1,0 +1,17 @@
+tora_smallest_controller
+Property holds for timestep 1 ? true . Elapsed time: 109.58780694007874 sec. Total time spent IN dreal: 11.632910966873169 
+Property holds for timestep 2 ? true . Elapsed time: 236.05288290977478 sec. Total time spent IN dreal: 41.1824152469635 
+Property holds for timestep 3 ? true . Elapsed time: 391.8305730819702 sec. Total time spent IN dreal: 98.96760034561157 
+Property holds for timestep 4 ? true . Elapsed time: 589.6248378753662 sec. Total time spent IN dreal: 199.90577125549316 
+Property holds for timestep 5 ? true . Elapsed time: 843.4416499137878 sec. Total time spent IN dreal: 356.7821581363678 
+Property holds for timestep 6 ? true . Elapsed time: 1177.348825931549 sec. Total time spent IN dreal: 593.1122767925262 
+Property holds for timestep 7 ? true . Elapsed time: 1611.7427940368652 sec. Total time spent IN dreal: 929.7126550674438 
+Property holds for timestep 8 ? true . Elapsed time: 2179.269716024399 sec. Total time spent IN dreal: 1399.2211651802063 
+Property holds for timestep 9 ? true . Elapsed time: 2901.108419895172 sec. Total time spent IN dreal: 2023.832376241684 
+Property holds for timestep 10 ? true . Elapsed time: 3818.781979084015 sec. Total time spent IN dreal: 2843.8189992904663 
+Property holds for timestep 11 ? true . Elapsed time: 4957.617240905762 sec. Total time spent IN dreal: 3885.063679456711 
+Property holds for timestep 12 ? true . Elapsed time: 6363.438965082169 sec. Total time spent IN dreal: 5193.423989534378 
+Property holds for timestep 13 ? true . Elapsed time: 8085.563472986221 sec. Total time spent IN dreal: 6817.011805534363 
+Property holds for timestep 14 ? true . Elapsed time: 10164.014133930206 sec. Total time spent IN dreal: 8797.999942779541 
+Property holds for timestep 15 ? true . Elapsed time: 12654.86819601059 sec. Total time spent IN dreal: 11191.483736515045 
+Property holds for all timesteps? true. Total elpased time: 12654.868329048157 sec
