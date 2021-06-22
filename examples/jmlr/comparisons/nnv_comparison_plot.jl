@@ -12,7 +12,7 @@ include("models/single_pendulum/single_pend.jl")
 
 # plot comparison between nnv and overt
 # decided to compare actually, the original experiments. not smaller, modified ones.
-directory = "/Users/Chelsea/Dropbox/AAHAA/src/OVERT/examples/jmlr/data/single_pend_-0.2167/nnv_pendulum_experiment_8148/set_dir/"
+directory = ENV["HOME"]*"/Dropbox/AAHAA/src/OVERT/examples/jmlr/data/single_pend_-0.2167/nnv_pendulum_experiment_8148/set_dir/"
 
 fname = "pendulum_reach_set_tstep_"
 nnv_reach_set_vertices = []
