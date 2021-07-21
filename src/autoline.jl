@@ -1,9 +1,5 @@
-# using Flux, SymPy, Plots
 using MacroTools, SymEngine
 import MacroTools.postwalk
-
-#include("utils.jl")
-#include("relubypass.jl")
 
 """
     abs_to_relu!(ex::Expr)
@@ -141,7 +137,6 @@ function make_expr_dict(ex)
     return D
 end
 
-# is_negative_expr(ex) = ex.head == :call && ex.args[1] == :- && length(ex.args) == 2
 is_relu_expr(ex) = ex isa Expr && ex.head == :call && ex.args[1] == :relu
 
 simplify(ex::Expr) = postwalk(e -> _simplify(e), ex)
@@ -158,34 +153,6 @@ function Base.occursin(needle::Union{Symbol, Expr}, haystack::Expr)
     return false
 end
 
-function layer_sort(D::AbstractDict)
-    # construct adjacency matrix. Not checking for cycles since
-    # a neural network can't have cycles anyway, but maybe at some point.
-    B = BitArray(occursin(v, k) for v in values(D), k in keys(D))
-    layer_sort(B)
-end
-
-function layer_sort(B::AbstractMatrix)
-    V = findall(vec(sum(B, dims = 1)) .== 0)
-    isempty(V) && error("no parentless nodes")
-    S = Set(V)
-    A = setdiff(Set(axes(B, 1)), S)
-    layers = [V]
-    while !isempty(A)
-        L = []
-        for i in A
-            parents = findall(B[:, i])
-            if all(p -> p ∈ S, parents)
-                pop!(A, i)
-                push!(L, i)
-            end
-        end
-        union!(S, L)
-        push!(layers, L)
-    end
-    layers
-end
-
 # Type piracy again:
 Base.Expr(B::Basic) = Meta.parse(string(B))
 
@@ -197,100 +164,3 @@ function get_symbols(ex::Union{Expr, Symbol})
     unique(syms)
 end
 
-"""
-    W, b, R, in = layerize(out::Vector{Union{Expr, Symbol}})
-
-Constructs a neural network layer that produces `out` as its output.
-The input to the layer is inferred based on the free symbols in `out`.
-
-# Returns
-    - `W` - weights matrix.
-    - `b` - bias vector.
-    - `R` - activation function. Generally a ReLUBypass.
-    - `in`- the inferred vector of inputs.
-
-# Examples
-    julia> out = [ :(relu(10x1 + x2 - 11)) ]
-    1-element Array{Expr,1}:
-     :(relu((10x1 + x2) - 11))
-
-    julia> layerize(out)
-    ([1.0 10.0], [-11.0], ReLUBypass(Int64[]), Union{Expr, Symbol}[:x2, :x1])
-"""
-function layerize(out)
-    syms = free_symbols(Basic.(out))
-    n, m = length(out), length(syms)
-    W = zeros(n, m)
-    b = zeros(n)
-    bypass_indices = Int[]
-    for (i, o) in enumerate(out)
-        if is_relu_expr(o)
-            o = o.args[2]
-        else
-            push!(bypass_indices, i)
-        end
-        symbolic = Basic(o)
-        W[i, :] = coeff.(symbolic, syms)
-        b[i] = subs(symbolic, (syms .=> 0)...)
-    end
-    if length(bypass_indices) == length(syms)
-        R = identity
-    elseif isempty(bypass_indices)
-        R = relu
-    else
-        R = ReLUBypass(bypass_indices)
-    end
-
-    W, b, ReLUBypass(bypass_indices), Union{Expr, Symbol}[Expr.(syms)...]
-end
-
-## in general, must check that the dict is reversible
-reverse_dict(D::Dict) = Dict(v=>k for (k,v) in D)
-
-# turn an expression into a dense network
-function to_network(D::Dict)
-    layer_indices = layer_sort(D)
-    exprs = collect(keys(D))
-    syms = collect(values(D))
-    layers = []
-    out = Union{Expr, Symbol}[Symbol("z$(length(D))")]
-    for (i, layer) in enumerate(reverse(layer_indices))
-        replace_ind = map(z -> findfirst(z .== out), syms[layer])
-        out[replace_ind] = exprs[layer]
-        W, b, R, out = layerize(out)
-        if i == 1
-            R = identity
-        end
-        push!(layers, Dense(W, b, R))
-    end
-    reverse(layers)
-end
-
-# TODO RENAME
-function to_network(pts::Vector)
-    ex = to_relu_expression(closed_form_piecewise_linear(pts))
-    D = make_expr_dict(simplify(ex))
-    Chain(to_network(D)...) # Chain is a type from Flux.jl
-end
-
-
-
-# # SCRIPT
-# pts = [(0,0), (1,1), (2, 0), (3, 1), (6, 11.258)]
-# # ex = closed_form_piecewise_linear(pts)
-# include("newpiecewise.jl")
-# ex = amirs_piecewise_linear(pts)
-# ex = simplify(to_relu_expression(ex))
-# D = make_expr_dict(ex)
-# ks = collect(keys(D))
-# vs = collect(values(D))
-# # B = BitArray(occursin(v, k) for v in vs, k in ks)
-# # starting_nodes = findall(vec(sum(B, dims = 1)) .== 0)
-# # layers = layer_sort(B)
-# C = Chain(to_network(D)...)
-# CC = relu_bypass(C)
-
-# # h(x) = (l = C(x); length(l) == 1 && return l[1])
-# # g(x) = (l = CC(x); length(l) == 1 && return l[1])
-# # eval(:(f(x) = $ex))
-# # plot([f, g, h], -2pi:0.01:2pi)
