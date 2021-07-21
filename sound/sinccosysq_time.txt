@@ -1,5 +1,4 @@
 Time to check validity of overapproximation using dreal: ϵ= 0.1, δ=0.001
-sincosysq check time (sec): 2.7225680351257324
+sincosysq check time (sec): 2.6938488483428955
 jobs = 1
-N=2
-All unsat? true
+N=2All unsat? true

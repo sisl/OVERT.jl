@@ -9,12 +9,12 @@ using JLD2
 using FileIO
 using LazySets
 using LinearAlgebra
-include("../../../../models/problems.jl")
-include("../../../../OverApprox/src/overapprox_nd_relational.jl")
-include("../../../../OverApprox/src/overt_parser.jl")
-include("../../../../MIP/src/overt_to_mip.jl")
-include("../../../../MIP/src/mip_utils.jl")
-include("../../../../models/car/simple_car.jl")
+include("models/problems.jl")
+include("OverApprox/src/overapprox_nd_relational.jl")
+include("OverApprox/src/overt_parser.jl")
+include("MIP/src/overt_to_mip.jl")
+include("MIP/src/mip_utils.jl")
+include("models/car/simple_car.jl")
 
 controller = ARGS[1] # "smallest"
 
@@ -46,6 +46,10 @@ sym_style_solid = "solid, symbolic_color, mark=none, fill=symbolic_color"
 sym_style_transparent =  sym_style_solid*", fill opacity=0.5, opacity=0.5"
 mc_style_solid = "solid, mc_color, mark=none, fill=mc_color"
 mc_style_transparent = "solid, red, mark=none, fill=red, fill opacity=0.5, opacity=0.5"#mc_style_solid*", fill opacity=0.5"
+
+concrete_line_style = "solid, concrete_color, mark=none"
+symbolic_line_style = "solid, symbolic_color, very thick, mark=none"
+mc_line_style = "solid, mc_color, ultra thick, mark=none"
 
 goal_style = "solid, goal_color, thick, mark=none, fill=goal_color"
 
@@ -140,3 +144,38 @@ fig.legendStyle =  "at={(1.05,1.0)}, anchor=north west"
 
 PGFPlots.save("examples/jmlr/plots/car/car_$(controller)_counter_example.tex", fig)
 PGFPlots.save("examples/jmlr/plots/car/car_$(controller)_counter_example.pdf", fig)
+
+
+####################
+# Plot 3: 1D sets 
+####################
+
+dims = [3]
+conc_subsets = get_interval_subsets(one_step_state_sets, dims)
+sym_subsets = get_interval_subsets(reachable_state_sets, dims)
+mc_subsets = get_interval_subsets(mc_state_sets, dims)
+deleteat!(mc_subsets, 1) # pop init set off start 
+
+# plot intervals using lines in PGF plots
+fig = PGFPlots.Axis(style="width=8cm, height=8cm", ylabel="\$x_$(dims[1])\$", xlabel="timesteps", title="Car Reachable Sets, $controller Controller")
+
+# plot init set
+push!(fig, PGFPlots.Plots.Linear([0.,0.], [low(data["input_set"])[dims]..., high(data["input_set"])[dims]...], style=concrete_line_style, legendentry="Concrete Sets"))
+# plot init set
+push!(fig, PGFPlots.Plots.Linear([0.,0.], [low(data["input_set"])[dims]..., high(data["input_set"])[dims]...], style=symbolic_line_style, legendentry="OVERT Hybrid Symbolic Sets"))
+# plot init set
+push!(fig, PGFPlots.Plots.Linear([0.,0.], [low(data["input_set"])[dims]..., high(data["input_set"])[dims]...], style=mc_line_style, legendentry="Monte Carlo Simulations"))
+# avoid set
+# push!(fig, PGFPlots.Plots.Linear([-1., 26], [-0.2617, -0.2617], style="red, dashed", mark="none", legendentry="Unsafe Set"))
+# plot the rest of the sets
+for t in 1:data["query"].ntime
+    timestep = Float64[t,t]
+    push!(fig, PGFPlots.Plots.Linear(timestep, conc_subsets[t], style=concrete_line_style))
+    push!(fig, PGFPlots.Plots.Linear(timestep,sym_subsets[t], style=symbolic_line_style, markSize=1))
+    push!(fig, PGFPlots.Plots.Linear(timestep,mc_subsets[t], style=mc_line_style, markSize=1))
+end
+
+fig.legendStyle = "at={(1.05,1.0)}, anchor=north west"
+
+PGFPlots.save("examples/jmlr/plots/car/car_dim$(dims[1])_$(controller).tex", fig)
+PGFPlots.save("examples/jmlr/plots/car/car_dim$(dims[1])_$(controller).pdf", fig)

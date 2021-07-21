@@ -7,7 +7,7 @@ using Plots
 plotly()
 using PGFPlots
 
-plotflag = true
+plotflag = false
 plottype = "pgf"
 
 """
@@ -279,7 +279,7 @@ end
 Bound one argument functions like sin(x) or x -> x^2 or x -> 1/x. Create upper and lower bounds of function f(x)
 """
 function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound; plotflag=plotflag, d2f_zeros=nothing, convex=nothing)
-    p = plotflag ? plot(0,0) : nothing
+    p = plotflag ? Plots.plot(0,0) : nothing
     UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, existing_plot=p, ϵ= bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
     fUBrange = [find_1d_range(UBpoints)...]
     LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, existing_plot=p, ϵ= -bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)

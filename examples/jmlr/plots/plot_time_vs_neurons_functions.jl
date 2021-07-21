@@ -41,22 +41,48 @@ function get_reach_data(fname)
     else # acc, single pend
         holds = data["safe"]
     end
+    println("ugh holds is: $holds")
     return ceil(data["dt"] + data["dt_check"]), holds
+end
+
+function read_tora_sat_data(fname)
+    if occursin("big", fname)
+        newfname = join(split(fname, "/")[1:end-1], "/")*"/tora_satisfiability_big.txt"
+    elseif occursin("smaller", fname)
+        newfname = join(split(fname, "/")[1:end-1], "/")*"/tora_satisfiability_smaller.txt"
+    elseif occursin("smallest", fname)
+        newfname = join(split(fname, "/")[1:end-1], "/")*"/tora_satisfiability_smallest.txt"
+    end
+    file = open(newfname)
+    holds = true
+    for line in eachline(file)
+        variable, val = split(line, "=")
+        println("$variable = $val")
+        holds &= occursin("unsat", val)
+    end
+    return holds
 end
 
 function get_sat_data(fname, n_queries)
     t = 0
-    if !occursin("acc", fname) && !occursin("single_pendulum", fname)
+    if occursin("car", fname) || occursin("tora", fname)
         for q in n_queries
             data = load(fname*"_q$(q).jld2")
             t += data["dt"]
         end
-    else 
+        if occursin("car", fname)
+            data = load(fname*"_final_result.jld2")
+            holds = any(data["timesteps_where_properties_hold"])
+        elseif occursin("tora", fname) 
+            holds = read_tora_sat_data(fname)
+        end
+    else # acc, single pend
         fname = fname*".jld2"
         data = load(fname)
         t += data["dt"]
+        holds = occursin("unsat", data["SATus"])
     end
-    holds = occursin("unsat", data["SATus"])
+    println("double ugh holds is: $holds")
     return ceil(t), holds
 end
 
@@ -65,31 +91,37 @@ function get_data(controllers, nnet, prob_dir, reach_s, sat_s)
     acts = Float64[]
     feas_time = Float64[]
     reach_time = Float64[]
+    fholds = Bool[]
+    rholds = Bool[]
     for c in controllers
         w, a = get_nnet_metadata(format(nnet, c))
         dir = data_dir*prob_dir
-        rt, rholds = get_reach_data(dir*format(reach_s, c))
-        println("reach_time: $rt, reach holds: $rholds")
-        ft, fholds = get_sat_data(dir*format(sat_s, c), [1, 2])
-        println("feas_time: $ft, feas holds: $fholds")
+        rt, rhold = get_reach_data(dir*format(reach_s, c))
+        println("$(split(prob_dir, "/")[end])  reach_time: $rt, reach holds: $rhold")
+        ft, fhold = get_sat_data(dir*format(sat_s, c), [1, 2])
+        println("$(split(prob_dir, "/")[end]) feas_time: $ft, feas holds: $fhold")
         push!(weights, w)
         push!(acts, a)
         push!(feas_time, ft)
         push!(reach_time, rt)
+        push!(rholds, rhold)
+        push!(fholds, fhold)
     end
-    return [weights, acts, feas_time, reach_time, rholds, fholds]
+    return [weights, acts, feas_time, reach_time, fholds, rholds]
 end
 
-function collect_data()
+# collect all data 
     # collect all data 
-    data_dir = "examples/jmlr/data/"
+# collect all data 
+data_dir = "examples/jmlr/data/"
+function collect_data()
     ######### acc 
     acc_w, acc_a = get_nnet_metadata("nnet_files/jair/acc_controller.nnet")
     acc_dir = data_dir*"acc/acc"
     acc_reach_time, acc_reach_holds = get_reach_data(acc_dir*"_reachability_data_55.jld2")
     println("acc_reach_time: $acc_reach_time, acc_reach_hold: $(acc_reach_holds)")
     acc_feas_time, acc_feas_holds = get_sat_data(acc_dir*"_satisfiability_data_55", [])
-    acc_data = [[acc_w], [acc_a], [acc_feas_time], [acc_reach_time], [acc_reach_holds], [acc_feas_holds]]
+    acc_data = [[acc_w], [acc_a], [acc_feas_time], [acc_reach_time], [acc_feas_holds], [acc_reach_holds]]
     println("acc_feas_time: $acc_feas_time, acc_feas_holds: $(acc_feas_holds)")
 
     ######### car
@@ -123,35 +155,49 @@ function collect_data()
 end
 #acc_data, car_data, single_pendulum_data, tora_data = collect_data()
 
-
 ###############################
 ### Plots
 ###############################
 define_color("symbolic_color", 0x139EAB)
-car_style = "solid, thick, symbolic_color, mark=*, mark options={fill=white}"
-tora_style = "solid, thick, red, mark=*, mark options={fill=white}"
-pend_style = "solid, thick, blue, mark=*, mark options={fill=white}"
-acc_style = "solid, thick, orange, mark=*, mark options={fill=white}"
+car_style = "solid, thick, symbolic_color, mark=none, mark options={fill=white}"
+tora_style = "solid, thick, red, mark options={fill=white}"
+pend_style = "solid, thick, blue" #, mark options={fill=white}"
+acc_style = "solid, thick, orange, mark options={fill=white}"
 
 # Plots 1-4: Reach Time vs. # Neurons (Line Graph)
 function plot_time(problem_type, x_dim; save_fig=false)
     if occursin("Reach", problem_type)
         y_dim = 4
+        hold_dim = 6
     elseif occursin("Feas", problem_type) || occursin("Sat", problem_type)
         y_dim = 3
+        hold_dim = 5
     end
     if x_dim == 1
         x_label = "Weights"
     elseif x_dim == 2
         x_label = "ReLU Neurons"
     end 
-    #hold_style = Dict(true => )
+    # use scatter classes to change mark
+    pend_sc = "1={mark=*, blue}, 0={mark=square, blue}"
+    car_sc = "1={mark=*, symbolic_color}, 0={mark=square, symbolic_color}"
+    tora_sc = "1={mark=*, red}, 0={mark=square, red}"
+    acc_sc = "1={mark=*, orange}, 0={mark=square, orange}"
 
     fig = PGFPlots.Axis(style="width=15cm, height=8cm, axis equal image", xlabel="Number of $x_label in NN Controller", ylabel="Time (sec)", title="$problem_type Time", xmode="log", ymode="log")
-    push!(fig, PGFPlots.Plots.Linear(single_pendulum_data[x_dim], single_pendulum_data[y_dim], style=pend_style, legendentry="Single Pendulum"))
-    push!(fig, PGFPlots.Plots.Linear(car_data[x_dim], car_data[y_dim], style=car_style, legendentry="Car"))
-    push!(fig, PGFPlots.Plots.Linear(tora_data[x_dim], tora_data[y_dim], style=tora_style, legendentry="TORA"))
-    push!(fig, PGFPlots.Plots.Linear(acc_data[x_dim], acc_data[y_dim], style=acc_style, legendentry="Adaptive Cruise Control"))
+    # lines 
+    push!(fig, PGFPlots.Plots.Linear(single_pendulum_data[x_dim], single_pendulum_data[y_dim], style=pend_style*",mark=none", legendentry="Single Pendulum"))
+    push!(fig, PGFPlots.Plots.Linear(car_data[x_dim], car_data[y_dim], style=car_style*",mark=none", legendentry="Car"))
+    push!(fig, PGFPlots.Plots.Linear(tora_data[x_dim], tora_data[y_dim], style=tora_style*",mark=none", legendentry="TORA"))
+    push!(fig, PGFPlots.Plots.Linear(acc_data[x_dim], acc_data[y_dim], style=acc_style*",mark=none", legendentry="Adaptive Cruise Control"))
+
+    # scatters
+    push!(fig, PGFPlots.Plots.Scatter(single_pendulum_data[x_dim], single_pendulum_data[y_dim], single_pendulum_data[hold_dim], scatterClasses=pend_sc, legendentry="Holds"))
+    push!(fig, PGFPlots.Plots.Scatter(car_data[x_dim], car_data[y_dim], car_data[hold_dim], scatterClasses=car_sc, legendentry="Does Not Hold"))
+    push!(fig, PGFPlots.Plots.Scatter(tora_data[x_dim], tora_data[y_dim], tora_data[hold_dim], scatterClasses=tora_sc))
+    push!(fig, PGFPlots.Plots.Scatter(acc_data[x_dim], acc_data[y_dim], acc_data[hold_dim], scatterClasses=acc_sc))
+
+    
     fig.legendStyle = "at={(1.05,1.0)}, anchor=north west"
     if save_fig
         save_dried_fig(fig, problem_type, x_label)
