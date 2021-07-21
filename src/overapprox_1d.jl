@@ -1,83 +1,12 @@
-
-#import Pkg
-#Pkg.add("NLsolve")
-#Pkg.add("Roots")
-#Pkg.add("Calculus")
-#Pkg.add("Plots")
-
 using Calculus
 using NLsolve
 using Roots
-using Plots
 using Interpolations
 using LaTeXStrings
-#plotly()
-
+include("plot_utils.jl")
 
 RTOL = 0.01
 myapprox(x,y) = abs(x-y)<RTOL  # This is defined to identify small intervals
-
-global NPLOTS = 0
-pgfplots_flag = true
-
-# function to plot
-function plot_bound(f, a, b, xp, yp; existing_plot=nothing, saveflag=false)
-	"""
-	This function plots f and its overapproximator
-		defined by poins xp and yp
-	"""
-	x = range(a, stop=b, length=1000)
-	y = f.(x)
-	if pgfplots_flag
-		if isnothing(existing_plot)
-			p = PGFPlots.Axis([PGFPlots.Linear(x,  y, style="black, thick", mark="none", legendentry=L"f(x)"),
-			PGFPlots.Linear(xp, yp, style="blue, thick", mark=:o, legendentry=L"g(x)")],
-			legendPos="east")
-			xlabel!(p, L"x")
-			#display(p)
-			global NPLOTS
-			NPLOTS += 1
-			# PGFPlots.save("plots/bound_"*string(NPLOTS)*".pdf")
-			# PGFPlots.save("plots/bound_"*string(NPLOTS)*".tex") # relative to run dir of top level file...dumb...
-			#return p
-		else
-			# push!(existingAxis.plots, new_plot)
-			plot!(existing_plot, x,  y, color="red", linewidth=2, label=L"f(x)");
-			plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label=L"g(x)", legend=:right);
-			xlabel!(existing_plot, L"x")
-			display(existing_plot);
-			global NPLOTS
-			NPLOTS += 1
-			# savefig("plots/bound_"*string(NPLOTS)*".pdf")
-			#return existing_plot
-		end
-	else
-		if isnothing(existing_plot)
-			p = plot(x,  y, color="red", linewidth=2, label=L"f(x)");
-			p = plot!(p, xp, yp, color="blue", marker=:o, linewidth=2, label=L"g(x)", legend=:right);
-			xlabel!(p, L"x")
-			display(p)
-			global NPLOTS
-			NPLOTS += 1
-			#savefig("plots/bound_"*string(NPLOTS)*".pdf") # relative to run dir of top level file...dumb...
-			#return p
-		else
-			plot!(existing_plot, x,  y, color="red", linewidth=2, label=L"f(x)");
-			plot!(existing_plot, xp, yp, color="blue", marker=:o, linewidth=2, label=L"g(x)", legend=:right);
-			xlabel!(existing_plot, L"x")
-			display(existing_plot);
-			global NPLOTS
-			NPLOTS += 1
-			if saveflag
-				savefig(existing_plot, "plots/bound_"*string(NPLOTS)*".html")
-			end
-			#return existing_plot
-		end
-	end
-	
-	print("\u1b[1F")
-end
-
 
 function give_interval(d2f_zeros, a, b)
 	"""
@@ -265,11 +194,11 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 
 	"""
 	Example:
-		overest(cos, 0, π, 3)
-		overest(x->exp(x^2), 0, 2, 3, convex=true)
-		overest(sin, 0, π, 3, lowerbound=true)
-		overest(sin, -π/2, π, 3, d2f_zero=[0])
-		overest(x-> x^3-sin(x), 0, 2, 3, out=points)
+		bound(cos, 0, π, 3)
+		bound(x->exp(x^2), 0, 2, 3, convex=true)
+		bound(sin, 0, π, 3, lowerbound=true)
+		bound(sin, -π/2, π, 3, d2f_zeros=[0])
+		bound(x-> x^3-sin(x), 0, 2, 3)
 	"""
 	@debug "Number of points in bound, N= $N"
 	if N == -1 # optimally choose N
@@ -394,16 +323,6 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 				y_i_m, y_i_p = get_yi_candidates(xx, f, df, N)
 				@assert check_concave_upper_optimality(y_i_m, y_i_p)
 				yy = get_safe_yi(y_i_m, y_i_p, xx, f, this_interval_convex)
-				# yy[1] = f(xx[1])
-				# yy[N+2] = f(xx[N+2])
-				# for i in 2:N+1
-				# 	if i==N+1
-				# 		xm2 = bb
-				# 	else
-				# 		xm2 = (xx[i]+xx[i+1])/2
-				# 	end
-				# 	yy[i] = line_equation(f,df, xm2,xx[i])
-				# end
 			elseif conc_method == "optimal"
 				for i in 1:N+1
 					xm2 = (xx[i]+xx[i+1])/2
