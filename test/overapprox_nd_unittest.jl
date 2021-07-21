@@ -1,3 +1,58 @@
+include("../src/overapprox_nd.jl")
+using Test
+# tests for overest_nd.jl
+
+@testset "test for find_variables" begin
+    @test find_variables(:(x+1)) == [:x]
+    @test find_variables(:(log(x + y*z))) == [:x, :y, :z]
+end
+
+@testset "test for is_affine" begin
+    @test is_affine(:(x+1)) == true
+    @test is_affine(:(-x+(2y-z))) == true
+    @test is_affine(:(log(x))) == false
+    @test is_affine(:(x+ xz)) == true # interprets xz as one variable
+    @test is_affine(:(x+ x*z)) == false
+    @test is_affine(:(x + y*log(2))) == true
+end
+
+@testset "test for is_1d" begin
+    @test is_1d(:(x*log(2))) == true
+    @test is_1d(:(x^2.5)) == true
+end
+
+@testset "test for is_unary" begin
+    @test is_unary(:(x+y)) == false
+    @test is_unary(:(x^2.5)) == false # this is like pow(x, 2.5), hence not unary. is taken care of tho
+    @test is_unary(:(sin(x))) == true
+    @test is_unary(:(x*y)) == false
+end
+# test find_UB (really tests for overapprox_1d.jl)
+
+@testset "test find_affine_range" begin
+    @test find_affine_range(:(x + 1), Dict(:x => (0, 1))) == (1,2)
+    @test find_affine_range(:(- x + 1), Dict(:x => (0, 1))) == (0,1)
+    @test find_affine_range(:((-1 + y) + x), Dict(:x => (0,1), :y => (1,2))) == (0,2)
+    @test find_affine_range(:(2*x), Dict(:x => (0,1))) == (0,2)
+    @test find_affine_range(:(x*2), Dict(:x => (0,1))) == (0,2)
+end
+
+@testset "test substitute" begin
+    @test substitute!(:(x^2+1), :x, :(y+1)) == :((y+1)^2+1)
+end
+
+@testset "test count min max" begin
+    @test count_min_max(:(min(x) + max(y - min(x)))) == [2,1]
+end
+
+# test upperbound_expr_compositions
+# need clarity on precise purpose and signature of the function
+
+@testset "test reduce_args_to_2!" begin
+    @test reduce_args_to_2(:(x+y+z)) == :(x+(y+z))
+    @test reduce_args_to_2(:(sin(x*y*z))) == :(sin(x*(y*z)))
+end
+
 N_VARS = 0
 
 @assert add_var(OverApproximation()) == :v_1

@@ -164,3 +164,17 @@ function get_symbols(ex::Union{Expr, Symbol})
     unique(syms)
 end
 
+function count_min_max(expr)
+    """ count number of min and max in expr"""
+    c = [0, 0]
+    if expr == :min
+        c[1] = 1
+    elseif expr == :max
+        c[2] = 1
+    elseif expr isa Expr
+        for arg in expr.args
+            c += count_min_max(arg)
+        end
+    end
+    return c
+end
