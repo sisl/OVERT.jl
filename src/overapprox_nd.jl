@@ -1,7 +1,7 @@
-include("autoline.jl")
 include("overapprox_1d.jl")
+include("autoline.jl")
 include("overt_utils.jl")
-include("OA_relational_util.jl")
+include("definitions.jl")
 using SymEngine
 using Plots
 plotly()

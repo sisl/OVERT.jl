@@ -16,6 +16,27 @@ increasing_special_func = [:exp, :log, :log10,
                          :asin, :atan,
                          :asinh, :atanh, :acosh]
 
+N_VARS = 0 # number of variables; has to be defined globally.
+@debug("N_VARS := 0")
+
+add_var(bound) = add_var()
+
+function add_var()
+    # bound.nvars += 1
+    # @ is the symbol preceding A in ascii
+    #return Symbol('v'*('@'+bound.nvars))
+
+    # the counter has to be a global variable.
+    global N_VARS
+    N_VARS += 1
+    return Symbol("v_$N_VARS")
+end
+                         
+function reset_NVARS()
+    global N_VARS
+    N_VARS = 0
+end
+
 function to_pairs(B)
     """
     This function converts the output of overest, a tuple of (x points, y points) in the form ready
@@ -197,7 +218,6 @@ function get_regions_unary(func::Symbol, a, b)
 end
 
 function division_d2f_regions(e, arg, a, b)
-    # TODO: needs to be tested
     # function defined over the interval [a,b]
     c = e.args[2] 
     @assert is_number(c)
@@ -449,31 +469,6 @@ function substitute!(expr::Expr, old_list::Vector{Any}, new_list::Array{Any})
     return expr
 end
 
-# function reduce_args_to_2!(expr)
-
-#     """
-#     if expr has operations with more than two arguments, this function reduces the arguments to 2
-#         Example: reduce_args_to_2!(:(x+y+z)) = (:(x+y)+z))
-#                  reduce_args_to_2!(:sin(x*y*z)) = (:(sin((x*y)*z))
-#     Modifies expression in place and returns expr as well.
-#     """
-#     func = expr.args[1]
-#     args = expr.args[2:end]
-#     larg = length(args)
-#     if larg > 2
-#         for i=1:div(larg,2)
-#            expr.args[i+1] = Expr(:call, func, args[2*i-1], args[2*i])
-#         end
-#         if isodd(larg)
-#             expr.args[div(larg,2)+2] = expr.args[end]
-#             expr.args = expr.args[1:div(larg,2)+2]
-#         else
-#             expr.args = expr.args[1:div(larg,2)+1]
-#         end
-#     end
-#     return expr
-# end
-
 ∉(e, set) = !(e ∈ set)
 
 function reduce_args_to_2(f::Symbol, arguments::Array)
@@ -517,20 +512,6 @@ function reduce_args_to_2(expr::Expr)
     return reduce_args_to_2(f::Symbol, arguments::Array)
 end
 
-# function get_rid_of_division(x)
-#     if (x isa Expr) && (x.args[1] == :/) && !is_number(x.args[2])
-#         # all moved to division case in binary functions
-#         println("*"^30)
-#         println("division is $x")
-#         println("*"^30)
-#         inv_denom = Expr(:call, :/, 1., x.args[3])
-#         println("turned to $(Expr(:call, :*, x.args[2], inv_denom))")
-#         return Expr(:call, :*, x.args[2], inv_denom)
-#     else
-#         return x
-#     end
-# end
-
 function is_number(expr)
     try
         eval(expr)
@@ -547,17 +528,6 @@ end
 
 function is_1d(expr::Expr)
     return length(find_variables(expr)) == 1
-end
-
-
-function is_effectively_unary(expr::Expr)
-    # has 3 args, but first is function and one of next 2 is a constant
-    f = expr.args[1]
-    x = expr.args[2]
-    y = expr.args[2]
-    #TODO: finish
-    # if x is_number(expr) hten.... elseif y is_number(expr) then...
-    return false # placeholder
 end
 
 is_binary(expr::Expr) = length(expr.args) == 3
