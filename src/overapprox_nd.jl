@@ -27,7 +27,6 @@ function overapprox_nd(expr,
     bound.ranges = range_dict
     bound.N = N
     bound.ϵ = ϵ
-    #expr = simplify(expr) # turns x/6 to (1/6)*x, does not affect 6/x or x/y
     return overapprox_nd(expr, bound)
 end
 
@@ -39,9 +38,7 @@ to collect the relations describing the bound along the way.
 """
 function overapprox_nd(expr,
                        bound::OverApproximation)
-    # println(expr)
     # all operations should have at most two arguments.
-    #expr = rewrite_division_by_const(expr)
     expr = reduce_args_to_2(expr)
     @debug(expr)
 
@@ -76,7 +73,7 @@ function overapprox_nd(expr,
     # elseif is_1d(expr)
     #     """
     #     Currently, this case would resort to relying on fzero to find roots of d2f which 
-    #     is not sound as this is a numerical procedure. Thus it has been commented out. 
+    #     is not sound as this is a numerical procedure. Thus it has been removed. 
     #     TODO in the future is to implement a sound version of this for arbitrary
     #     1D functions using symbolic differentiation from Calculus.jl:differentiate to find the 
     #     d2f function and then use the package IntervalRootFinding to find all roots in the 
@@ -298,7 +295,6 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
             savefig(p, "plots/bound_"*string(NPLOTS)*".html")
         else # plottype == pgf
             println("Saving PGF plot")
-            # println("string(fun)= $(string(fun)), f_x_expr.args[1] = $(string(f_x_expr.args[1]))")
             if f_x_expr.args[1] ∈ [:/, :^]
                 # use whole expression in title 
                 fun_string = "\$"*string(f_x_expr)*"\$"
