@@ -168,6 +168,7 @@ function add_output_constraints_and_check_property(formula::SMTLibFormula, outpu
     unsat = true
     # add output constraints 
     ## create a separate file for each output constraint
+    t_dreal_alone = 0
     for (i,c) in enumerate(output_constraints)
         formula_i = deepcopy(formula)
         add_output_constraints!(formula_i, c, x, t)
@@ -175,7 +176,10 @@ function add_output_constraints_and_check_property(formula::SMTLibFormula, outpu
         formula_i = gen_full_formula(formula_i::SMTLibFormula)
         full_fname = write_to_file(formula_i::SMTLibFormula, experiment_name*"_constraint$(i)_time$t.smt2"; dirname="examples/jmlr/comparisons/smtlibfiles/")
         # call dreal on file
+        t_dreal_start = time()
         unsat &= run_dreal(full_fname; δ=δ, jobs=jobs, dreal_path=dreal_path)
+        dt_dreal = time() - t_dreal_start
+        t_dreal_alone += dt_dreal
     end
-    return unsat
+    return unsat, t_dreal_alone
 end
