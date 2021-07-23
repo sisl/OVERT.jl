@@ -6,3 +6,8 @@
 plots/*.pdf
 plots/*.html
 debug_log*
+*.jl.*.cov
+*.jl.cov
+*.jl.mem
+/Manifest.toml
+/docs/build/
