@@ -18,7 +18,7 @@ add https://github.com/sisl/OVERT.jl
 
 ## Usage
 ```julia
-using Overt
+using OVERT
 
 func = :(sin(x + y) * exp(z))
 range_dict = Dict(:x => [1., 2.], :y => [-1., 1.], :z => [0., 1.])
@@ -59,6 +59,8 @@ v_15 ≦ v_13
 v_18 ≦ v_19
 v_19 ≦ v_17
 ```
+
+See plots/Methods Section.ipynb for more examples.
 
 ## Reference
 
