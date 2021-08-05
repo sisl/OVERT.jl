@@ -7,7 +7,7 @@ In particular, we used OVERT for verifying nonlinear dynamical systems that are 
 The output of OVERT is a list of equality and inequality constraints that may include nonlinear operations like `min` and `max`. Overt is guaranteed to identify the tightest piecewise linear overapproximation. In addition, the OVERT algorithm has a linear complexity in the input dimension of the function.
 
 ## Dependency
-OVERT is tested with `julia 1.5` and `Ubuntu 18` operating systems. See the Project.toml file to isntall the required dependencies.
+OVERT is tested with `julia 1.5` and `Ubuntu 18` operating systems. See the Project.toml file to install the required dependencies.
 
 ## Installation
 ```
@@ -62,7 +62,19 @@ v_19 ≦ v_17
 
 See plots/Methods Section.ipynb for more examples.
 
-## Reference
+## References
 
-- [1] "*OVERT: An Algorithm for Safety Verification of Neural Network Control Policies for Nonlinear Systems*", Sidrane et al. (2020) [link](some link)
+- [1] "*OVERT: An Algorithm for Safety Verification of Neural Network Control Policies for Nonlinear Systems*", Sidrane et al. (2020) [link](https://arxiv.org/abs/2108.01220)
 - [2] *OvertVerify* [link](https://github.com/sisl/OVERTVerify.jl)
+
+### Citation
+```
+@misc{sidrane2021overt,
+      title={OVERT: An Algorithm for Safety Verification of Neural Network Control Policies for Nonlinear Systems}, 
+      author={Chelsea Sidrane and Amir Maleki and Ahmed Irfan and Mykel J. Kochenderfer},
+      year={2021},
+      eprint={2108.01220},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
