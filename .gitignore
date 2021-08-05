@@ -11,3 +11,4 @@ debug_log*
 *.jl.mem
 /Manifest.toml
 /docs/build/
+Manifest.toml
