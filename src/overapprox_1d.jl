@@ -343,16 +343,16 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 	end
 end
 
-function overapprox(f,a,b,N; conc_method="continuous", df=nothing, d2f=nothing,
-	d2f_zeros=nothing, convex=nothing, plot=false)
+# function overapprox(f,a,b,N; conc_method="continuous", df=nothing, d2f=nothing,
+# 	d2f_zeros=nothing, convex=nothing, plot=false)
 
-	LB = bound(f, a, b, N; conc_method=conc_method, lowerbound=true, df=df, d2f=d2f,
-	d2f_zeros=d2f_zeros, convex=convex, plot=plot, reuse=false)
+# 	LB = bound(f, a, b, N; conc_method=conc_method, lowerbound=true, df=df, d2f=d2f,
+# 	d2f_zeros=d2f_zeros, convex=convex, plot=plot, reuse=false)
 
-	UB = bound(f, a, b, N; conc_method=conc_method, lowerbound=false, df=df, d2f=d2f,
-	d2f_zeros=d2f_zeros, convex=convex, plot=plot, reuse=true)
-	return LB, UB
-end
+# 	UB = bound(f, a, b, N; conc_method=conc_method, lowerbound=false, df=df, d2f=d2f,
+# 	d2f_zeros=d2f_zeros, convex=convex, plot=plot, reuse=true)
+# 	return LB, UB
+# end
 
 function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="continuous",
 	lowerbound=false, df=nothing, d2f=nothing, d2f_zeros=nothing, convex=nothing,

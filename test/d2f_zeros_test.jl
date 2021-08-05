@@ -27,15 +27,15 @@ using Test
     # test get_regions_unary
     # sin, at boundary points
     @test all(get_regions_unary(:sin, -π, π)[1] .≈ [-π, 0, π])
-    @test get_regions_unary(:sin, -π, π)[2] == nothing
+    @test get_regions_unary(:sin, -π, π)[2] === nothing
     # at fractional points
     @test get_regions_unary(:sin, -1, 1) == ([0], nothing)
     @test all(get_regions_unary(:sin, 1, 4)[1] .≈ [π])
-    @test get_regions_unary(:sin, 1, 4)[2] == nothing
+    @test get_regions_unary(:sin, 1, 4)[2] === nothing
     # cos
     @test get_regions_unary(:cos, -1, 1) == ([], false)
     @test all(get_regions_unary(:cos, -π, π)[1] .≈ [-π/2, π/2])
-    @test get_regions_unary(:cos, -π, π)[2] == nothing
+    @test get_regions_unary(:cos, -π, π)[2] === nothing
     # exp
     @test get_regions_unary(:exp, -1, 1) == ([], true)
     # log
