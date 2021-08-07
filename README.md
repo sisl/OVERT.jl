@@ -1,13 +1,14 @@
 # OVERT
 
+[![Build Status](https://github.com/sisl/OVERT.jl/workflows/CI/badge.svg)](https://github.com/sisl/OVERT.jl/actions)
+[![codecov](https://codecov.io/gh/sisl/OVERT.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/sisl/OVERT.jl)
+
+
 This repo contains a julia implementation for the OVERT algorithm, as part of [1]. Overt provides a relational piecewise-linear overapproximation of any multi-dimensional function. 
 The overapproximation is useful for verifying systems with nonlinear dynamics. 
 In particular, we used OVERT for verifying nonlinear dynamical systems that are controlled by neural networks. Check out the OVERTVerify package [2] for more details
 
 The output of OVERT is a list of equality and inequality constraints that may include nonlinear operations like `min` and `max`. Overt is guaranteed to identify the tightest piecewise linear overapproximation. In addition, the OVERT algorithm has a linear complexity in the input dimension of the function.
-
-## Dependency
-OVERT is tested with `julia 1.5` and `Ubuntu 18` operating systems. See the Project.toml file to install the required dependencies.
 
 ## Installation
 ```
