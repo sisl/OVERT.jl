@@ -60,6 +60,12 @@ v_18 ≦ v_19
 v_19 ≦ v_17
 ```
 
+Here is an approximation of tanh, displayed graphically:
+
+![tanh-1](https://user-images.githubusercontent.com/14879690/128933192-10c4f4f0-dceb-43f2-b85d-4ac4c69c6bf0.png)
+
+The bounds are very tight despite only using two line segments per region of uniform convexity because they are fitted to minimize the area between the function and the bound.
+
 See plots/Methods Section.ipynb for more examples.
 
 ### Citation
