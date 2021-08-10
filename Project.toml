@@ -17,6 +17,16 @@ SymEngine = "123dc426-2d89-5057-bbad-38513e3affd8"
 
 [compat]
 julia = "1.5"
+Calculus = "0.5"
+Interpolations = "0.13"
+LaTeXStrings = "1.2"
+MacroTools = "0.5"
+NLsolve = "4.5"
+PGFPlots = "3.4"
+PlotlyBase = "0.8"
+Plots = "1.19, 1.20"
+Roots = "1.1, 1.2"
+SymEngine = "0.8"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

@@ -11,14 +11,14 @@ plotflag = false
 plottype = "pgf"
 
 """
-    overapprox_nd(expr,
+    overapprox(expr,
                   range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real};
                   N::Integer=2,
                   ϵ::Real=1e-2)
     -> OverApproximation
 Overapproximate an n-dimensional function using a relational abstraction.
 """
-function overapprox_nd(expr,
+function overapprox(expr,
                        range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real};
                        N::Integer=2,
                        ϵ::Real=1e-2)
@@ -27,16 +27,16 @@ function overapprox_nd(expr,
     bound.ranges = range_dict
     bound.N = N
     bound.ϵ = ϵ
-    return overapprox_nd(expr, bound)
+    return overapprox(expr, bound)
 end
 
 """
-    overapprox_nd(expr, bound::OverApproximation) -> bound::OverApproximation
+    overapprox(expr, bound::OverApproximation) -> bound::OverApproximation
 
 Helper function. Bounds the expression _expr_ in a recursive manner. bound is used as a container
 to collect the relations describing the bound along the way.
 """
-function overapprox_nd(expr,
+function overapprox(expr,
                        bound::OverApproximation)
     # all operations should have at most two arguments.
     expr = reduce_args_to_2(expr)
@@ -98,11 +98,11 @@ function overapprox_nd(expr,
             f = expr.args[1]
             xexpr = expr.args[2]
             # recurse on argument
-            bound = overapprox_nd(xexpr, bound)
+            bound = overapprox(xexpr, bound)
             if f == :- # handle unary minus
                 @debug "let affine handle unary minus"
                 new_expr = :(-$(bound.output))
-                return overapprox_nd(new_expr, bound)
+                return overapprox(new_expr, bound)
             end
             # handle outer function f
             bound = bound_unary_function(f, bound)
@@ -115,10 +115,10 @@ function overapprox_nd(expr,
             xexpr = expr.args[2]
             yexpr = expr.args[3]
             # recurse on aguments
-            bound = overapprox_nd(xexpr, bound)
+            bound = overapprox(xexpr, bound)
             x = bound.output
             #
-            bound = overapprox_nd(yexpr, bound)
+            bound = overapprox(yexpr, bound)
             y = bound.output
             # handle outer function f
             bound = bound_binary_functions(f, x, y, bound)
@@ -138,7 +138,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
         # first expand multiplication expr
         expanded_mul_expr, bound = expand_multiplication(x, y, bound)
         # and then bound that expression wrt x2, y2
-        bound = overapprox_nd(expanded_mul_expr, bound)
+        bound = overapprox(expanded_mul_expr, bound)
         return bound
     elseif divide_by_var
         # handles x/y and c/y
@@ -158,11 +158,11 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
             inv_denom = :(1. / $y)
             f_new = :($x * $inv_denom)
             @debug "into: $f_new"
-            return overapprox_nd(f_new, bound)
+            return overapprox(f_new, bound)
         end
     elseif divide_by_const
         new_expr = rewrite_division_by_const(:($f($x,$y)))
-        return overapprox_nd(new_expr, bound)
+        return overapprox(new_expr, bound)
     # The following operation is not yet fully tested.
     elseif f == :^ # f(x,y)   x^2
         if is_number(y) # this is f(x)^a, where a is a constant.
@@ -182,7 +182,7 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
     elseif is_affine(:($f($x,$y)))
         new_expr = :($f($x,$y))
         @debug "Recursing to let affine handle: " new_expr
-        return overapprox_nd(new_expr, bound)
+        return overapprox(new_expr, bound)
     else
         # TODO: add support for min, max, relu! Should be super simple.
         error(" operation $f with operands $x and $y is not implemented")
