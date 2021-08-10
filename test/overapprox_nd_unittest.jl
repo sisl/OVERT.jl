@@ -85,23 +85,23 @@ affine_tests()
 # end
 # outer_affine_tests()
 
-overapprox_nd(:(sin(x)), Dict(:x=>[0,π/2]))
+overapprox(:(sin(x)), Dict(:x=>[0,π/2]))
 
-overapprox_nd(:(sin(sin(x))), Dict(:x=>[0,π/2]))
+overapprox(:(sin(sin(x))), Dict(:x=>[0,π/2]))
 
 # improve how this is handled
-overapprox_nd(:(sin(sin(z + y))), Dict(:z=>[0,π], :y=>[-π,π]))
+overapprox(:(sin(sin(z + y))), Dict(:z=>[0,π], :y=>[-π,π]))
 
-overapprox_nd(:(2*x), Dict(:x=>[0,1]))
+overapprox(:(2*x), Dict(:x=>[0,1]))
 
 # This isn't reduced to eval(log(2))*x because whole thing is affine...
-overapprox_nd(:(log(2)*x), Dict(:x=>[0.,1.]))
+overapprox(:(log(2)*x), Dict(:x=>[0.,1.]))
 
-overapprox_nd(:(2*log(x)), Dict(:x=>[1,2]))
+overapprox(:(2*log(x)), Dict(:x=>[1,2]))
 
 expr = :(exp(2*sin(x) + y) - log(6)*z)
 init_set = Dict{Symbol, Array{Float64,1}}(:x=>[0,1], :z=>[0,π], :y=>[-π,π])
-oa = overapprox_nd(expr, init_set)
+oa = overapprox(expr, init_set)
 
 #
 b1 = OverApproximation()
@@ -117,35 +117,35 @@ e1 = :(xxx + yyy + zzz + kkk - xxx - yyy - zzz - kkk)
 e2 = reduce_args_to_2(e1)
 eval(e1) == eval(e2)
 
-overapprox_nd(:(x*y), Dict(:x=>[1,2], :y=>[-10,-9]))
+overapprox(:(x*y), Dict(:x=>[1,2], :y=>[-10,-9]))
 
-overapprox_nd(:(sin(6) + sin(x)), Dict(:x=>[1,2]))
+overapprox(:(sin(6) + sin(x)), Dict(:x=>[1,2]))
 
-overapprox_nd(:(sin(6)*sin(x)), Dict(:x=>[1,2]))
+overapprox(:(sin(6)*sin(x)), Dict(:x=>[1,2]))
 
-overapprox_nd(:(sin(6)*sin(x)*sin(y)), Dict(:x=>[1,2], :y=>[1,2])::Dict{Symbol,Array{Int64,1}})
+overapprox(:(sin(6)*sin(x)*sin(y)), Dict(:x=>[1,2], :y=>[1,2])::Dict{Symbol,Array{Int64,1}})
 
 # TODO: when the whole expression is affine, division by a constant still appears...fix so it's converted to multiplication by 1/c
-overapprox_nd(:(x/6), Dict(:x=>[-1,1]))
+overapprox(:(x/6), Dict(:x=>[-1,1]))
 # should be handled by affine base case
 
-overapprox_nd(:(6/x), Dict(:x=>[1,2]))
+overapprox(:(6/x), Dict(:x=>[1,2]))
 
-overapprox_nd(:(6/(x+y)), Dict(:x=>[2,3], :y=>[-1,2]))
+overapprox(:(6/(x+y)), Dict(:x=>[2,3], :y=>[-1,2]))
 
-overapprox_nd(:(x/y), Dict(:x=>[2,3], :y=>[1,2]))
+overapprox(:(x/y), Dict(:x=>[2,3], :y=>[1,2]))
 
-overapprox_nd(:(sin(x + y)/6), Dict(:x=>[2,3], :y=>[1,2]))
+overapprox(:(sin(x + y)/6), Dict(:x=>[2,3], :y=>[1,2]))
 
-overapprox_nd(:(sin(x + y)/y), Dict(:x=>[2,3], :y=>[1,2]))
+overapprox(:(sin(x + y)/y), Dict(:x=>[2,3], :y=>[1,2]))
 
-overapprox_nd(:(exp(x^2)), Dict(:x=>[-1,1]))
+overapprox(:(exp(x^2)), Dict(:x=>[-1,1]))
 
-overapprox_nd(:((x+sin(y))^3), Dict(:x=>[2,3], :y=>[1,2]))
+overapprox(:((x+sin(y))^3), Dict(:x=>[2,3], :y=>[1,2]))
 
-overapprox_nd(:(2^x), Dict(:x=>[2,3]))
+overapprox(:(2^x), Dict(:x=>[2,3]))
 
-overapprox_nd(:(-sin(x+y)), Dict(:x=>[2,3], :y=>[1,2]))
+overapprox(:(-sin(x+y)), Dict(:x=>[2,3], :y=>[1,2]))
 
-overapprox_nd(:(log(x)), Dict(:x => [1.0, 166.99205596346707]); N=-1)
+overapprox(:(log(x)), Dict(:x => [1.0, 166.99205596346707]); N=-1)
 

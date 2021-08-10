@@ -1,4 +1,4 @@
-# OVERT
+# OVERT.jl
 
 [![Build Status](https://github.com/sisl/OVERT.jl/workflows/CI/badge.svg)](https://github.com/sisl/OVERT.jl/actions)
 [![codecov](https://codecov.io/gh/sisl/OVERT.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/sisl/OVERT.jl)
