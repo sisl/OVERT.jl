@@ -4,16 +4,15 @@
 [![codecov](https://codecov.io/gh/sisl/OVERT.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/sisl/OVERT.jl)
 
 
-This repo contains a julia implementation for the OVERT algorithm, as part of [1]. Overt provides a relational piecewise-linear overapproximation of any multi-dimensional function. 
+This repo contains a julia implementation for the [OVERT algorithm](https://arxiv.org/abs/2108.01220). Overt provides a relational piecewise-linear overapproximation of any multi-dimensional function. 
 The overapproximation is useful for verifying systems with nonlinear dynamics. 
-In particular, we used OVERT for verifying nonlinear dynamical systems that are controlled by neural networks. Check out the OVERTVerify package [2] for more details
+In particular, we used OVERT for verifying nonlinear dynamical systems that are controlled by neural networks. See the [OVERTVerify package](https://github.com/sisl/OVERTVerify.jl).
 
 The output of OVERT is a list of equality and inequality constraints that may include nonlinear operations like `min` and `max`. Overt is guaranteed to identify the tightest piecewise linear overapproximation. In addition, the OVERT algorithm has a linear complexity in the input dimension of the function.
 
 ## Installation
 ```
-]
-add https://github.com/sisl/OVERT.jl
+] add https://github.com/sisl/OVERT.jl
 ```
 
 
@@ -23,7 +22,7 @@ using OVERT
 
 func = :(sin(x + y) * exp(z))
 range_dict = Dict(:x => [1., 2.], :y => [-1., 1.], :z => [0., 1.])
-o1 = overapprox_nd(func, range_dict)
+o1 = overapprox(func, range_dict)
 
 ```
 The output is
@@ -62,11 +61,6 @@ v_19 ≦ v_17
 ```
 
 See plots/Methods Section.ipynb for more examples.
-
-## References
-
-- [1] "*OVERT: An Algorithm for Safety Verification of Neural Network Control Policies for Nonlinear Systems*", Sidrane et al. (2020) [link](https://arxiv.org/abs/2108.01220)
-- [2] *OvertVerify* [link](https://github.com/sisl/OVERTVerify.jl)
 
 ### Citation
 ```
