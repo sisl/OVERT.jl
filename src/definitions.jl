@@ -1,14 +1,14 @@
 # Relational OverApproximation Utilities
 
 mutable struct OverApproximation
-    output::Union{Symbol, Real}
+    output #::Union{Symbol, Real}
     output_range::Array{T, 1} where {T <: Real}
-    ranges::Dict{Symbol, Array{T, 1}} where {T <: Real}
+    ranges::Dict{Union{Symbol, Expr}, Array{T, 1}} where {T <: Real}
     nvars::Integer
     consts::Array{Symbol, 1}
     approx_eq::Array{Expr, 1}
     approx_ineq::Array{Expr, 1}
-    fun_eq::Dict{Symbol, Any}
+    fun_eq::Dict{Union{Symbol, Expr}, Any}
     N::Integer # number of points in a bound in a [0,1] interval
     ϵ::Real # construct overapprox with ϵ leeway from function
 end
