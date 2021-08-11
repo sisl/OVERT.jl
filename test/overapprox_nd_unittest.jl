@@ -35,6 +35,7 @@ end
     @test find_affine_range(:((-1 + y) + x), Dict(:x => (0,1), :y => (1,2))) == (0,2)
     @test find_affine_range(:(2*x), Dict(:x => (0,1))) == (0,2)
     @test find_affine_range(:(x*2), Dict(:x => (0,1))) == (0,2)
+    @test find_affine_range(:(x*π), Dict(:x => (0,1)))[2] ≈ π
 end
 
 @testset "test substitute" begin
