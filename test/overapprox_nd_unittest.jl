@@ -167,3 +167,9 @@ overapprox(:(log(x)), Dict(:x => [1.0, 166.99205596346707]); N=-1)
 
 overapprox(:(relu(x)), Dict(:x => [-5.7, 23.5]); N=1)
 
+overapprox(:(max(x,y)), Dict(:x=>[2,3.], :y=>[1,2.]))
+
+overapprox(:(max(sin(x),5*y - 6)), Dict(:x=>[2,3.], :y=>[1,2.]))
+
+overapprox(:(max(min(x, y),5*y - 6*cos(y))), Dict(:x=>[2,3.], :y=>[1,2.]))
+
