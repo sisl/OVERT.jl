@@ -21,6 +21,7 @@ Calculus = "0.5"
 Interpolations = "0.13"
 LaTeXStrings = "1.2"
 MacroTools = "0.5"
+NBInclude = "2.0"
 NLsolve = "4.5"
 PGFPlots = "3.4"
 PlotlyBase = "0.8"
@@ -30,6 +31,8 @@ SymEngine = "0.8"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+NBInclude = "0db19996-df87-5ea3-a455-e3a50d440464"
+
 
 [targets]
-test = ["Test"]
+test = ["Test", "NBInclude"]
