@@ -103,6 +103,10 @@ function overapprox(expr,
                 @debug "let affine handle unary minus"
                 new_expr = :(-$(bound.output))
                 return overapprox(new_expr, bound)
+            elseif f == :relu 
+                @debug "PWL case"
+                bound = handle_PWL(f, bound.output, bound)
+                return bound
             end
             # handle outer function f
             bound = bound_unary_function(f, bound)
@@ -193,12 +197,25 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
     end
 end
 
-function handle_PWL(f, x, y, bound)
+function handle_PWL(f, x, y, bound::OverApproximation)
+    # two arg case
     bound.output = add_var(bound)
     expr = :($(bound.output) == $f($x, $y))
     push!(bound.approx_eq, expr)
     bound.fun_eq[bound.output] = expr
     f_range = find_range(:($f($x, $y)), bound.ranges)
+    bound.output_range = f_range
+    bound.ranges[bound.output] = bound.output_range
+    return bound
+end
+
+function handle_PWL(f, x, bound::OverApproximation)
+    # one arg case 
+    bound.output = add_var(bound)
+    expr = :($(bound.output) == $f($x))
+    push!(bound.approx_eq, expr)
+    bound.fun_eq[bound.output] = expr
+    f_range = find_range(:($f($x)), bound.ranges)
     bound.output_range = f_range
     bound.ranges[bound.output] = bound.output_range
     return bound
