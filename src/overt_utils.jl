@@ -363,8 +363,8 @@ function find_affine_range(expr, range_dict)
     """
     @assert is_affine(expr)
 
-    expr isa Symbol ? (return range_dict[expr]) : nothing
     try (return eval(expr), eval(expr)) catch; nothing end # works if expr is a number
+    expr isa Symbol ? (return range_dict[expr]) : nothing
 
     check_expr_args_length(expr)
     all_vars = find_variables(expr)
