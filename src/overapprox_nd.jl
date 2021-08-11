@@ -19,7 +19,7 @@ plottype = "pgf"
 Overapproximate an n-dimensional function using a relational abstraction.
 """
 function overapprox(expr,
-                       range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real};
+                       range_dict::Dict{Union{Symbol, Expr}, Array{T, 1}} where {T <: Real};
                        N::Integer=2,
                        ϵ::Real=1e-2)
     bound = OverApproximation()

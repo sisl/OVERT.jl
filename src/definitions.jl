@@ -15,12 +15,12 @@ end
 # default constructor
 OverApproximation() = OverApproximation(:(null_output),
                                         Array{Float64, 1}(),
-                                        Dict{Symbol, Array{Float64,1}}(),
+                                        Dict{Union{Symbol, Expr}, Array{Float64,1}}(),
                                         0,
                                         Array{Symbol, 1}(),
                                         Array{Expr, 1}(),
                                         Array{Expr, 1}(),
-                                        Dict{Symbol, Any}(),
+                                        Dict{Union{Symbol, Expr}, Any}(),
                                         3,
                                         1e-2)
 
