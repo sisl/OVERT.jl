@@ -15,6 +15,7 @@ increasing_special_func = [:exp, :log, :log10,
                          :tan, :sinh, :tanh,
                          :asin, :atan,
                          :asinh, :atanh, :acosh]
+special_consts = [π]
 
 N_VARS = 0 # number of variables; has to be defined globally.
 @debug("N_VARS := 0")
@@ -66,7 +67,7 @@ function find_variables(expr::Expr)
         if arg isa Expr
             all_vars = vcat(all_vars, find_variables(arg))
         elseif arg isa Symbol
-            if !(arg in special_oper) && !(arg in special_func)
+            if !(arg in special_oper) && !(arg in special_func) && !(arg in special_consts)
                 all_vars = vcat(all_vars, arg)
             end
         end
@@ -408,23 +409,35 @@ function find_range(expr, range_dict)
     """
     Find range of PWL function.
     """
-    if is_relu(expr)
+    if is_affine(expr)
+        l,u = find_affine_range(expr, range_dict)
+        return [l,u]
+    elseif is_relu(expr)
+        @debug expr " is relu"
         if expr.args[1] == :relu
             inner_expr = expr.args[2]
         elseif expr.args[1] == :max # max with 0
-            inner_expr = expr.args[3]
+            if expr.args[2] == 0.0
+                inner_expr = expr.args[3]
+            elseif expr.args[3] == 0.0
+                inner_expr = expr.args[2]
+            end
         end
         l,u = find_range(inner_expr, range_dict)
+        @debug "l = " l ", u = " u
         return [0, max(0, u)]
-    elseif is_affine(expr)
-        l,u = find_affine_range(expr, range_dict)
-        return [l,u]
-    elseif is_min(expr)
+    elseif expr.args[1] == :min
         x = expr.args[2]
         y = expr.args[3]
         xl, xu = find_range(x, range_dict)
         yl, yu = find_range(y, range_dict)
         return [min(xl,yl), min(xu,yu)]
+    elseif expr.args[1] == :max
+        x = expr.args[2]
+        y = expr.args[3]
+        xl, xu = find_range(x, range_dict)
+        yl, yu = find_range(y, range_dict)
+        return [max(xl,yl), max(xu,yu)]
     else
         throw(MyException("not implemented yet"))
     end
@@ -434,7 +447,10 @@ function is_relu(expr)
     if length(expr.args) < 2
         return false
     end
-    return (expr.args[1] == :max && expr.args[2] == 0.) || expr.args[1] == :relu
+    c1 = (expr.args[1] == :max && expr.args[2] == 0.)
+    c2 = length(expr.args) > 2 ? (expr.args[1] == :max && expr.args[3] == 0.) : false
+    c3 = expr.args[1] == :relu
+    return c1 || c2 || c3 
 end
 
 function is_min(expr)

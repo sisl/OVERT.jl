@@ -81,6 +81,20 @@ function affine_tests()
 end
 affine_tests()
 
+@testset "PWL_tests" begin
+    @test is_relu(:(relu(x)))
+    @test is_relu(:(max(x, 0)))
+    @test is_relu(:(max(0, 5*x + log(2))))
+    @test is_relu(:(max(x*y, 0)))
+    @test !is_relu(:(max(x, y)))
+    @test !is_relu(:(min(0, x)))
+    @test find_range(:(max(x, y)), Dict(:x => [4.,5.], :y=>[1., 6.])) == [4., 6.]
+    @test find_range(:(max(5*x, y)), Dict(:x => [4.,5.], :y=>[1., 6.])) == [20., 25.]
+    @test find_range(:(min(y, -5*x)), Dict(:x => [4.,5.], :y=>[1., 6.])) == [-25., -20]
+    @test find_range(:(max(x, 0)), Dict(:x => [-6.7, 8.9])) == [0.0, 8.9]
+    @test find_range(:(relu(x)), Dict(:x => [-12.3, 35.])) == [0.0, 35]
+end
+
 # function outer_affine_tests()
 #     @assert is_outer_affine(:(-sin(x) + sin(y)))
 #     @assert is_outer_affine(:( -5*(sin(x) - 3*sin(y)) ) )
@@ -150,4 +164,6 @@ overapprox(:(2^x), Dict(:x=>[2,3]))
 overapprox(:(-sin(x+y)), Dict(:x=>[2,3], :y=>[1,2]))
 
 overapprox(:(log(x)), Dict(:x => [1.0, 166.99205596346707]); N=-1)
+
+overapprox(:(relu(x)), Dict(:x => [-5.7, 23.5]); N=1)
 

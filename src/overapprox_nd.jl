@@ -183,13 +183,26 @@ function bound_binary_functions(f, x, y, bound) # TODO: should only be for when 
         new_expr = :($f($x,$y))
         @debug "Recursing to let affine handle: " new_expr
         return overapprox(new_expr, bound)
+    elseif f ∈ [:min, :max, :relu]
+        @debug "PWL case, f=" f
+        bound = handle_PWL(f, x, y, bound)
+        return bound
     else
-        # TODO: add support for min, max, relu! Should be super simple.
         error(" operation $f with operands $x and $y is not implemented")
         return OverApproximation() # for type stability, maybe?
     end
 end
 
+function handle_PWL(f, x, y, bound)
+    bound.output = add_var(bound)
+    expr = :($(bound.output) == $f($x, $y))
+    push!(bound.approx_eq, expr)
+    bound.fun_eq[bound.output] = expr
+    f_range = find_range(:($f($x, $y)), bound.ranges)
+    bound.output_range = f_range
+    bound.ranges[bound.output] = bound.output_range
+    return bound
+end
 
 function expand_multiplication(x, y, bound; ξ=0.1)
     return expand_multiplication_with_scaling(x, y, bound; ξ=ξ)
