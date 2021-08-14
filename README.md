@@ -12,7 +12,7 @@ The output of OVERT is a list of equality and inequality constraints that may in
 
 ## Installation
 ```
-] add https://github.com/sisl/OVERT.jl
+] add OVERT
 ```
 
 
