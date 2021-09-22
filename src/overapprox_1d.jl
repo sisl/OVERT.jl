@@ -5,7 +5,7 @@ using Interpolations
 using LaTeXStrings
 include("plot_utils.jl")
 
-RTOL = 0.01
+RTOL = 1e-5
 myapprox(x,y) = abs(x-y)<RTOL  # This is defined to identify small intervals
 
 function give_interval(d2f_zeros, a, b)
