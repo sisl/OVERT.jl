@@ -7,8 +7,11 @@ using Plots
 plotly()
 using PGFPlots
 
+# TODO: put params into a mutable struct
 plotflag = false
 plottype = "pgf"
+DELETE_MUL_BY_ZERO = true
+DELETE_DEAD_RELUS = true
 
 """
     overapprox(expr,
@@ -68,6 +71,7 @@ function overapprox(expr,
         bound.output_range = [find_affine_range(expr, bound.ranges)...]
         push!(bound.approx_eq, :($(bound.output) == $expr))
         bound.fun_eq[bound.output] = expr
+        @debug "turning $expr into $(bound.output) = $expr"
         bound.ranges[bound.output] = bound.output_range
         return bound
     # elseif is_1d(expr)
@@ -199,25 +203,37 @@ end
 
 function handle_PWL(f, x, y, bound::OverApproximation)
     # two arg case
-    bound.output = add_var(bound)
-    expr = :($(bound.output) == $f($x, $y))
-    push!(bound.approx_eq, expr)
-    bound.fun_eq[bound.output] = expr
     f_range = find_range(:($f($x, $y)), bound.ranges)
     bound.output_range = f_range
-    bound.ranges[bound.output] = bound.output_range
+    if f_range == [0.0, 0.0] && DELETE_DEAD_RELUS # dead relu 
+        println("Deleting dead relu. f_range is $(f_range). ")
+        bound.output = 0.0
+    else # live relu or max or something 
+        bound.output = add_var(bound)
+        expr = :($(bound.output) == $f($x, $y))
+        push!(bound.approx_eq, expr)
+        bound.fun_eq[bound.output] = :($f($x, $y))
+        @debug "turning $f($x,$y) into $(bound.output) = $(bound.fun_eq[bound.output])"
+        bound.ranges[bound.output] = bound.output_range
+    end
     return bound
 end
 
 function handle_PWL(f, x, bound::OverApproximation)
     # one arg case 
-    bound.output = add_var(bound)
-    expr = :($(bound.output) == $f($x))
-    push!(bound.approx_eq, expr)
-    bound.fun_eq[bound.output] = expr
     f_range = find_range(:($f($x)), bound.ranges)
     bound.output_range = f_range
-    bound.ranges[bound.output] = bound.output_range
+    if f_range == [0.0, 0.0] && DELETE_DEAD_RELUS # dead relu 
+        println("Deleting dead relu. f_range is $(f_range). ")
+        bound.output = 0.0
+    else # live relu or something 
+        bound.output = add_var(bound)
+        expr = :($(bound.output) == $f($x))
+        push!(bound.approx_eq, expr)
+        bound.fun_eq[bound.output] = :($f($x))
+        @debug "turning $f($x) into $(bound.output) = $(bound.fun_eq[bound.output])"
+        bound.ranges[bound.output] = bound.output_range
+    end
     return bound
 end
 
@@ -241,35 +257,45 @@ function expand_multiplication_with_scaling(x, y, bound; ξ=0.1)
         In this final form, everything is decomposed into unary functions, +/-, and affine functions!
     """
 
-    x2 = add_var(bound)
-    y2 = add_var(bound)
     a,b = bound.ranges[x]
     c,d = bound.ranges[y]
-    @assert(b >= a)
-    @assert(d >= c)
-    b_minus_a = b - a
-    d_minus_c = d - c
-    push!(bound.approx_eq, :($x2 == ($x - $a)/$b_minus_a + $ξ))
-    push!(bound.approx_eq, :($y2 == ($y - $c)/$d_minus_c + $ξ))
-    @debug("Expanding multiplication")
-    bound.fun_eq[x2] = :(($x - $a)/$b_minus_a + $ξ)
-    bound.fun_eq[y2] = :(($y - $c)/$d_minus_c + $ξ)
-    bound.ranges[x2] = [ξ, 1. + ξ]
-    bound.ranges[y2] = [ξ, 1. + ξ]
+    @debug "mult ranges: [$a, $b], [$c, $d]"
 
-    b_minus_a_times_d_minus_c = (b - a)*(d - c)
-    mult_expr = :($b_minus_a_times_d_minus_c*exp(log($x2) + log($y2)))
-    x_coeff = (b - a)*(c - ξ*(d - c))
-    xterm = :($x_coeff*$x2)
-    y_coeff = (d - c)*(a - ξ*(b - a))
-    yterm = :($y_coeff*$y2)
-    constant_term = (c - ξ*(d - c))*(a - ξ*(b - a))
+    if ((a==0 && b==0) || (c==0 && d==0)) && DELETE_MUL_BY_ZERO
+        println("Multiplication by zero.")
+        # NOTE: in the future... might want to perserve e.g. v_3 = 0*v_2 and set e.g. v_3 as the output with range 0.0 rather than setting the output to 0.0 directly ¯\_(ツ)_/¯ not sure
+        bound.output = 0.0
+        return 0.0, bound
+    else 
+        @assert(b >= a)
+        @assert(d >= c)
+        b_minus_a = b - a
+        d_minus_c = d - c
+        x2 = add_var(bound)
+        y2 = add_var(bound)
+        push!(bound.approx_eq, :($x2 == ($x - $a)/$b_minus_a + $ξ))
+        push!(bound.approx_eq, :($y2 == ($y - $c)/$d_minus_c + $ξ))
+        @debug("Expanding multiplication")
+        bound.fun_eq[x2] = :(($x - $a)/$b_minus_a + $ξ)
+        bound.fun_eq[y2] = :(($y - $c)/$d_minus_c + $ξ)
+        @debug "$x2 = $(bound.fun_eq[x2])"
+        @debug "$y2 = $(bound.fun_eq[y2])"
+        bound.ranges[x2] = [ξ, 1. + ξ]
+        bound.ranges[y2] = [ξ, 1. + ξ]
 
-    expr = :($mult_expr + $xterm + $yterm + $constant_term)
-    @debug "expanded multiplication expr is: $expr"
-    return expr, bound
+        b_minus_a_times_d_minus_c = (b - a)*(d - c)
+        mult_expr = :($b_minus_a_times_d_minus_c*exp(log($x2) + log($y2)))
+        x_coeff = (b - a)*(c - ξ*(d - c))
+        xterm = :($x_coeff*$x2)
+        y_coeff = (d - c)*(a - ξ*(b - a))
+        yterm = :($y_coeff*$y2)
+        constant_term = (c - ξ*(d - c))*(a - ξ*(b - a))
+
+        expr = :($mult_expr + $xterm + $yterm + $constant_term)
+        @debug "expanded multiplication expr is: $expr"
+        return expr, bound
+    end
 end
-
 
 function apply_fx(f, a)
     substitute!(f, :x, a)

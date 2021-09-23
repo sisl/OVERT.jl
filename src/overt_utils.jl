@@ -98,7 +98,7 @@ function is_affine(expr)
         return true
     elseif expr isa Expr
         check_expr_args_length(expr)
-        func = expr.args[1]
+        func = expr.args[1]::Symbol
         if func ∉ [:+, :-, :*, :/] # only these operations are allowed
             return false
         else  # func ∈ [:+, :-, :*, :/]
