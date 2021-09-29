@@ -225,7 +225,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 		@debug "convexity specified, no sub intervals necessary." convex
     else #if concavity is not uniform, calculate intervals of uniform concavity
 		if isnothing(d2f_zeros) # calculate zeros of second derivative, if not given.
-			println("WARNING: d2f_zeros have not been specified. Convex and concave regions will be identified using a numerical procedure. Soundness not guaranteed. ")
+			println("WARNING: d2f_zeros have not been specified for function $f. Convex and concave regions will be identified using a numerical procedure. Soundness not guaranteed. ")
 			d2f_zeros = fzeros(d2f, a, b)
         end
         intervals = give_interval(d2f_zeros, a, b)  # find subintervals.
@@ -376,7 +376,7 @@ function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="cont
 		@debug "convexity specified, no sub intervals necessary."
 	else
 		if isnothing(d2f_zeros) # calculate zeros of second derivative, if not given.
-			println("WARNING: d2f_zeros have not been specified. Convex and concave regions will be identified using a numerical procedure. Soundness not guaranteed. ")
+			println("WARNING: d2f_zeros have not been specified for function $f. Convex and concave regions will be identified using a numerical procedure. Soundness not guaranteed. ")
 			d2f_zeros = fzeros(d2f, a, b)
 		end
 		intervals = give_interval(d2f_zeros, a, b)  # find subintervals.
