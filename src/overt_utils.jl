@@ -301,7 +301,7 @@ function get_regions_1arg(e::Expr, arg::Symbol, a, b)
     return d2f_zeros, convex
 end
 
-function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, ϵ=0.0, d2f_zeros=nothing, convex=nothing)
+function find_UB(func, a, b, N; lb=false, plot=false, ϵ=0.0, d2f_zeros=nothing, convex=nothing)
 
     """
     This function finds the piecewise linear upperbound (lowerbound) of
@@ -325,10 +325,6 @@ function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, ϵ=0.0, d2
     end
     #println("Max of points after ϵ adjustment: ", maximum(UB_points))
     UB_sym = closed_form_piecewise_linear(UB_points)
-    # if !isnothing(digits)
-    #     # note this degrades numerical precision, use with care
-    #     UB_sym = round_expr(UB_sym)
-    # end
     UB_eval = SymEngine.lambdify(:(x -> $UB_sym), [:x])
     return UB_points, UB_sym, UB_eval
 end
