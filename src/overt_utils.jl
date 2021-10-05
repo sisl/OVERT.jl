@@ -301,7 +301,7 @@ function get_regions_1arg(e::Expr, arg::Symbol, a, b)
     return d2f_zeros, convex
 end
 
-function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_plot=nothing, ϵ=0, d2f_zeros=nothing, convex=nothing)
+function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, ϵ=0.0, d2f_zeros=nothing, convex=nothing)
 
     """
     This function finds the piecewise linear upperbound (lowerbound) of
@@ -312,7 +312,7 @@ function find_UB(func, a, b, N; lb=false, digits=nothing, plot=false, existing_p
     Return values are points (UB_points), the min-max closed form (UB_sym)
     as well the lambda function form (UB_eval).
     """
-    UB = bound(func, a, b, N; lowerbound=lb, d2f_zeros=d2f_zeros, convex=convex, plot=plot, existing_plot=existing_plot)
+    UB = bound(func, a, b, N; lowerbound=lb, d2f_zeros=d2f_zeros, convex=convex, plot=plot)
     UB_points = unique(sort(to_pairs(UB), by = x -> x[1]))
     # if !lb
     #     println("Is upper bound.")
