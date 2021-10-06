@@ -145,10 +145,10 @@ function is_outer_affine(expr::Expr)
     end
 end
 
-function add_ϵ(points, ϵ)
+function add_ϵ(points, ϵ::T where T <: Real)
     `Add ϵ to the y values of all points in a container`
     @debug "Added $ϵ to all points"
-    new_points = []
+    new_points = Tuple{Float64, Float64}[]
     for p in points
         push!(new_points, (p[1], p[2] + ϵ))
     end
@@ -325,8 +325,8 @@ function find_UB(func, a, b, N; lb=false, plot=false, ϵ=0.0, d2f_zeros=nothing,
     end
     #println("Max of points after ϵ adjustment: ", maximum(UB_points))
     UB_sym = closed_form_piecewise_linear(UB_points)
-    UB_eval = SymEngine.lambdify(:(x -> $UB_sym), [:x])
-    return UB_points, UB_sym, UB_eval
+    #UB_eval = SymEngine.lambdify(:(x -> $UB_sym), [:x])
+    return UB_points::Vector{Tuple{Float64, Float64}}, UB_sym #, UB_eval
 end
 
 function find_1d_range(B)

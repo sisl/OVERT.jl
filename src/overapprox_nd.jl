@@ -332,9 +332,9 @@ end
 Bound one argument functions like sin(x) or x -> x^2 or x -> 1/x. Create upper and lower bounds of function f(x)
 """
 function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound; plotflag=plotflag, d2f_zeros=nothing, convex=nothing)
-    UBpoints, UBfunc_sym, UBfunc_eval = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, ϵ= bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
+    UBpoints, UBfunc_sym = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, ϵ= bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
     fUBrange = [find_1d_range(UBpoints)...]
-    LBpoints, LBfunc_sym, LBfunc_eval = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, ϵ= -bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
+    LBpoints, LBfunc_sym = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, ϵ= -bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
     fLBrange = [find_1d_range(LBpoints)...]
 
     # plot after adding air gap and after turning into closed form expression
