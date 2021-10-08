@@ -66,7 +66,7 @@ function overapprox(expr,
         # push!(bound.consts, bound.output)
         # return bound
     elseif is_affine(expr)
-        @debug("is affine base case")
+        @debug("$expr is affine base case")
         bound.output = add_var(bound)
         bound.output_range = [find_affine_range(expr, bound.ranges)...]
         push!(bound.approx_eq, :($(bound.output) == $expr))

@@ -357,10 +357,13 @@ function find_affine_range(expr, range_dict)
     """
     given a an affine expression expr, this function finds the
         lower and upper bounds of the range.
-    """
+    """   
     @assert is_affine(expr)
+    @debug "$expr is affine"
 
+    @debug "testing if $expr can be eval'ed to a number"
     try (return eval(expr), eval(expr)) catch; nothing end # works if expr is a number
+    @debug "testing if $expr is a symbol"
     expr isa Symbol ? (return range_dict[expr]) : nothing
 
     check_expr_args_length(expr)
