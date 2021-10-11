@@ -301,7 +301,7 @@ function get_regions_1arg(e::Expr, arg::Symbol, a, b)
     return d2f_zeros, convex
 end
 
-function find_UB(func, a, b, N; lb=false, plot=false, ϵ=0.0, d2f_zeros=nothing, convex=nothing)
+function find_UB(func, a, b, N; lb::Bool=false, plot::Bool=false, ϵ::Float64=0.0, d2f_zeros::Union{Nothing, Vector{Any}}=nothing, convex::Union{Nothing, Bool}=nothing)
 
     """
     This function finds the piecewise linear upperbound (lowerbound) of

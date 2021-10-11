@@ -135,7 +135,7 @@ function overapprox(expr,
     end
 end
 
-function bound_binary_functions(f, x, y, bound) # TODO: should only be for when both args are vars or 6/x
+function bound_binary_functions(f::Symbol, x::Union{Float64, Expr, Symbol}, y::Union{Float64, Expr, Symbol}, bound::OverApproximation) # TODO: should only be for when both args are vars or 6/x
     @debug "bound binary functions: f x y:" f x y
     mul_two_vars = !is_number(x) && !(is_number(y)) && f  == :*
     divide_by_var = !is_number(y) && f == :/
@@ -306,7 +306,7 @@ end
 Bound one argument functions like x^2.
 Create upper and lower bounds of function f(x)
 """
-function bound_1arg_function(e::Expr, arg::Symbol, bound::OverApproximation; plotflag=plotflag)
+function bound_1arg_function(e::Expr, arg::Symbol, bound::OverApproximation; plotflag::Bool=plotflag)
     @debug "bound effectively unary" e arg bound
     fun = SymEngine.lambdify(e, [arg])
     lb, ub, npoint = bound.ranges[arg][1], bound.ranges[arg][2], bound.N
@@ -318,7 +318,7 @@ end
     bound_unary_function(f::Symbol, x_bound::OverflowError; plotflag=true)
 Bound one argument unary functions like sin(x). Create upper and lower bounds of function f(x)
 """
-function bound_unary_function(f::Symbol, x_bound::OverApproximation; plotflag=plotflag)
+function bound_unary_function(f::Symbol, x_bound::OverApproximation; plotflag::Bool=plotflag)
     @debug "bound true unary" f x_bound.output
     fun = eval(:($f))
     lb, ub, npoint = x_bound.output_range[1], x_bound.output_range[2], x_bound.N
@@ -331,7 +331,7 @@ end
     bound_unary_function(f::Function, lb, ub, npoint, bound)
 Bound one argument functions like sin(x) or x -> x^2 or x -> 1/x. Create upper and lower bounds of function f(x)
 """
-function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound; plotflag=plotflag, d2f_zeros=nothing, convex=nothing)
+function bound_unary_function(fun::Function, f_x_expr::Expr, x::Symbol, lb::Float64, ub::Float64, npoint::Int64, bound::OverApproximation; plotflag::Bool=plotflag, d2f_zeros::Union{Nothing, Vector{Any}}=nothing, convex::Union{Nothing, Bool}=nothing)
     UBpoints, UBfunc_sym = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, ϵ= bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
     fUBrange = [find_1d_range(UBpoints)...]
     LBpoints, LBfunc_sym = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, ϵ= -bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
