@@ -135,7 +135,7 @@ function overapprox(expr,
     end
 end
 
-function bound_binary_functions(f::Symbol, x::Union{Float64, Expr, Symbol}, y::Union{Float64, Expr, Symbol}, bound::OverApproximation) # TODO: should only be for when both args are vars or 6/x
+function bound_binary_functions(f::Symbol, x::Union{Float64, Expr, Symbol, Int64}, y::Union{Float64, Expr, Symbol, Int64}, bound::OverApproximation) # TODO: should only be for when both args are vars or 6/x
     @debug "bound binary functions: f x y:" f x y
     mul_two_vars = !is_number(x) && !(is_number(y)) && f  == :*
     divide_by_var = !is_number(y) && f == :/

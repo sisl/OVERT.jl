@@ -84,7 +84,7 @@ function get_safe_yi(y_i_m, y_i_p, xx, f, this_interval_convex)
 	return yy
 end
 
-function bound_jensen(f, df, N, aa, bb)
+function bound_jensen(f::Function, df::Function, N::Int64, aa, bb)
 	"""
 	This function generates a function that computes the system of equations
 		to be solved for a convex case
@@ -103,7 +103,7 @@ function bound_jensen(f, df, N, aa, bb)
 	return obj_jensen!
 end
 
-function bound_tangent(f, df, N, aa, bb, method)
+function bound_tangent(f::Function, df::Function, N::Int64, aa, bb, method)
 	"""
 	This function generates a function that computes the system of equations
 		to be solved for a concave case.
@@ -174,8 +174,8 @@ Interface to the bound function that accepts symbolic functions, not executable 
 that symbolic differentiation can be used.
 """
 
-function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
-	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=false)
+function bound(f::Function, a::Union{Float64, Int64}, b::Union{Float64, Int64}, N::Int64; conc_method::String="continuous", lowerbound::Bool=false, df::Union{Nothing, Function}=nothing,
+	d2f::Union{Nothing, Function}=nothing, d2f_zeros::Union{Nothing, Vector{Any}}=nothing, convex::Union{Bool, Nothing}=nothing, plot::Bool=false)
 	"""
 	This function over(under)-approximate function f(x).
 
@@ -354,7 +354,7 @@ end
 # 	return LB, UB
 # end
 
-function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="continuous",
+function bound_optimal(f::Function, a::Union{Float64, Int64}, b::Union{Float64, Int64}; rel_error_tol::Float64=0.02, Nmax::Int64 = 20, conc_method::String="continuous",
 	lowerbound=false, df=nothing, d2f=nothing, d2f_zeros=nothing, convex=nothing,
 	plot=false)
 
