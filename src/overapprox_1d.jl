@@ -403,7 +403,7 @@ function bound_optimal(f, a, b; rel_error_tol=0.02, Nmax = 20, conc_method="cont
 			ϵ_itp = 1E-8
 
 
-			itp = interpolate((xp_candidate[1],), yp_candidate[1], Gridded(Linear()))
+			itp = Interpolations.interpolate((xp_candidate[1],), yp_candidate[1], Gridded(Linear()))
 			xtest = range(aa + ϵ_itp, stop=bb - ϵ_itp, length=100)
 			ytest = [itp(xt) for xt in xtest]
 			ftest = [f(xt)   for xt in xtest]

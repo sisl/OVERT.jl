@@ -309,8 +309,7 @@ function find_UB(func, a, b, N; lb=false, plot=false, ϵ=0.0, d2f_zeros=nothing,
         sampling points over each concave/convex region.
         see the overest_new.jl for more details.
 
-    Return values are points (UB_points), the min-max closed form (UB_sym)
-    as well the lambda function form (UB_eval).
+    Return values are points (UB_points) and the min-max closed form (UB_sym)
     """
     UB = bound(func, a, b, N; lowerbound=lb, d2f_zeros=d2f_zeros, convex=convex, plot=plot)
     UB_points = unique(sort(to_pairs(UB), by = x -> x[1]))
@@ -321,7 +320,13 @@ function find_UB(func, a, b, N; lb=false, plot=false, ϵ=0.0, d2f_zeros=nothing,
     # end
     #println("Max of points: ", maximum(UB_points))
     if abs(ϵ) > 0
-        UB_points = add_ϵ(UB_points, ϵ) # return new points shifted by epsilon up or down
+        # treat epsilon as relative percentage e.g. 0.01 is 1%
+        # xpts, ypts = UB
+        ypts = vcat(UB[2]...)
+        pt_range = maximum(ypts) - minimum(ypts)
+        rel_ϵ = pt_range*ϵ
+        @debug("Relative ϵ percent is $(ϵ*100)% which for function in range [$(minimum(ypts)), $(maximum(ypts))] is $rel_ϵ")
+        UB_points = add_ϵ(UB_points, rel_ϵ) # return new points shifted by relative epsilon up or down
     end
     #println("Max of points after ϵ adjustment: ", maximum(UB_points))
     UB_sym = closed_form_piecewise_linear(UB_points)
