@@ -1,7 +1,7 @@
 name = "OVERT"
 uuid = "07e67fc4-eb77-11eb-38c2-1307cbb1fbf4"
 authors = ["Amir Maleki", "Chelsea Sidrane <csidrane@stanford.edu>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
