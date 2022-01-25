@@ -8,19 +8,19 @@ plotly()
 using PGFPlots
 
 # TODO: put params into a mutable struct
-plotflag = false
-plottype = "pgf"
+global plotflag = false
+global plottype = "pgf"
 DELETE_MUL_BY_ZERO = true
 DELETE_DEAD_RELUS = true
 
 function set_plotflag(bool)
-    plotflag = bool
+    global plotflag = bool
 end
 function set_plottype(t)
     """
     You can change to "html" or "pgf" (latex).
     """
-    plottype = t
+    global plottype = t
 end
 
 """
