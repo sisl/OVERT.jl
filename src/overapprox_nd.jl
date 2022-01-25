@@ -13,6 +13,16 @@ plottype = "pgf"
 DELETE_MUL_BY_ZERO = true
 DELETE_DEAD_RELUS = true
 
+function set_plotflag(bool)
+    plotflag = bool
+end
+function set_plottype(t)
+    """
+    You can change to "html" or "pgf" (latex).
+    """
+    plottype = t
+end
+
 """
     overapprox(expr,
                   range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real};
