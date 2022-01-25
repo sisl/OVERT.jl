@@ -355,7 +355,7 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
     # plot after adding air gap and after turning into closed form expression
     @debug "bounding true unary..."
     if plotflag
-        p = Plots.plot(0,0)
+        #p = Plots.plot(0,0)
         global NPLOTS
         NPLOTS += 1
         if plottype != "pgf"
