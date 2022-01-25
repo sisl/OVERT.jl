@@ -5,7 +5,7 @@ include("definitions.jl")
 using SymEngine
 using Plots
 plotly()
-using PGFPlots
+import PGFPlots
 
 # TODO: put params into a mutable struct
 global plotflag = false

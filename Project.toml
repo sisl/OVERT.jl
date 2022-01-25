@@ -16,7 +16,6 @@ Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 SymEngine = "123dc426-2d89-5057-bbad-38513e3affd8"
 
 [compat]
-julia = "1.5"
 Calculus = "0.5"
 Interpolations = "0.13"
 LaTeXStrings = "1.2"
@@ -28,11 +27,11 @@ PlotlyBase = "0.8"
 Plots = "1.19, 1.20"
 Roots = "1.1, 1.2"
 SymEngine = "0.8"
+julia = "1.5"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 NBInclude = "0db19996-df87-5ea3-a455-e3a50d440464"
-
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "NBInclude"]
