@@ -355,17 +355,22 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
     # plot after adding air gap and after turning into closed form expression
     @debug "bounding true unary..."
     if plotflag
-        p = Plots.plot(0,0)
-        global NPLOTS
-        NPLOTS += 1
         if plottype != "pgf"
+            using Plots
+            plotly()
+            p = Plots.plot(0,0)
+            global NPLOTS
+            NPLOTS += 1
             p = plot(range(lb, ub, length=100), fun, label="function", color="red")
             plot!(p, [p[1] for p in LBpoints], [p[2] for p in LBpoints],  color="purple", marker=:o, markersize=1, label="lower bound")
             plot!(p, [p[1] for p in UBpoints], [p[2] for p in UBpoints], color="blue", marker=:diamond, markersize=1,  label="upper bound", legend=:right, title="Function and bounds")
             # display(p)
             savefig(p, "plots/bound_"*string(NPLOTS)*".html")
         else # plottype == pgf
+            using PGFPlots
             println("Saving PGF plot")
+            global NPLOTS
+            NPLOTS += 1
             if f_x_expr.args[1] ∈ [:/, :^]
                 # use whole expression in title 
                 fun_string = "\$"*string(f_x_expr)*"\$"
