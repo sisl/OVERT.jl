@@ -358,24 +358,24 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
         #p = Plots.plot(0,0)
         global NPLOTS
         NPLOTS += 1
+        if f_x_expr.args[1] ∈ [:/, :^]
+            # use whole expression in title 
+            fun_string = string(f_x_expr)
+        else 
+            fun_string = string(fun)
+        end
+        println("funstring = $(fun_string)")
         if plottype != "pgf"
-            p = plot(range(lb, ub, length=100), fun, label="function", color="red")
+            p = plot(range(lb, ub, length=100), fun, label="function", color="black")
             plot!(p, [p[1] for p in LBpoints], [p[2] for p in LBpoints],  color="purple", marker=:o, markersize=1, label="lower bound")
-            plot!(p, [p[1] for p in UBpoints], [p[2] for p in UBpoints], color="blue", marker=:diamond, markersize=1,  label="upper bound", legend=:right, title="Function and bounds")
+            plot!(p, [p[1] for p in UBpoints], [p[2] for p in UBpoints], color="blue", marker=:diamond, markersize=1,  label="upper bound", legend=:right, title=fun_string, xlabel=string(x))
             # display(p)
             savefig(p, "plots/bound_"*string(NPLOTS)*".html")
         else # plottype == pgf
             println("Saving PGF plot")
-            if f_x_expr.args[1] ∈ [:/, :^]
-                # use whole expression in title 
-                fun_string = "\$"*string(f_x_expr)*"\$"
-            else 
-                fun_string = "\$"*string(fun)*"\$"
-            end
-            println("funstring = $(fun_string)")
             x_plot_points = range(lb, ub, length=100)
             f_x_plot_points = fun.(x_plot_points)
-            fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$f(x)\$", xlabel="x", title=fun_string)
+            fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$f(x)\$", xlabel="x", title="\$"*fun_string*"\$")
             push!(fig, PGFPlots.Plots.Linear(x_plot_points, f_x_plot_points, legendentry=fun_string, style="solid, black, mark=none"))
             push!(fig, PGFPlots.Plots.Linear([p[1] for p in LBpoints], [p[2] for p in LBpoints], legendentry="lower bound", style="solid, purple, mark=none"))
             push!(fig, PGFPlots.Plots.Linear([p[1] for p in UBpoints], [p[2] for p in UBpoints], legendentry="upper bound", style="solid, blue, mark=none"))
