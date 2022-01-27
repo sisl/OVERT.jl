@@ -357,6 +357,7 @@ end
 function bound_optimal(f, a, b; rel_error_tol=0.001, Nmax = 20, conc_method="continuous",
 	lowerbound=false, df=nothing, d2f=nothing, d2f_zeros=nothing, convex=nothing,
 	plot=false)
+	println("optimal tol is $(rel_error_tol)")
 
 	try
 		f(a)
