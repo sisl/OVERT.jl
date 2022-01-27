@@ -38,7 +38,7 @@ N    is the number of linear segments used per region of constant convexity. To 
 function overapprox(expr,
                        range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real};
                        N::Integer=2,
-                       ϵ::Real=1e-2)
+                       ϵ::Real=1e-4)
     println("Using N=$N, ϵ=$ϵ")
     bound = OverApproximation()
     range_dict = floatize(range_dict)
