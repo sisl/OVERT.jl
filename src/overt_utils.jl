@@ -173,7 +173,7 @@ end
 
 function get_sincos_regions(a,b; offset=0)
     """
-    Return inflection points for sin, cos
+    Return inflection points for sin, (cos with offset of π/2)
     """
 
     n̂_a = ceil((a - offset) / π)
@@ -188,6 +188,19 @@ function get_sincos_regions(a,b; offset=0)
     end
 end
 
+function get_tan_regions(a,b)
+    sin_zeros, sin_convexity = get_sincos_regions(a,b)
+    cos_zeros, cos_convexity = get_sincos_regions(a,b, offset=π/2)
+    tan_zeros = sort(vcat(sin_zeros, cos_zeros))
+    if length(tan_zeros) == 0 # no inflection points within interval
+        # if sin and cos convexity diff -> tan is concave (not convex)   (true, false) -> false   or   (false, true) -> false
+        # # if sin and cos convexity same -> tan is convex   (true, true) -> true or (false, false) -> true
+        return tan_zeros, !xor(sin_convexity, cos_convexity)
+    else 
+        return tan_zeros, nothing # nothing implies mixed convexity 
+    end
+end
+
 function get_regions_unary(func::Symbol, a, b)
     """
     Return the zeros of the second derivative of function func and/or whether it is convex or not
@@ -198,6 +211,8 @@ function get_regions_unary(func::Symbol, a, b)
         d2f_zeros, convex = get_sincos_regions(a, b, offset=π/2)
     elseif func == :sin
         d2f_zeros, convex = get_sincos_regions(a, b, offset=0)
+    elseif func == :tan 
+        d2f_zeros, convex = get_tan_regions(a,b)
     elseif func == :exp
         d2f_zeros, convex = [], true
     elseif func == :log

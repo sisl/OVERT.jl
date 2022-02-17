@@ -36,6 +36,10 @@ using Test
     @test get_regions_unary(:cos, -1, 1) == ([], false)
     @test all(get_regions_unary(:cos, -π, π)[1] .≈ [-π/2, π/2])
     @test get_regions_unary(:cos, -π, π)[2] === nothing
+    # tan 
+    @test get_regions_unary(:tan, -1, 1) == ([0], nothing)
+    @test get_regions_unary(:tan, -π/2 + 0.1, -0.1) == ([], false)
+    @test get_regions_unary(:tan, 0.1, π/2 - 0.1) == ([], true)
     # exp
     @test get_regions_unary(:exp, -1, 1) == ([], true)
     # log
