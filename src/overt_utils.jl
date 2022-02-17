@@ -189,6 +189,14 @@ function get_sincos_regions(a,b; offset=0)
 end
 
 function get_tan_regions(a,b)
+    # assert tan doesn't span discontinuity
+    @assert (b-a) <= π
+    # background to these cases:
+    # tan is continuous for +/- π/2 centered around even multiples of π/2. e.g. -π/2 ≤ 0*π/2 ≤ π/2 and again for π/2 ≤ 2*π/2 ≤ 3π/2
+    case1 = (ceil(a / (π/2)) == floor(b / (π/2))) && ((ceil(a/ (π/2)) % 2) == 0) # for when interval spans inflection point
+    case2 = (floor(a / (π/2)) == floor(b / (π/2))) && ((floor(a/ (π/2)) % 2) == 0) # for when interval is to the right of inflection point
+    case3 = (ceil(a / (π/2)) == ceil(b / (π/2))) && ((ceil(a/ (π/2)) % 2) == 0) # for when interval is to the left of inflection point
+    @assert (case1 || case2 || case3)
     sin_zeros, sin_convexity = get_sincos_regions(a,b)
     cos_zeros, cos_convexity = get_sincos_regions(a,b, offset=π/2)
     tan_zeros = sort(vcat(sin_zeros, cos_zeros))
