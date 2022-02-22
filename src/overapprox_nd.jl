@@ -381,7 +381,7 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
             push!(fig, PGFPlots.Plots.Linear([p[1] for p in UBpoints], [p[2] for p in UBpoints], legendentry="upper bound", style="solid, blue, mark=none"))
             fig.legendStyle =  "at={(1.05,1.0)}, anchor=north west"
             PGFPlots.save("plots/bound_"*string(NPLOTS)*".tex", fig)
-            #PGFPlots.save("plots/bound_"*string(NPLOTS)*".pdf", fig)
+            PGFPlots.save("plots/bound_"*string(NPLOTS)*".pdf", fig)
         end
 
     end
