@@ -215,6 +215,7 @@ function get_regions_unary(func::Symbol, a, b)
 
     d2f_zeros, convex = get_regions(func, a, b)
     """
+    @debug("Get regions for $func over [$a, $b]")
     if func == :cos
         d2f_zeros, convex = get_sincos_regions(a, b, offset=π/2)
     elseif func == :sin
