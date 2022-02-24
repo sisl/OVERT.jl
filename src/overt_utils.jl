@@ -15,7 +15,7 @@ increasing_special_func = [:exp, :log, :log10,
                          :tan, :sinh, :tanh,
                          :asin, :atan,
                          :asinh, :atanh, :acosh]
-special_consts = [π]
+special_consts = [π, pi]
 
 N_VARS = 0 # number of variables; has to be defined globally.
 @debug("N_VARS := 0")
