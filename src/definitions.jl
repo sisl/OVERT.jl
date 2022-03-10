@@ -10,7 +10,8 @@ mutable struct OverApproximation
     approx_ineq::Array{Expr, 1}
     fun_eq::Dict{Symbol, Any}
     N::Integer # number of points in a bound in a [0,1] interval
-    ϵ::Real # construct overapprox with ϵ leeway from function
+    ϵ::Real # add ±ϵ to bounds after computation to give "air gap" from function 
+    rel_error_tol::Real # tightness parameter for bounds on nonlinear functions (determines N when N=-1 (automatic))
 end
 # default constructor
 OverApproximation() = OverApproximation(:(null_output),
@@ -22,7 +23,8 @@ OverApproximation() = OverApproximation(:(null_output),
                                         Array{Expr, 1}(),
                                         Dict{Symbol, Any}(),
                                         3,
-                                        1e-2)
+                                        1e-4,
+                                        5e-3)
 
 Base.print(oA::OverApproximation) = print_overapproximate(oA)
 Base.display(oA::OverApproximation) = print_overapproximate(oA)

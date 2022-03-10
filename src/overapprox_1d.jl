@@ -174,7 +174,7 @@ Interface to the bound function that accepts symbolic functions, not executable 
 that symbolic differentiation can be used.
 """
 
-function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothing,
+function bound(f, a, b, N; rel_error_tol=0.005, conc_method="continuous", lowerbound=false, df=nothing,
 	d2f=nothing, d2f_zeros=nothing, convex=nothing, plot=false)
 	"""
 	This function over(under)-approximate function f(x).
@@ -202,7 +202,7 @@ function bound(f, a, b, N; conc_method="continuous", lowerbound=false, df=nothin
 	"""
 	@debug "Number of points in bound, N= $N"
 	if N == -1 # optimally choose N
-		return bound_optimal(f, a, b; conc_method=conc_method,
+		return bound_optimal(f, a, b; rel_error_tol=rel_error_tol, conc_method=conc_method,
 			lowerbound=lowerbound, df=df, d2f=d2f, d2f_zeros=d2f_zeros, convex=convex,
 			plot=plot)
 	end
@@ -394,7 +394,7 @@ function bound_optimal(f, a, b; rel_error_tol=0.005, Nmax = 20, conc_method="con
 			this_interval_convex = convex
 		end
 		for N = 1:Nmax
-			xp_candidate, yp_candidate = bound(f, aa, bb, N; conc_method="continuous", lowerbound=lowerbound, df=df,
+			xp_candidate, yp_candidate = bound(f, aa, bb, N; rel_error_tol=rel_error_tol, conc_method="continuous", lowerbound=lowerbound, df=df,
 			d2f=d2f, d2f_zeros=d2f_zeros, convex=this_interval_convex, plot=plot)
 
 			# interpolate can sometimes give an error because it thinks the
@@ -413,6 +413,7 @@ function bound_optimal(f, a, b; rel_error_tol=0.005, Nmax = 20, conc_method="con
 			if (maximum(error) < rel_error_tol) || (N == Nmax)
 				xp = vcat(xp, xp_candidate)
 				yp = vcat(yp, yp_candidate)
+				println("Using N=$N")
 				break
 			end
 		end

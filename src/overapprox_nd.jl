@@ -38,13 +38,15 @@ N    is the number of linear segments used per region of constant convexity. To 
 function overapprox(expr,
                        range_dict::Dict{Symbol, Array{T, 1}} where {T <: Real};
                        N::Integer=2,
-                       ϵ::Real=1e-4)
-    println("Using N=$N, ϵ=$ϵ")
+                       ϵ::Real=1e-4,
+                       rel_error_tol::Real=5e-3)
+    println("Using N=$N, ϵ=$ϵ, rel_error_tol=$(rel_error_tol)")
     bound = OverApproximation()
     range_dict = floatize(range_dict)
     bound.ranges = range_dict
     bound.N = N
     bound.ϵ = ϵ
+    bound.rel_error_tol = rel_error_tol
     return overapprox(expr, bound)
 end
 
@@ -347,9 +349,9 @@ end
 Bound one argument functions like sin(x) or x -> x^2 or x -> 1/x. Create upper and lower bounds of function f(x)
 """
 function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound; plotflag=plotflag, d2f_zeros=nothing, convex=nothing)
-    UBpoints, UBfunc_sym = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, ϵ= bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
+    UBpoints, UBfunc_sym = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, rel_error_tol= bound.rel_error_tol, ϵ= bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
     fUBrange = [find_1d_range(UBpoints)...]
-    LBpoints, LBfunc_sym = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, ϵ= -bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
+    LBpoints, LBfunc_sym = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, rel_error_tol= bound.rel_error_tol, ϵ= -bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
     fLBrange = [find_1d_range(LBpoints)...]
 
     # plot after adding air gap and after turning into closed form expression
