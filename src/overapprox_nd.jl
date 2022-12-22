@@ -368,6 +368,7 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
         end
         println("funstring = $(fun_string)")
         if plottype != "pgf"
+            plotly()
             p = plot(range(lb, ub, length=100), fun, label="function", color="black")
             plot!(p, [p[1] for p in LBpoints], [p[2] for p in LBpoints],  color="purple", marker=:o, markersize=1, label="lower bound")
             plot!(p, [p[1] for p in UBpoints], [p[2] for p in UBpoints], color="blue", marker=:diamond, markersize=1,  label="upper bound", legend=:right, title=fun_string, xlabel=string(x))
