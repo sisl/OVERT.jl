@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/sisl/OVERT.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/sisl/OVERT.jl)
 
 
-This repo contains a julia implementation for the [OVERT algorithm](https://arxiv.org/abs/2108.01220). Overt provides a relational piecewise-linear overapproximation of any multi-dimensional function. 
+This repo contains a julia implementation for the [OVERT algorithm](https://www.jmlr.org/papers/v23/21-0847.html). Overt provides a relational piecewise-linear overapproximation of any multi-dimensional function. 
 The overapproximation is useful for verifying systems with nonlinear dynamics. 
 In particular, we used OVERT for verifying nonlinear dynamical systems that are controlled by neural networks. See the [OVERTVerify package](https://github.com/sisl/OVERTVerify.jl).
 
