@@ -1,7 +1,7 @@
 name = "OVERT"
 uuid = "07e67fc4-eb77-11eb-38c2-1307cbb1fbf4"
 authors = ["Amir Maleki", "Chelsea Sidrane <csidrane@stanford.edu>"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
@@ -27,7 +27,7 @@ PGFPlots = "3.4"
 PlotlyBase = "0.8"
 Plots = "1.19, 1.20, 1.38"
 Roots = "2.0"
-SymEngine = "0.9"
+SymEngine = "0.8, 0.9"
 julia = "1.5"
 
 [extras]
