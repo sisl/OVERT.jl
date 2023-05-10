@@ -4,7 +4,6 @@ include("overt_utils.jl")
 include("definitions.jl")
 using SymEngine
 using Plots
-# plotly()
 import PGFPlots
 
 # TODO: put params into a mutable struct
