@@ -4,6 +4,7 @@ include("overt_utils.jl")
 include("definitions.jl")
 using SymEngine
 using Plots
+using SpecialFunctions
 import PGFPlots
 
 # TODO: put params into a mutable struct
@@ -336,7 +337,12 @@ Bound one argument unary functions like sin(x). Create upper and lower bounds of
 """
 function bound_unary_function(f::Symbol, x_bound::OverApproximation; plotflag=plotflag)
     @debug "bound true unary" f x_bound.output
-    fun = eval(:($f))
+    # robust resolution: try current scope, then SpecialFunctions
+    fun = try
+        eval(:($f))
+    catch
+        getfield(SpecialFunctions, f)
+    end
     lb, ub, npoint = x_bound.output_range[1], x_bound.output_range[2], x_bound.N
     f_x_expr = :($(f)($(x_bound.output)))
     d2f_zeros, convex = get_regions_unary(f, lb, ub)
@@ -348,6 +354,21 @@ end
 Bound one argument functions like sin(x) or x -> x^2 or x -> 1/x. Create upper and lower bounds of function f(x)
 """
 function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound; plotflag=plotflag, d2f_zeros=nothing, convex=nothing)
+    
+    # --- ensure erf convexity info is always set ---
+    if d2f_zeros === nothing && convex === nothing
+        if f_x_expr isa Expr && f_x_expr.head == :call && f_x_expr.args[1] == :erf
+            if ub <= 0
+                d2f_zeros = Float64[]; convex = true       # erf convex on (-∞,0]
+            elseif lb >= 0
+                d2f_zeros = Float64[]; convex = false      # erf concave on [0,∞)
+            else
+                d2f_zeros = [0.0]; convex = nothing        # mixed across 0
+            end
+        end
+    end
+    # ------------------------------------------------
+    
     UBpoints, UBfunc_sym = find_UB(fun, lb, ub, npoint; lb=false, plot=plotflag, rel_error_tol= bound.rel_error_tol, ϵ= bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)
     fUBrange = [find_1d_range(UBpoints)...]
     LBpoints, LBfunc_sym = find_UB(fun, lb, ub, npoint; lb=true, plot=plotflag, rel_error_tol= bound.rel_error_tol, ϵ= -bound.ϵ, d2f_zeros=d2f_zeros, convex=convex)

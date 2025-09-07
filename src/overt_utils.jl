@@ -9,12 +9,14 @@ special_func = [:exp, :log, :log10,
                 :sin, :cos, :tan,
                 :sinh, :cosh, :tanh,
                 :asin, :acos, :atan,
-                :asinh, :acosh, :atanh]
+                :asinh, :acosh, :atanh,
+                :erf]
 
 increasing_special_func = [:exp, :log, :log10,
                          :tan, :sinh, :tanh,
                          :asin, :atan,
-                         :asinh, :atanh, :acosh]
+                         :asinh, :atanh, :acosh,
+                         :erf]
 special_consts = [π, :π, :pi]
 
 N_VARS = 0 # number of variables; has to be defined globally.
@@ -235,6 +237,15 @@ function get_regions_unary(func::Symbol, a, b)
         else # spans 0
             d2f_zeros, convex = [0], nothing
         end
+    elseif func == :erf
+        # erf''(x) ∝ -x * exp(-x^2): convex on (-∞,0), concave on (0,∞), inflection at 0
+        if b ≤ 0
+            d2f_zeros, convex = [], true
+        elseif a ≥ 0
+            d2f_zeros, convex = [], false
+        else
+            d2f_zeros, convex = [0], nothing
+        end    
     else
         d2f_zeros, convex = nothing, nothing
     end
@@ -579,4 +590,16 @@ is_binary(expr::Expr) = length(expr.args) == 3
 function multiply_interval(range, constant)
     S = [range[1]*constant, range[2]*constant]
     return [min(S...), max(S...)]
+end
+
+
+function find_bounds_for_function(func::Symbol, range)
+    if func == :erf
+        # Evaluate erf over interval range using interval arithmetic
+        return erf(range)
+    elseif func in special_func
+        # existing logic
+    else
+        error("Unsupported function: $func")
+    end
 end
