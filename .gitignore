@@ -12,3 +12,5 @@ debug_log*
 /Manifest.toml
 /docs/build/
 Manifest.toml
+plots/plots
+test/bound_example.tex
