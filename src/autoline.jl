@@ -1,4 +1,5 @@
 using MacroTools, SymEngine
+using SpecialFunctions
 import MacroTools.postwalk
 
 """
@@ -159,7 +160,7 @@ Base.Expr(B::Basic) = Meta.parse(string(B))
 
 function get_symbols(ex::Union{Expr, Symbol})
     syms = Symbol[]
-    ops = (:*, :+, :-, :relu)
+    ops = (:*, :+, :-, :relu, erf)
     postwalk(e -> e isa Symbol && e ∉ ops ? push!(syms, e) : nothing, ex)
     unique(syms)
 end
