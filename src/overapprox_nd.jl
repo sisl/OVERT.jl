@@ -3,23 +3,26 @@ include("autoline.jl")
 include("overt_utils.jl")
 include("definitions.jl")
 using SymEngine
-using Plots
-import PGFPlots
+
+# Compatibility with Julia < 1.9
+if !isdefined(Base, :get_extension)
+  include("../ext/PlotExt.jl")
+end
 
 # TODO: put params into a mutable struct
 global plotflag = false
-global plottype = "pgf"
 DELETE_MUL_BY_ZERO = true
 DELETE_DEAD_RELUS = true
 
 function set_plotflag(bool)
+    if bool
+        plot_ext = Base.get_extension(@__MODULE__, :PlotExt)
+        if isnothing(plot_ext)
+            error("PlotExt.jl is not activated.
+                   To activate it please import LaTeXStrings, PGFPlots, PlotlyBase, and Plots.")
+        end
+    end
     global plotflag = bool
-end
-function set_plottype(t)
-    """
-    You can change to "html" or "pgf" (latex).
-    """
-    global plottype = t
 end
 
 """
@@ -356,37 +359,12 @@ function bound_unary_function(fun::Function, f_x_expr, x, lb, ub, npoint, bound;
     # plot after adding air gap and after turning into closed form expression
     @debug "bounding true unary..."
     if plotflag
-        #p = Plots.plot(0,0)
-        global NPLOTS
-        NPLOTS += 1
-        if f_x_expr.args[1] ∈ [:/, :^]
-            # use whole expression in title 
-            fun_string = string(f_x_expr)
-        else 
-            fun_string = string(fun)
+        plot_ext = Base.get_extension(@__MODULE__, :PlotExt)
+        if !isnothing(plot_ext)
+            plot_ext.make_plot(fun, f_x_expr, lb, ub, LBpoints, UBpoints)
         end
-        println("funstring = $(fun_string)")
-        if plottype != "pgf"
-            plotly()
-            p = plot(range(lb, ub, length=100), fun, label="function", color="black")
-            plot!(p, [p[1] for p in LBpoints], [p[2] for p in LBpoints],  color="purple", marker=:o, markersize=1, label="lower bound")
-            plot!(p, [p[1] for p in UBpoints], [p[2] for p in UBpoints], color="blue", marker=:diamond, markersize=1,  label="upper bound", legend=:right, title=fun_string, xlabel=string(x))
-            # display(p)
-            savefig(p, "plots/bound_"*string(NPLOTS)*".html")
-        else # plottype == pgf
-            println("Saving PGF plot")
-            x_plot_points = range(lb, ub, length=100)
-            f_x_plot_points = fun.(x_plot_points)
-            fig = PGFPlots.Axis(style="width=10cm, height=10cm", ylabel="\$f(x)\$", xlabel="x", title="\$"*fun_string*"\$")
-            push!(fig, PGFPlots.Plots.Linear(x_plot_points, f_x_plot_points, legendentry=fun_string, style="solid, black, mark=none"))
-            push!(fig, PGFPlots.Plots.Linear([p[1] for p in LBpoints], [p[2] for p in LBpoints], legendentry="lower bound", style="solid, purple, mark=none"))
-            push!(fig, PGFPlots.Plots.Linear([p[1] for p in UBpoints], [p[2] for p in UBpoints], legendentry="upper bound", style="solid, blue, mark=none"))
-            fig.legendStyle =  "at={(1.05,1.0)}, anchor=north west"
-            PGFPlots.save("plots/bound_"*string(NPLOTS)*".tex", fig)
-            PGFPlots.save("plots/bound_"*string(NPLOTS)*".pdf", fig)
-        end
-
     end
+
     @debug "LB function is: $LBfunc_sym"
     @debug "UB function is: $UBfunc_sym"
 
